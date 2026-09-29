@@ -72,7 +72,7 @@ pii = [
     "google-re2>=1.1,<2.0",
 ]
 ml = [
-    "sentence-transformers>=5.0,<6.0",
+    "sentence-transformers>=5.0,<7.0",
     # CVE-2026-9856 is fixed in 5.10.0, inside the existing range, so this
     # raises the floor rather than widening it.
     "transformers>=5.10.0,<6.0",
