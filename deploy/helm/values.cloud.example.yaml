@@ -1,0 +1,220 @@
+# Example Helm values for deploying InterLock to a real Kubernetes cluster.
+#
+# Copy this file, fill in the marked values, and pass it with `helm install -f`.
+# It contains no credentials and must never be edited to contain any: every
+# secret is referenced by the name of a Kubernetes Secret that you create
+# first. See docs-site/src/content/docs/reference/contracts/configuration-v1.md for the secrets policy and
+# docs-site/src/content/docs/reference/contracts/helm-v1.md for the stable value roots.
+#
+# ---------------------------------------------------------------------------
+# Create these before `helm install` - the chart references them and will not
+# create them for you. Three of them have no chart fallback at all.
+# ---------------------------------------------------------------------------
+#
+#   Secret name                  Keys              Contents
+#   ---------------------------  ----------------  --------------------------
+#   interlock-db-credentials     username          Control-database login.
+#                                password          (Chart can create this one
+#                                                  from database.user/password
+#                                                  instead, but a pre-created
+#                                                  Secret keeps credentials out
+#                                                  of the values file.)
+#   interlock-admin-secret       secret-key        >=32 chars. Signs admin
+#                                                  session cookies and CSRF
+#                                                  tokens. Rotating it logs
+#                                                  every admin out.
+#   interlock-api-key-pepper     pepper            >=32 chars. HMAC pepper for
+#                                                  agent API-key hashes.
+#                                                  Rotating it invalidates
+#                                                  every issued API key.
+#   interlock-control-db-ca      ca.crt            CA that signed the control
+#                                                  database's server
+#                                                  certificate. Required
+#                                                  because sslMode is
+#                                                  verify-full.
+#   interlock-pg-listener-tls    tls.crt, tls.key  Server certificate the
+#                                                  gateway presents to agents
+#                                                  on its PostgreSQL port.
+#
+# Generate the two random secrets with, for example:
+#   kubectl -n interlock create secret generic interlock-admin-secret \
+#     --from-literal=secret-key="$(openssl rand -base64 48)"
+#   kubectl -n interlock create secret generic interlock-api-key-pepper \
+#     --from-literal=pepper="$(openssl rand -base64 48)"
+#
+# You also need a StorageClass that supports ReadWriteOnce for the gateway's
+# audit spool. Strict audit durability writes there before acknowledging a
+# governed request, so the volume is not optional.
+#
+# ---------------------------------------------------------------------------
+# Invariants: the production config gate refuses to boot if these are relaxed.
+# ---------------------------------------------------------------------------
+#   database.sslMode: verify-full
+#   auth.allowLegacySha256Keys: false
+#   config.auditDurabilityMode: strict
+# The chart also hardcodes environment=production, cookie_secure=true, and
+# client TLS on the PostgreSQL listener. Do not template those away.
+
+image:
+  repository: ghcr.io/contextdata/interlock-runtime
+  # Deploy by digest, never by tag: the release workflow signs the digest and
+  # the certification workflow verifies that exact signature before install.
+  tag: ""
+  digest: "" # REQUIRED, e.g. sha256:0123...
+
+database:
+  host: "" # REQUIRED. Must match a SAN on the server certificate.
+  port: 5432
+  name: interlock
+  existingSecret: interlock-db-credentials
+  secretUserKey: username
+  secretPasswordKey: password
+  sslMode: verify-full
+  caExistingSecret: interlock-control-db-ca
+  caSecretKey: ca.crt
+
+redis:
+  # A managed Redis carries its password inside the URL. Set existingSecret and
+  # the URL is read from that Secret and left out of the ConfigMap entirely;
+  # `url` below is then ignored. Only use `url` for a local, passwordless
+  # instance.
+  url: "" # e.g. rediss://interlock-cache.example:6379/0 - ignored when existingSecret is set
+  existingSecret: "" # RECOMMENDED, Secret holding the full URL
+  secretUrlKey: url
+
+auth:
+  apiKeyPepperExistingSecret: interlock-api-key-pepper
+  apiKeyPepperSecretKey: pepper
+  allowLegacySha256Keys: false
+  oidc:
+    # Optional. When enabled, every field below is required and the issuer and
+    # redirect URI must be https. See docs-site/src/content/docs/reference/contracts/configuration-v1.md.
+    enabled: false
+    issuerUrl: ""
+    adminClientId: ""
+    adminClientSecretExistingSecret: ""
+    adminClientSecretKey: client-secret
+    adminRedirectUri: ""
+    agentAudience: ""
+    scopes:
+      - openid
+      - profile
+      - email
+      - groups
+    localBreakGlassEnabled: true
+    allowInsecureEndpoints: false
+    adminGroupRoleMap: {}
+
+admin:
+  replicas: 2
+  secret:
+    existingSecret: interlock-admin-secret
+    secretKey: secret-key
+    value: "" # Leave empty. Inlining the signing key here defeats the Secret.
+
+gateway:
+  replicas: 2
+  pgTls:
+    existingSecret: interlock-pg-listener-tls
+    certKey: tls.crt
+    privateKeyKey: tls.key
+    # Set true only when a service mesh or load balancer terminates client TLS
+    # before the gateway and you trust its client-identity headers.
+    trustedOffload: false
+  auditSpool:
+    enabled: true
+    mountPath: /var/lib/interlock/audit-spool
+    storageClassName: "" # REQUIRED in practice; empty uses the cluster default.
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+  upstreamPostgres:
+    # A registered upstream data source the gateway proxies to - NOT the
+    # control database above.
+    host: "" # REQUIRED
+    port: 5432
+  # Only needed when browser-based MCP clients call the gateway directly.
+  # Empty means server-to-server callers only.
+  mcpAllowedOrigins: []
+
+worker:
+  replicas: 2
+  hpa:
+    enabled: true # Requires metrics-server in the cluster.
+    cpuTargetUtilization: 70
+
+config:
+  logLevel: info
+  auditDurabilityMode: strict
+  cache:
+    l1MaxSize: 10000
+    l1TtlSeconds: 60
+    l2TtlSeconds: 300
+
+ingress:
+  # Admin session cookies are always Secure, so admin login over plain HTTP
+  # will not work. Terminate TLS before exposing the admin service.
+  # Note: this ingress routes to the gateway service only; expose the admin
+  # service through your own ingress or a separate route.
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: "" # REQUIRED when enabled
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# ---------------------------------------------------------------------------
+# Private registries, connector credentials, first admin, and exposure
+# ---------------------------------------------------------------------------
+# Attached to every pod including the pre-install migration Job, which pulls
+# the same image. Create with:
+#   kubectl create secret docker-registry ghcr-pull \
+#     --docker-server=ghcr.io --docker-username=<user> --docker-password=<token>
+imagePullSecrets: []
+# - name: ghcr-pull
+
+# Connector credentials are `env://VAR` references resolved inside the pod, so
+# the variables they name must be present in the container. Put them in one
+# Secret and reference it from BOTH the gateway and admin: the console
+# resolves the same references when it probes a source. Never inline a
+# credential as extraEnv - it would be visible in `helm get values`.
+#
+# gateway:
+#   extraEnvFrom:
+#     - secretRef:
+#         name: interlock-source-credentials
+# admin:
+#   extraEnvFrom:
+#     - secretRef:
+#         name: interlock-source-credentials
+#   # uvicorn trusts forwarded headers only from listed peers; behind an
+#   # ingress controller the admin otherwise believes it is serving plain HTTP.
+#   extraEnv:
+#     - name: FORWARDED_ALLOW_IPS
+#       value: "*"
+#
+# Sets the first admin user's password on an empty admin_identities table.
+# Without it the first admin is admin / admin, forced to change the password at
+# first sign-in; on a reachable cluster set it rather than race anyone to that
+# first sign-in. Remove this value and the Secret after signing in.
+#   admin.bootstrapPasswordExistingSecret: interlock-admin-bootstrap
+#
+# The Ingress above routes the Gateway only, and admin session cookies are
+# always Secure, so the console needs its own TLS route. Restrict it.
+#   admin.ingress.enabled: true
+#
+# The gateway Service carries both HTTP and the PostgreSQL wire port. To reach
+# PG-wire from outside, enable the dedicated Service rather than turning the
+# combined one into a LoadBalancer, which would publish HTTP alongside it.
+#   gateway.pgService.enabled: true
+
+# ---------------------------------------------------------------------------
+# Not yet configurable through this chart
+# ---------------------------------------------------------------------------
+# serviceAccount, nodeSelector, tolerations, affinity, podAnnotations,
+# PodDisruptionBudget, NetworkPolicy, and OTLP exporter settings have no
+# values. Deployments needing them must patch the rendered manifests or open
+# an issue.

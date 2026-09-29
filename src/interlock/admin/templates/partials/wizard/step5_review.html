@@ -1,0 +1,114 @@
+{# Wizard step 5: review + save. #}
+<div class="form-card wizard">
+  <div class="wizard-progress" data-step="5">
+    <span class="step done">1. Type</span>
+    <span class="step done">2. Connection</span>
+    <span class="step done">3. Schema</span>
+    <span class="step done">4. Cache</span>
+    <span class="step active">5. Review</span>
+  </div>
+  <h3>Review and save</h3>
+  {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+
+  <form id="wizard-form">
+    <input type="hidden" name="wizard_id" value="{{ state.wizard_id|default('') }}">
+    <input type="hidden" name="name" value="{{ state.name }}">
+    <input type="hidden" name="source_type" value="{{ state.source_type }}">
+    <input type="hidden" name="connector_key" value="{{ state.connector_key }}">
+    <input type="hidden" name="create_default_roles" value="{{ state.create_default_roles|default('off') }}">
+    <input type="hidden" name="host" value="{{ state.host|default('') }}">
+    <input type="hidden" name="port" value="{{ state.port|default('') }}">
+    <input type="hidden" name="database" value="{{ state.database|default('') }}">
+    <input type="hidden" name="user" value="{{ state.user|default('') }}">
+    <input type="hidden" name="password_ref" value="{{ state.password_ref|default('') }}">
+    <input type="hidden" name="sslmode" value="{{ state.sslmode|default('') }}">
+    <input type="hidden" name="ssl_ca" value="{{ state.ssl_ca|default('') }}">
+    <input type="hidden" name="base_url" value="{{ state.base_url|default('') }}">
+    <input type="hidden" name="token_ref" value="{{ state.token_ref|default('') }}">
+    <input type="hidden" name="bucket" value="{{ state.bucket|default('') }}">
+    <input type="hidden" name="prefix" value="{{ state.prefix|default('') }}">
+    <input type="hidden" name="region_name" value="{{ state.region_name|default('') }}">
+    <input type="hidden" name="endpoint_url" value="{{ state.endpoint_url|default('') }}">
+    <input type="hidden" name="aws_access_key_id_ref" value="{{ state.aws_access_key_id_ref|default('') }}">
+    <input type="hidden" name="aws_secret_access_key_ref" value="{{ state.aws_secret_access_key_ref|default('') }}">
+    <input type="hidden" name="account" value="{{ state.account|default('') }}">
+    <input type="hidden" name="warehouse" value="{{ state.warehouse|default('') }}">
+    <input type="hidden" name="schema" value="{{ state.schema|default('') }}">
+    <input type="hidden" name="role" value="{{ state.role|default('') }}">
+    <input type="hidden" name="subdomain" value="{{ state.subdomain|default('') }}">
+    <input type="hidden" name="email" value="{{ state.email|default('') }}">
+    <input type="hidden" name="api_token_ref" value="{{ state.api_token_ref|default('') }}">
+    <input type="hidden" name="workspace" value="{{ state.workspace|default('') }}">
+    <input type="hidden" name="bot_token_ref" value="{{ state.bot_token_ref|default('') }}">
+    <input type="hidden" name="org" value="{{ state.org|default('') }}">
+    <input type="hidden" name="group" value="{{ state.group|default('') }}">
+    <input type="hidden" name="cache_strategy" value="{{ state.cache_strategy|default('deterministic_first') }}">
+    {% for col in state.pii_columns|default([]) %}
+    <input type="hidden" name="pii_columns" value='{{ col }}'>
+    {% endfor %}
+
+    <dl class="form-summary">
+      <dt>Name</dt><dd>{{ state.name }}</dd>
+      <dt>Source ID</dt><dd><code>{{ planned_source_id|default(state.source_id, true) }}</code> <span class="muted">generated from the name; agents use it to reach this source and it cannot be changed later</span></dd>
+      <dt>Type</dt><dd>{{ state.source_type }}</dd>
+      <dt>Connector</dt><dd><code>{{ state.connector_key }}</code></dd>
+      {% if state.source_type in ['postgresql', 'mysql'] %}
+      <dt>Connection</dt><dd><code>{{ state.host }}:{{ state.port }}/{{ state.database }}</code></dd>
+      <dt>Credentials</dt>
+      <dd>
+        {% if state.password_ref %}secret-ref: <code>{{ state.password_ref }}</code>
+        {% elif state.password %}inline password supplied
+        {% else %}none{% endif %}
+      </dd>
+      {% if state.source_type == 'postgresql' %}
+      <dt>TLS</dt>
+      <dd>
+        <code>{{ state.sslmode or 'not set' }}</code>
+        {% if state.ssl_ca %}with CA <code>{{ state.ssl_ca }}</code>{% endif %}
+      </dd>
+      {% endif %}
+      {% else %}
+      <dt>Base URL</dt><dd><code>{{ state.base_url }}</code></dd>
+      <dt>Credentials</dt>
+      <dd>
+        {% if state.token_ref %}secret-ref: <code>{{ state.token_ref }}</code>
+        {% elif state.token %}inline token supplied
+        {% else %}none{% endif %}
+      </dd>
+      {% endif %}
+      <dt>Cache strategy</dt><dd>{{ state.cache_strategy|default('deterministic_first') }}</dd>
+      <dt>Source role templates</dt>
+      <dd>
+        {% if state.create_default_roles == 'on' %}
+        <span class="badge">default IAM-style templates</span>
+        <span class="muted">read, analyst/writer, owner, and blocked defaults are created for review.</span>
+        {% else %}
+        <span class="muted">No roles will be created automatically.</span>
+        {% endif %}
+      </dd>
+      <dt>PII columns</dt>
+      <dd>
+        {% if state.pii_columns %}
+          {% for c in state.pii_labels or state.pii_columns %}<span class="pii-tag">{{ c }}</span>{% endfor %}
+        {% else %}<span class="muted">none flagged</span>{% endif %}
+      </dd>
+    </dl>
+
+    <div class="form-actions">
+      <button type="button" class="btn"
+              hx-post="/dashboard/source-wizard/step4"
+              hx-include="#wizard-form"
+              hx-target="#new-source-form-slot">← Back</button>
+      <button type="button" class="btn"
+              hx-post="/dashboard/source-wizard/cancel"
+              hx-include="#wizard-form"
+              hx-target="#main-content"
+              hx-swap="innerHTML">Cancel</button>
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/source-wizard/save"
+              hx-include="#wizard-form"
+              hx-target="#main-content"
+              hx-swap="innerHTML">Save Source</button>
+    </div>
+  </form>
+</div>

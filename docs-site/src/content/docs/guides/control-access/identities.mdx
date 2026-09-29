@@ -1,0 +1,31 @@
+---
+title: Create an agent identity
+description: Create an identity for an agent, issue its key, and give it access.
+sidebar:
+  order: 1
+---
+
+import Screenshot from '../../../../components/Screenshot.astro';
+
+**Identities > New Identity**:
+
+- **Name**: one per agent deployment, so audit rows say which agent acted.
+- **Agent type**: `claude_code`, `codex`, `copilot` or `custom`.
+- **Team**: optional, used to group usage.
+- **Source access**: add a row per source and pick one of that source's roles.
+  You can add more later.
+- **Auto-generate API key** (ticked by default): the console mints a random
+  key and **shows it once**. Store it where the agent will read it; InterLock
+  keeps only a hash.
+- **Dedicated PostgreSQL username and password**: optional, for PostgreSQL
+  clients that cannot use a key as the password.
+
+<Screenshot name="identities" alt="The Identities list, with each identity's type, grants and last use." />
+
+With the API, `POST /api/identities` creates an identity with a key **you**
+supply (32+ printable characters), then `POST
+/api/identities/{id}/source-role-grants` grants roles.
+
+Then connect the agent: [MCP clients](/guides/connect-an-agent/mcp-clients/),
+[PostgreSQL clients](/guides/connect-an-agent/postgresql-clients/) or
+[HTTP](/guides/connect-an-agent/http/).

@@ -1,0 +1,14 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}{% if mode == 'edit' %}Edit Policy{% else %}New Policy{% endif %} - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/policies" class="back-link"
+     hx-get="/dashboard/policies" hx-target="#main-content">Policies</a>
+  <h1>{% if mode == 'edit' %}Edit Policy{% else %}New Policy{% endif %}</h1>
+</div>
+
+<div id="new-policy-form-slot">
+  {% include "partials/policy_form.html" %}
+</div>
+{% endblock %}

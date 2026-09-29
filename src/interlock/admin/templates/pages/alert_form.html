@@ -1,0 +1,14 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}New Alert Rule - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/alerts" class="back-link"
+     hx-get="/dashboard/alerts" hx-target="#main-content">Alerts</a>
+  <h1>New Alert Rule</h1>
+</div>
+
+<div id="new-alert-form-slot">
+  {% include "partials/alert_form.html" %}
+</div>
+{% endblock %}

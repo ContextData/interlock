@@ -1,0 +1,14 @@
+{# Warnings from catalog/validation.py. Advisory: nothing here blocks a save. #}
+{% if warnings %}
+<ul class="catalog-lint" role="status">
+  {% for w in warnings %}
+  <li class="catalog-lint-item">
+    <span class="badge badge-warning">{{ w.code | replace('_', ' ') }}</span>
+    {% if w.index is not none %}<small class="muted">statement {{ w.index + 1 }}</small>{% endif %}
+    {{ w.message }}
+  </li>
+  {% endfor %}
+</ul>
+{% elif checked %}
+<p class="muted catalog-lint-ok">No warnings against the catalog.</p>
+{% endif %}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="52" viewBox="0 0 240 52" fill="none" role="img" aria-label="context.data">
+  <!-- Dark-theme lockup. The light-surface variant is
+       context-data-lockup-light.svg; base.html shows one per theme. -->
+  <g transform="translate(0,6) scale(0.55)">
+    <path d="M26 16 H16 V56 H26" stroke="#DCDEE1" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"></path>
+    <path d="M54 16 H64 V56 H54" stroke="#DCDEE1" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"></path>
+    <circle cx="40" cy="36" r="8.5" fill="#C8F751"></circle>
+  </g>
+  <text x="52" y="34" class="wm" font-family="Instrument Sans, ui-sans-serif, system-ui, sans-serif" font-size="21" font-weight="600" letter-spacing="-0.3" fill="#ffffff">context<tspan fill="#C8F751">.</tspan>data</text>
+</svg>

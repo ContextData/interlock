@@ -1,0 +1,59 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Audit Event #{{ event.id }} - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/audit-costs" class="back-link"
+     hx-get="/dashboard/audit-costs" hx-target="#main-content">Audit &amp; Costs</a>
+  <h1>Audit Event #{{ event.id }}</h1>
+</div>
+
+<div class="detail-stack">
+  <section class="card">
+    <h2>Request</h2>
+    <dl class="form-summary fact-table">
+      <dt>Created</dt><dd>{{ event.created_at|fmt_dt }}</dd>
+      <dt>Source</dt><dd>{{ event.source_id or '-' }}</dd>
+      <dt>Identity</dt><dd>{{ event.identity_id|identity_label(event.identity_name, event.identity_deleted) }}</dd>
+      <dt>Protocol</dt><dd>{{ event.protocol or '-' }}</dd>
+      <dt>Operation</dt><dd>{{ event.normalized_operation or event.operation or '-' }}</dd>
+      <dt>Status</dt><dd><span class="badge badge-{{ event.status|default('unknown') }}">{{ event.status or '-' }}</span></dd>
+      <dt>Correlation</dt><dd><code title="{{ event.correlation_id }}">{{ event.correlation_id|short_id(24) }}</code></dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Governance</h2>
+    <dl class="form-summary fact-table">
+      <dt>Policy</dt><dd>{{ event.policy_decision or '-' }}</dd>
+      <dt>Cache</dt><dd>{% if event.cache_hit %}hit{% else %}miss{% endif %} {{ event.cache_tier or '' }}</dd>
+      <dt>Approval</dt><dd>{{ event.approval_status or '-' }} {% if event.approval_id %}<a href="/dashboard/write-safety/{{ event.approval_id }}">#{{ event.approval_id }}</a>{% endif %}</dd>
+      <dt>PII</dt><dd>{% if event.pii_detected %}<span class="pii-tag">PII</span>{% else %}-{% endif %}</dd>
+      <dt>Latency</dt><dd>{{ event.latency_ms|fmt_ms }}</dd>
+      <dt>Upstream cost</dt><dd>
+        {% if event.cost_metadata is mapping and event.cost_metadata %}
+        <dl class="inline-facts">
+          {% for key, value in event.cost_metadata|dictsort %}
+          <dt>{{ key|replace('_', ' ') }}</dt><dd><code>{{ value }}</code></dd>
+          {% endfor %}
+        </dl>
+        {% elif event.cost_metadata %}{{ event.cost_metadata }}
+        {% else %}<span class="muted">Not reported by this source</span>{% endif %}
+      </dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Details</h2>
+    {% if event.sensitive_metadata_redacted %}
+    <div class="form-hint">Sensitive request metadata is redacted for this Admin role.</div>
+    {% endif %}
+    <dl class="form-summary fact-table">
+      <dt>Route</dt><dd>{{ event.route or '-' }}</dd>
+      <dt>Upstream target</dt><dd>{{ event.upstream_target or '-' }}</dd>
+      <dt>Error</dt><dd>{{ event.error_message or '-' }}</dd>
+      <dt>Request metadata</dt><dd><pre class="json-block">{{ event.request_metadata or event.metadata or {} }}</pre></dd>
+    </dl>
+  </section>
+</div>
+{% endblock %}

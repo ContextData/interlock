@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "interlock.fullname" . }}-config
+  labels:
+    {{- include "interlock.labels" . | nindent 4 }}
+  annotations:
+    # The migration Job is a pre-install/pre-upgrade hook, and Helm applies
+    # hooks before the rest of the release. Without these annotations the Job
+    # starts before this ConfigMap exists and fails with
+    # `configmap "<release>-config" not found`. The negative weight orders it
+    # ahead of the Job, which runs at the default weight of 0.
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation
+data:
+  INTERLOCK_ENVIRONMENT: "production"
+  INTERLOCK_DATABASE__HOST: {{ .Values.database.host | quote }}
+  INTERLOCK_DATABASE__PORT: {{ .Values.database.port | quote }}
+  INTERLOCK_DATABASE__DATABASE: {{ .Values.database.name | quote }}
+  INTERLOCK_DATABASE__SSL_MODE: {{ .Values.database.sslMode | quote }}
+  INTERLOCK_DATABASE__SSL_CA_FILE: "/run/secrets/control-db-ca/ca.crt"
+  INTERLOCK_AUTH__ALLOW_LEGACY_SHA256_KEYS: {{ .Values.auth.allowLegacySha256Keys | quote }}
+  INTERLOCK_AUTH__OIDC__ENABLED: {{ .Values.auth.oidc.enabled | quote }}
+  INTERLOCK_AUTH__OIDC__ISSUER_URL: {{ .Values.auth.oidc.issuerUrl | quote }}
+  INTERLOCK_AUTH__OIDC__ADMIN_CLIENT_ID: {{ .Values.auth.oidc.adminClientId | quote }}
+  INTERLOCK_AUTH__OIDC__ADMIN_REDIRECT_URI: {{ .Values.auth.oidc.adminRedirectUri | quote }}
+  INTERLOCK_AUTH__OIDC__AGENT_AUDIENCE: {{ .Values.auth.oidc.agentAudience | quote }}
+  INTERLOCK_AUTH__OIDC__SCOPES: {{ .Values.auth.oidc.scopes | toJson | quote }}
+  INTERLOCK_AUTH__OIDC__LOCAL_BREAK_GLASS_ENABLED: {{ .Values.auth.oidc.localBreakGlassEnabled | quote }}
+  INTERLOCK_AUTH__OIDC__ALLOW_INSECURE_ENDPOINTS: {{ .Values.auth.oidc.allowInsecureEndpoints | quote }}
+  INTERLOCK_AUTH__OIDC__ADMIN_GROUP_ROLE_MAP: {{ .Values.auth.oidc.adminGroupRoleMap | toJson | quote }}
+  INTERLOCK_ADMIN__COOKIE_SECURE: "true"
+  # AdminConfig.host defaults to 127.0.0.1, which is right for a laptop and
+  # wrong for a pod: the kubelet probes the container from outside, so an
+  # admin bound to loopback never becomes Ready and `rollout status` hangs.
+  # Binding all interfaces inside the pod is safe - the Service and any
+  # NetworkPolicy control exposure, not the bind address.
+  INTERLOCK_ADMIN__HOST: "0.0.0.0"
+  INTERLOCK_AUDIT__DURABILITY_MODE: {{ .Values.config.auditDurabilityMode | quote }}
+  # The spool lives in a subdirectory of the mounted volume, never at its
+  # root. The audit buffer insists the spool directory be mode 0700 and
+  # chmods it if not, but a cloud block-storage volume mounts root-owned:
+  # fsGroup sets the volume's group, not its owner, and chmod requires
+  # ownership. Chmod-ing the mount point therefore fails with EPERM and, under
+  # strict durability, the gateway refuses to start. Pointing at a
+  # subdirectory lets the container create it as its own uid, so it owns what
+  # it manages. Verified against DigitalOcean block storage.
+  INTERLOCK_AUDIT__SPOOL_PATH: {{ printf "%s/spool" (trimSuffix "/" .Values.gateway.auditSpool.mountPath) | quote }}
+  INTERLOCK_GATEWAY__PG_TLS_CERT_FILE: "/run/secrets/pg-listener-tls/tls.crt"
+  INTERLOCK_GATEWAY__PG_TLS_KEY_FILE: "/run/secrets/pg-listener-tls/tls.key"
+  INTERLOCK_GATEWAY__PG_REQUIRE_CLIENT_TLS: "true"
+  INTERLOCK_GATEWAY__PG_TRUSTED_TLS_OFFLOAD: {{ .Values.gateway.pgTls.trustedOffload | quote }}
+  INTERLOCK_GATEWAY__UPSTREAM_PG_HOST: {{ .Values.gateway.upstreamPostgres.host | quote }}
+  INTERLOCK_GATEWAY__UPSTREAM_PG_PORT: {{ .Values.gateway.upstreamPostgres.port | quote }}
+  INTERLOCK_GATEWAY__MCP_ALLOWED_ORIGINS: {{ .Values.gateway.mcpAllowedOrigins | toJson | quote }}
+  {{- if not .Values.redis.existingSecret }}
+  INTERLOCK_REDIS__URL: {{ .Values.redis.url | quote }}
+  {{- end }}
+  INTERLOCK_CACHE__L1_MAX_SIZE: {{ .Values.config.cache.l1MaxSize | quote }}
+  INTERLOCK_CACHE__L1_TTL_SECONDS: {{ .Values.config.cache.l1TtlSeconds | quote }}
+  INTERLOCK_CACHE__L2_TTL_SECONDS: {{ .Values.config.cache.l2TtlSeconds | quote }}
+  INTERLOCK_NOTIFICATIONS__ENABLED: {{ .Values.notifications.enabled | quote }}
+  {{- if .Values.notifications.enabled }}
+  INTERLOCK_NOTIFICATIONS__SLACK_BOT_TOKEN_REF: {{ .Values.notifications.slackBotTokenRef | quote }}
+  INTERLOCK_NOTIFICATIONS__SLACK_CHANNEL: {{ .Values.notifications.slackChannel | quote }}
+  INTERLOCK_NOTIFICATIONS__ADMIN_BASE_URL: {{ .Values.notifications.adminBaseUrl | quote }}
+  {{- end }}
+  INTERLOCK_APPROVALS__EXPIRY_SECONDS: {{ .Values.approvals.expirySeconds | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}

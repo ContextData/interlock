@@ -1,0 +1,539 @@
+{# New Data Source form. HTMX-driven:
+   - Test button POSTs to /dashboard/data-sources/test, swaps the result strip.
+   - Save button POSTs to /dashboard/data-sources/create, swaps the table on success
+     or this same form (with error banner) on failure.
+   CSRF token is auto-attached by dashboard.js. #}
+<div class="form-card" id="new-source-form">
+  {% set connector_groups = connector_groups|default([]) %}
+  <h3>New Data Source</h3>
+  {% if error %}
+  <div class="form-error" role="alert">{{ error }}</div>
+  {% endif %}
+
+  <form id="source-form">
+    <div class="form-row">
+      <label>Display name
+        <input name="name" required value="{{ form.name }}"
+               placeholder="Shop DB">
+        <span class="field-help">Agents reach the source by an id generated from this name, shown on the source's page after it is created.</span>
+      </label>
+    </div>
+
+    <div class="form-row">
+      <label>Connector
+        <select name="connector_key" class="js-source-type-select">
+          {% for category, connector_list in connector_groups %}
+            <optgroup label="{{ category }}">
+            {% for connector in connector_list %}
+              <option value="{{ connector.key }}"
+                      data-source-type="{{ connector.source_type }}"
+                      data-family="{{ connector.family }}"
+                      data-cache="{{ connector.default_cache_strategy }}"
+                      {% if form.connector_key == connector.key or (not form.connector_key and form.source_type == connector.source_type) %}selected{% endif %}>
+                {{ connector.name }}
+              </option>
+            {% endfor %}
+            </optgroup>
+          {% endfor %}
+        </select>
+        <input type="hidden" name="source_type" value="{{ form.source_type or 'postgresql' }}">
+      </label>
+      <label>Cache strategy
+        <select name="cache_strategy">
+          <option value="deterministic_first" {% if form.cache_strategy == 'deterministic_first' %}selected{% endif %}>Deterministic-first</option>
+          <option value="semantic_first" {% if form.cache_strategy == 'semantic_first' %}selected{% endif %}>Semantic-first</option>
+          <option value="semantic_only" {% if form.cache_strategy == 'semantic_only' %}selected{% endif %}>Semantic-only</option>
+          <option value="deterministic_only" {% if form.cache_strategy == 'deterministic_only' %}selected{% endif %}>Deterministic-only</option>
+          <option value="bypass" {% if form.cache_strategy == 'bypass' %}selected{% endif %}>Bypass</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="form-section">
+      <h4 class="form-subheader">Source roles</h4>
+      <p class="muted">Roles are managed after the source is created. InterLock can create conservative default role templates to edit later.</p>
+      <label class="checkbox">
+        <input type="checkbox" name="create_default_roles" value="on"
+               {% if form.create_default_roles|default('on') == 'on' %}checked{% endif %}>
+        Create default source role templates
+      </label>
+    </div>
+
+    <div class="type-block" data-family="database" data-connector="postgresql,mysql,mariadb,mssql"
+         {% if form.source_type not in ['postgresql', 'mysql', 'database'] %}hidden{% endif %}>
+      <div class="form-row">
+        <label>Host
+          <input name="host" value="{{ form.host }}" placeholder="postgres or 10.0.1.5">
+        </label>
+        <label>Port
+          <input name="port" type="number" value="{{ form.port or 5432 }}">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Database
+          <input name="database" value="{{ form.database }}" placeholder="onyx">
+        </label>
+        <label>User
+          <input name="user" value="{{ form.user }}" placeholder="onyx">
+        </label>
+        <label>Password
+          <input name="password" type="password" value="{{ form.password }}">
+          <span class="field-help">Stored inline only when supplied.</span>
+        </label>
+        <label>Password secret ref
+          <input name="password_ref" value="{{ form.password_ref }}" placeholder="env:SOURCE_DB_PASSWORD">
+          <span class="field-help">Preferred for production credentials.</span>
+        </label>
+      </div>
+      <div class="type-block" data-connector="postgresql"
+           {% if form.source_type != 'postgresql' %}hidden{% endif %}>
+        <div class="form-row">
+          <label>TLS mode
+            <select name="sslmode">
+              {% for mode in ['verify-full', 'verify-ca', 'require', 'disable'] %}
+              <option value="{{ mode }}" {% if (form.sslmode or 'verify-full') == mode %}selected{% endif %}>{{ mode }}</option>
+              {% endfor %}
+            </select>
+            <span class="field-help">Production accepts only verify-full or verify-ca.</span>
+          </label>
+          <label>CA certificate
+            <input name="ssl_ca" value="{{ form.ssl_ca or '' }}" placeholder="/run/secrets/source-ca/ca.crt">
+            <span class="field-help">A path the gateway can read, or a secret ref resolving to one.</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="type-block" data-family="warehouse" data-connector="snowflake,bigquery"
+         {% if form.source_type != 'warehouse' %}hidden{% endif %}>
+      <p class="field-help">Snowflake sources use the official Python connector. Prefer password or private-key secret refs for production.</p>
+      <div class="form-row">
+        <label>Snowflake account
+          <input name="account" value="{{ form.account }}" placeholder="xy12345.us-east-1">
+        </label>
+        <label>Warehouse
+          <input name="warehouse" value="{{ form.warehouse }}" placeholder="COMPUTE_WH">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Database
+          <input name="database" value="{{ form.database }}" placeholder="app">
+        </label>
+        <label>Schema
+          <input name="schema" value="{{ form.schema }}" placeholder="PUBLIC">
+        </label>
+        <label>Role
+          <input name="role" value="{{ form.role }}" placeholder="ANALYST">
+        </label>
+        <label>User
+          <input name="user" value="{{ form.user }}" placeholder="service account user">
+        </label>
+        <label>Password
+          <input name="password" type="password" value="{{ form.password }}">
+          <span class="field-help">Stored inline only when supplied.</span>
+        </label>
+        <label>Password secret ref
+          <input name="password_ref" value="{{ form.password_ref }}" placeholder="env://SNOWFLAKE_PASSWORD">
+          <span class="field-help">Preferred for production credentials.</span>
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Private key secret ref
+          <input name="private_key_ref" value="{{ form.private_key_ref }}" placeholder="env://SNOWFLAKE_PRIVATE_KEY">
+          <span class="field-help">Use instead of password for key-pair authentication.</span>
+        </label>
+        <label>Authenticator
+          <input name="authenticator" value="{{ form.authenticator }}" placeholder="snowflake, externalbrowser, oauth">
+        </label>
+        <label>Application
+          <input name="application" value="{{ form.application or 'InterLock' }}" placeholder="InterLock">
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="collect_query_history" value="on"
+                 {% if form.collect_query_history|default('on') == 'on' %}checked{% endif %}>
+          Collect query-history cost metadata
+        </label>
+      </div>
+    </div>
+
+    <div class="type-block" data-family="object_storage" data-connector="s3,digitalocean_spaces"
+         {% if form.source_type not in ['s3', 'object_storage'] %}hidden{% endif %}>
+      <p class="field-help">Use Amazon S3 or any S3-compatible provider. For DigitalOcean Spaces, use the Spaces endpoint URL, for example https://nyc3.digitaloceanspaces.com.</p>
+      <div class="form-row">
+        <label>Bucket
+          <input name="bucket" value="{{ form.bucket }}" placeholder="company-data">
+        </label>
+        <label>Prefix
+          <input name="prefix" value="{{ form.prefix }}" placeholder="analytics/reports/">
+        </label>
+        <label>Region
+          <input name="region_name" value="{{ form.region_name or 'us-east-1' }}">
+        </label>
+        <label>Endpoint URL
+          <input name="endpoint_url" value="{{ form.endpoint_url }}" placeholder="http://minio:9000">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Access key ref
+          <input name="aws_access_key_id_ref" value="{{ form.aws_access_key_id_ref }}" placeholder="env://AWS_ACCESS_KEY_ID">
+        </label>
+        <label>Secret key ref
+          <input name="aws_secret_access_key_ref" value="{{ form.aws_secret_access_key_ref }}" placeholder="env://AWS_SECRET_ACCESS_KEY">
+        </label>
+      </div>
+    </div>
+
+    <div class="type-block" data-family="saas" data-connector="zendesk,github,gitlab,salesforce,notion,atlassian,servicenow"
+         {% if form.source_type != 'saas' %}hidden{% endif %}>
+      <p class="field-help">For Zendesk, use subdomain or base URL plus email and API token ref. Optional scope fields limit discovery and role dry-run metadata.</p>
+      <div class="form-row">
+        <label>Base / Instance URL
+          <input name="base_url" value="{{ form.base_url }}" placeholder="https://company.example.com">
+        </label>
+        <label>Subdomain / Org / Group
+          <input name="subdomain" value="{{ form.subdomain }}" placeholder="acme, acme-org, platform-team">
+        </label>
+        <label>Email / Username
+          <input name="email" value="{{ form.email }}" placeholder="service-account@example.com">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>API token ref
+          <input name="api_token_ref" value="{{ form.api_token_ref }}" placeholder="env://ZENDESK_API_TOKEN">
+        </label>
+        <label>Token ref
+          <input name="token_ref" value="{{ form.token_ref }}" placeholder="env://GITHUB_TOKEN">
+        </label>
+        <label>Client secret ref
+          <input name="client_secret_ref" value="{{ form.client_secret_ref }}" placeholder="env://SALESFORCE_CLIENT_SECRET">
+        </label>
+        <label>Integration token ref
+          <input name="integration_token_ref" value="{{ form.integration_token_ref }}" placeholder="env://NOTION_TOKEN">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Salesforce instance URL
+          <input name="instance_url" value="{{ form.instance_url }}" placeholder="https://company.my.salesforce.com">
+        </label>
+        <label>Salesforce domain
+          <input name="domain" value="{{ form.domain or 'login' }}" placeholder="login or test">
+        </label>
+        <label>Security token ref
+          <input name="security_token_ref" value="{{ form.security_token_ref }}" placeholder="env://SALESFORCE_SECURITY_TOKEN">
+        </label>
+        <label>Session ID ref
+          <input name="session_id_ref" value="{{ form.session_id_ref }}" placeholder="env://SALESFORCE_SESSION_ID">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Objects
+          <input name="objects" value="{{ form.objects }}" placeholder="Account,Contact,Opportunity,Case">
+        </label>
+        <label>Max records/object
+          <input name="max_records_per_object" value="{{ form.max_records_per_object or '25' }}" inputmode="numeric">
+        </label>
+        <label>Notion version
+          <input name="notion_version" value="{{ form.notion_version or '2022-06-28' }}">
+        </label>
+        <label>Notion max results
+          <input name="max_results" value="{{ form.max_results or '25' }}" inputmode="numeric">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>GitHub org / owner
+          <input name="org" value="{{ form.org or form.owner }}" placeholder="acme-org">
+        </label>
+        <label>GitHub repos
+          <input name="repo_names" value="{{ form.repo_names }}" placeholder="repo-a,repo-b">
+        </label>
+        <label>GitLab group
+          <input name="group" value="{{ form.group }}" placeholder="platform-team">
+        </label>
+        <label>GitLab project ID/path
+          <input name="project" value="{{ form.project }}" placeholder="12345 or group/project">
+        </label>
+        <label>Default branch/ref
+          <input name="ref" value="{{ form.ref }}" placeholder="main">
+        </label>
+      </div>
+      <label>Repository code paths
+        <textarea name="include_code_paths" rows="3" placeholder="README.md&#10;docs/runbook.md&#10;src/app.py">{{ form.include_code_paths }}</textarea>
+        <span class="field-help">Optional newline or comma-separated paths to index for GitHub/GitLab code discovery. GitHub repos can also be limited with a comma-separated repo list.</span>
+      </label>
+      <div class="form-row">
+        <label>Max repos
+          <input name="max_repos" value="{{ form.max_repos or '50' }}" inputmode="numeric">
+        </label>
+        <label>Max projects
+          <input name="max_projects" value="{{ form.max_projects or '50' }}" inputmode="numeric">
+        </label>
+        <label>Max issues
+          <input name="max_issues_per_repo" value="{{ form.max_issues_per_repo or form.max_issues_per_project or '10' }}" inputmode="numeric">
+        </label>
+        <label>Max PRs/MRs
+          <input name="max_prs_per_repo" value="{{ form.max_prs_per_repo or form.max_mrs_per_project or '10' }}" inputmode="numeric">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Max releases
+          <input name="max_releases_per_repo" value="{{ form.max_releases_per_repo or '5' }}" inputmode="numeric">
+        </label>
+        <label>Max workflows
+          <input name="max_workflows_per_repo" value="{{ form.max_workflows_per_repo or '10' }}" inputmode="numeric">
+        </label>
+        <label>Max pipelines
+          <input name="max_pipelines_per_project" value="{{ form.max_pipelines_per_project or '5' }}" inputmode="numeric">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Zendesk brand ID
+          <input name="brand_id" value="{{ form.brand_id }}" placeholder="optional">
+        </label>
+        <label>Zendesk group ID
+          <input name="group_id" value="{{ form.group_id }}" placeholder="optional">
+        </label>
+        <label>Zendesk organization ID
+          <input name="organization_id" value="{{ form.organization_id }}" placeholder="optional">
+        </label>
+        <label>Ticket status
+          <input name="status" value="{{ form.status }}" placeholder="open, pending, solved">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Max tickets
+          <input name="max_tickets" value="{{ form.max_tickets or '25' }}" inputmode="numeric">
+        </label>
+        <label>Max articles
+          <input name="max_articles" value="{{ form.max_articles or '25' }}" inputmode="numeric">
+        </label>
+        <label>Max users
+          <input name="max_users" value="{{ form.max_users or '25' }}" inputmode="numeric">
+        </label>
+        <label>Max organizations
+          <input name="max_organizations" value="{{ form.max_organizations or '25' }}" inputmode="numeric">
+        </label>
+      </div>
+      <div class="form-row">
+        <label class="checkbox">
+          <input type="checkbox" name="include_users" value="on"
+                 {% if form.include_users|default('on') == 'on' %}checked{% endif %}>
+          Include users
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="include_organizations" value="on"
+                 {% if form.include_organizations|default('on') == 'on' %}checked{% endif %}>
+          Include organizations
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="include_ticket_comments" value="on"
+                 {% if form.include_ticket_comments|default('on') == 'on' %}checked{% endif %}>
+          Include ticket comments
+        </label>
+      </div>
+    </div>
+
+    <div class="type-block" data-family="collaboration" data-connector="slack"
+         {% if form.source_type != 'collaboration' %}hidden{% endif %}>
+      <p class="field-help">For Slack, use workspace plus bot token ref. Discovery is read-only and can include channels, messages, thread replies, and files.</p>
+      <div class="form-row">
+        <label>Workspace / Domain
+          <input name="workspace" value="{{ form.workspace }}" placeholder="acme or acme.com">
+        </label>
+        <label>Bot token ref
+          <input name="bot_token_ref" value="{{ form.bot_token_ref }}" placeholder="env://SLACK_BOT_TOKEN">
+        </label>
+        <label>Channel types
+          <input name="channel_types" value="{{ form.channel_types or 'public_channel,private_channel' }}" placeholder="public_channel,private_channel">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Max channels
+          <input name="max_channels" value="{{ form.max_channels or '25' }}" inputmode="numeric">
+        </label>
+        <label>Max messages/channel
+          <input name="max_messages_per_channel" value="{{ form.max_messages_per_channel or '25' }}" inputmode="numeric">
+        </label>
+        <label>Max replies/thread
+          <input name="max_replies_per_thread" value="{{ form.max_replies_per_thread or '25' }}" inputmode="numeric">
+        </label>
+        <label>Max files
+          <input name="max_files" value="{{ form.max_files or '25' }}" inputmode="numeric">
+        </label>
+      </div>
+      <div class="form-row">
+        <label class="checkbox">
+          <input type="checkbox" name="include_messages" value="on"
+                 {% if form.include_messages|default('on') == 'on' %}checked{% endif %}>
+          Include messages
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="include_threads" value="on"
+                 {% if form.include_threads|default('on') == 'on' %}checked{% endif %}>
+          Include thread replies
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="include_files" value="on"
+                 {% if form.include_files|default('on') == 'on' %}checked{% endif %}>
+          Include files
+        </label>
+      </div>
+    </div>
+
+    <div class="type-block" data-family="workspace" data-connector="google_workspace"
+         {% if form.connector_key != 'google_workspace' %}hidden{% endif %}>
+      <p class="field-help">Google Workspace uses the gws CLI behind InterLock governance. Start read-only with Drive, Gmail, Calendar, Chat, or Admin Reports scopes.</p>
+      <div class="form-row">
+        <label>Workspace domain
+          <input name="workspace_domain" value="{{ form.workspace_domain }}" placeholder="example.com">
+        </label>
+        <label>Enabled services
+          <input name="enabled_services" value="{{ form.enabled_services or 'drive' }}" placeholder="drive,gmail,calendar">
+        </label>
+        <label>Access token ref
+          <input name="access_token_ref" value="{{ form.access_token_ref }}" placeholder="env://GOOGLE_WORKSPACE_CLI_TOKEN">
+        </label>
+        <label>Credentials file ref
+          <input name="credentials_file_ref" value="{{ form.credentials_file_ref }}" placeholder="env://GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Service account JSON ref
+          <input name="service_account_json_ref" value="{{ form.service_account_json_ref }}" placeholder="env://GOOGLE_SERVICE_ACCOUNT_JSON">
+        </label>
+        <label>gws config dir
+          <input name="gws_config_dir" value="{{ form.gws_config_dir }}" placeholder="/run/secrets/gws-config">
+        </label>
+        <label>Project ID
+          <input name="project_id" value="{{ form.project_id }}" placeholder="gcp-project-id">
+        </label>
+        <label>Subject user
+          <input name="subject_user" value="{{ form.subject_user }}" placeholder="agent@example.com">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Drive ID
+          <input name="drive_id" value="{{ form.drive_id }}" placeholder="shared drive id">
+        </label>
+        <label>Drive query
+          <input name="drive_query" value="{{ form.drive_query }}" placeholder="trashed = false">
+        </label>
+        <label>Max Drive files
+          <input name="max_drive_files" value="{{ form.max_drive_files or '25' }}" inputmode="numeric">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Gmail users
+          <input name="gmail_users" value="{{ form.gmail_users }}" placeholder="me, user@example.com">
+        </label>
+        <label>Gmail labels
+          <input name="gmail_labels" value="{{ form.gmail_labels }}" placeholder="INBOX,IMPORTANT">
+        </label>
+        <label>Gmail query
+          <input name="gmail_query" value="{{ form.gmail_query }}" placeholder="newer_than:30d">
+        </label>
+        <label>Max messages
+          <input name="max_gmail_messages" value="{{ form.max_gmail_messages or '25' }}" inputmode="numeric">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Calendar IDs
+          <input name="calendar_ids" value="{{ form.calendar_ids }}" placeholder="primary, team@example.com">
+        </label>
+        <label>Calendar time min
+          <input name="calendar_time_min" value="{{ form.calendar_time_min }}" placeholder="2026-01-01T00:00:00Z">
+        </label>
+        <label>Calendar time max
+          <input name="calendar_time_max" value="{{ form.calendar_time_max }}" placeholder="2026-12-31T23:59:59Z">
+        </label>
+        <label>Max events
+          <input name="max_calendar_events" value="{{ form.max_calendar_events or '25' }}" inputmode="numeric">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Admin report apps
+          <input name="admin_report_applications" value="{{ form.admin_report_applications }}" placeholder="drive,login">
+        </label>
+        <label>Admin report user key
+          <input name="admin_report_user_key" value="{{ form.admin_report_user_key or 'all' }}" placeholder="all">
+        </label>
+        <label>Max admin activities
+          <input name="max_admin_activities" value="{{ form.max_admin_activities or '25' }}" inputmode="numeric">
+        </label>
+        <label>Max Chat spaces
+          <input name="max_chat_spaces" value="{{ form.max_chat_spaces or '25' }}" inputmode="numeric">
+        </label>
+      </div>
+    </div>
+
+    <div class="type-block" data-family="search" data-connector="opensearch,elasticsearch,qdrant"
+         {% if form.source_type != 'search' %}hidden{% endif %}>
+      <p class="field-help">Use OpenSearch/Elasticsearch for indices and documents, or Qdrant for collections and points.</p>
+      <div class="form-row">
+        <label>Base URL
+          <input name="base_url" value="{{ form.base_url }}" placeholder="https://opensearch.example.com or http://qdrant:6333">
+        </label>
+        <label>Username
+          <input name="username" value="{{ form.username }}" placeholder="service-account">
+        </label>
+        <label>Password ref
+          <input name="password_ref" value="{{ form.password_ref }}" placeholder="env://OPENSEARCH_PASSWORD">
+        </label>
+        <label>API key ref
+          <input name="api_key_ref" value="{{ form.api_key_ref }}" placeholder="env://QDRANT_API_KEY">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Indices
+          <input name="indices" value="{{ form.indices }}" placeholder="claims-*,runbooks">
+        </label>
+        <label>Collections
+          <input name="collections" value="{{ form.collections }}" placeholder="claims,runbooks">
+        </label>
+        <label>Max docs/index
+          <input name="max_docs_per_index" value="{{ form.max_docs_per_index or '10' }}" inputmode="numeric">
+        </label>
+        <label>Max points/collection
+          <input name="max_points_per_collection" value="{{ form.max_points_per_collection or '25' }}" inputmode="numeric">
+        </label>
+      </div>
+    </div>
+
+    <div class="type-block" data-family="http" data-connector="generic_rest"
+         {% if form.source_type != 'http' %}hidden{% endif %}>
+      <div class="form-row">
+        <label>Base URL
+          <input name="base_url" value="{{ form.base_url }}" placeholder="https://api.example.com">
+        </label>
+      </div>
+      <div class="form-row">
+        <label>Auth header
+          <input name="auth_header" value="{{ form.auth_header }}" placeholder="Authorization">
+        </label>
+        <label>Token
+          <input name="token" type="password" value="{{ form.token }}">
+          <span class="field-help">Stored inline only when supplied.</span>
+        </label>
+        <label>Token secret ref
+          <input name="token_ref" value="{{ form.token_ref }}" placeholder="env:UPSTREAM_TOKEN">
+        </label>
+      </div>
+    </div>
+
+    <div id="test-result-strip"></div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary"
+              hx-post="/dashboard/data-sources/test"
+              hx-include="#source-form"
+              hx-target="#test-result-strip"
+              hx-swap="innerHTML">Test Connection</button>
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/data-sources/create"
+              hx-include="#source-form"
+              hx-target="#data-sources-table"
+              hx-swap="outerHTML">Save</button>
+      <button type="button" class="btn js-clear-target"
+              data-clear-target="new-source-form-slot">Cancel</button>
+    </div>
+  </form>
+</div>

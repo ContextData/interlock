@@ -1,0 +1,72 @@
+{{- if .Values.migration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "interlock.fullname" . }}-migration
+  labels:
+    {{- include "interlock.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.migration.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "interlock.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: Never
+      {{- include "interlock.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migration
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          image: {{ include "interlock.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "-m", "interlock.db.migrate"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "interlock.fullname" . }}-config
+          env:
+            - name: INTERLOCK_SERVICE_ROLE
+              value: migration
+            - name: INTERLOCK_MIGRATIONS_DIR
+              value: /app/migrations
+            - name: INTERLOCK_DATABASE__USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | default (printf "%s-db-credentials" (include "interlock.fullname" .)) }}
+                  key: {{ .Values.database.secretUserKey }}
+            - name: INTERLOCK_DATABASE__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | default (printf "%s-db-credentials" (include "interlock.fullname" .)) }}
+                  key: {{ .Values.database.secretPasswordKey }}
+            {{- include "interlock.redisEnv" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.migration.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: home
+              mountPath: /home/interlock
+            - name: control-db-ca
+              mountPath: /run/secrets/control-db-ca
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: home
+          emptyDir: {}
+        - name: control-db-ca
+          secret:
+            secretName: {{ required "database.caExistingSecret is required" .Values.database.caExistingSecret }}
+            items:
+              - key: {{ .Values.database.caSecretKey }}
+                path: ca.crt
+{{- end }}

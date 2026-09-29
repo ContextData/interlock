@@ -1,0 +1,100 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Approval #{{ approval.id }} - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/write-safety" class="back-link"
+     hx-get="/dashboard/write-safety" hx-target="#main-content">Write Safety</a>
+  <h1>Approval #{{ approval.id }}</h1>
+</div>
+
+<div class="approval-card approval-card--{{ approval.risk_level|default('medium') }}">
+  <div class="approval-heading">
+    <span class="badge badge-{{ approval.risk_level|default('medium') }}">{{ approval.risk_level|default('?')|upper }}</span>
+    <span class="badge badge-{{ approval.status|default('pending') }}">{{ approval.status|default('?')|upper }}</span>
+  </div>
+  {% if approval.sensitive_metadata_redacted %}
+  <div class="form-hint">Sensitive approval metadata and SQL literal values are redacted for this Admin role.</div>
+  {% endif %}
+  <div class="sql-preview">{{ approval.sql_text or approval.request_metadata }}</div>
+  <div class="approval-meta">
+    <div class="meta-item"><span class="meta-label">Source</span>{{ approval.source_name or approval.source_id }}</div>
+    <div class="meta-item"><span class="meta-label">Identity</span>{{ approval.identity_id|identity_label(approval.identity_name, approval.identity_deleted) }}</div>
+    <div class="meta-item"><span class="meta-label">Created</span>{{ approval.created_at|fmt_dt }}</div>
+    <div class="meta-item"><span class="meta-label">Expires</span>{{ approval.expires_at|fmt_dt }}</div>
+    <div class="meta-item"><span class="meta-label">Executed</span>{{ approval.executed_at|fmt_dt }}</div>
+  </div>
+</div>
+
+<div class="detail-stack">
+  <section class="card">
+    <h2>Risk Context</h2>
+    <dl class="form-summary fact-table">
+      <dt>Explanation</dt><dd>{{ approval.request_metadata.reason or approval.request_metadata.risk_reason or 'Write requires human approval.' }}</dd>
+      <dt>Matched rules</dt><dd>{{ approval.request_metadata.matched_rules or approval.request_metadata.policy_rules or '-' }}</dd>
+      <dt>Upstream target</dt><dd>{{ approval.request_metadata.upstream_target or approval.request_metadata.path or '-' }}</dd>
+      <dt>Cache impact</dt><dd>{{ approval.request_metadata.cache_invalidation or 'Invalidate affected source cache entries after execution.' }}</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Decision</h2>
+    {% if approval.status == 'pending' %}
+    <form class="approval-action"
+          hx-post="/api/approvals/{{ approval.id }}/approve"
+          hx-target="#main-content"
+          hx-swap="innerHTML"
+          {% if approval.risk_level == 'high' %}hx-confirm="Approve this high-risk write?"{% endif %}>
+      <label>Comment
+        <textarea name="comment" rows="3" placeholder="Optional approval context"></textarea>
+      </label>
+      <button class="btn btn-approve" type="submit">Approve</button>
+    </form>
+    <form class="approval-action"
+          hx-post="/api/approvals/{{ approval.id }}/reject"
+          hx-target="#main-content"
+          hx-swap="innerHTML">
+      <label>Reject reason
+        <select name="reason" required>
+          <option value="">Select a reason</option>
+          <option value="unsafe">Unsafe operation</option>
+          <option value="incorrect-source">Incorrect source</option>
+          <option value="needs-owner-review">Needs owner review</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+      <label>Comment
+        <textarea name="comment" rows="3" required placeholder="Required for rejection"></textarea>
+      </label>
+      <button class="btn btn-reject" type="submit">Reject</button>
+    </form>
+    {% else %}
+    <p class="muted">This approval is in a terminal state.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Audit Events</h2>
+    {% if audit_rows %}
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>ID</th><th>Created</th><th>Operation</th><th>Status</th><th>Approval</th></tr></thead>
+        <tbody>
+          {% for row in audit_rows %}
+          <tr>
+            <td><a href="/dashboard/audit-costs/events/{{ row.id }}">#{{ row.id }}</a></td>
+            <td>{{ row.created_at|fmt_dt }}</td>
+            <td>{{ row.operation or '-' }}</td>
+            <td>{{ row.status or '-' }}</td>
+            <td>{{ row.approval_status or '-' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><p>No audit events linked yet.</p></div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

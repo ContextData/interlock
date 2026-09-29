@@ -1,0 +1,23 @@
+{% if categories %}
+<ul class="tree-list">
+    {% for cat in categories %}
+    <li class="tree-item">
+        {% if cat.has_children %}
+        <button class="tree-toggle js-tree-toggle"
+                hx-get="/dashboard/categories/{{ cat.path }}/children"
+                hx-target="#children-{{ cat.id }}"
+                hx-swap="innerHTML">+</button>
+        {% else %}
+        <span class="tree-toggle tree-toggle-placeholder" aria-hidden="true">+</span>
+        {% endif %}
+        <span class="tree-label">{{ cat.name }}</span>
+        <span class="tree-count">({{ cat.doc_count }})</span>
+        {% if cat.has_children %}
+        <div id="children-{{ cat.id }}"></div>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="empty-state"><p>No categories found.</p></div>
+{% endif %}

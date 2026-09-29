@@ -1,0 +1,81 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}{{ category.name }} - Discovery{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="/dashboard/discovery?tab=categories" class="back-link">&larr; Discovery</a>
+        <h1>{{ category.name }}</h1>
+        <nav class="disc-breadcrumb">
+            <a href="/dashboard/discovery?tab=categories">all</a>
+            {% for b in breadcrumb %}
+            <span class="sep">/</span>
+            {% if loop.last %}
+            <strong>{{ b.label }}</strong>
+            {% else %}
+            <a href="/dashboard/discovery/categories/{{ b.path|urlencode }}">{{ b.label }}</a>
+            {% endif %}
+            {% endfor %}
+        </nav>
+    </div>
+</div>
+
+<dl class="kv">
+    <dt>Path</dt>
+    <dd><code>{{ category.path }}</code></dd>
+    <dt>Asset count</dt>
+    <dd>{{ category.document_count }}</dd>
+    {% if category.description %}
+    <dt>Description</dt>
+    <dd>{{ category.description }}</dd>
+    {% endif %}
+    <dt>Created</dt>
+    <dd><code>{{ category.created_at }}</code></dd>
+</dl>
+
+<h2>Sub-categories</h2>
+{% if children %}
+<div class="table-wrapper">
+<table class="disc-table">
+    <thead><tr><th>Name</th><th>Path</th><th class="num">Assets</th></tr></thead>
+    <tbody>
+        {% for c in children %}
+        <tr class="disc-row">
+            <td><a href="/dashboard/discovery/categories/{{ c.path|urlencode }}">{{ c.name }}</a></td>
+            <td><code>{{ c.path }}</code></td>
+            <td class="num">{{ c.doc_count }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="disc-empty muted">This is a leaf category.</div>
+{% endif %}
+
+<h2>Assets in this category ({{ assets|length }})</h2>
+{% if assets %}
+<div class="table-wrapper">
+<table class="disc-table">
+    <thead><tr><th>Asset</th><th>Source</th><th>Type</th><th>Updated</th></tr></thead>
+    <tbody>
+        {% for a in assets %}
+        <tr class="disc-row">
+            <td>
+                <a href="/dashboard/discovery/assets/{{ a.id }}">
+                    <strong>{{ a.title or a.asset_path }}</strong>
+                </a>
+                <div class="disc-asset-path"><code>{{ a.asset_path }}</code></div>
+            </td>
+            <td>{{ a.source_id }}</td>
+            <td><span class="disc-badge">{{ a.asset_type }}</span></td>
+            <td><code>{{ a.updated_at }}</code></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="disc-empty muted">No assets in this category yet.</div>
+{% endif %}
+{% endblock %}

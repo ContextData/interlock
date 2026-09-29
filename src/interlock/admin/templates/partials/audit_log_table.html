@@ -1,0 +1,79 @@
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Identity</th>
+                <th>Source</th>
+                <th>Operation</th>
+                <th>Status</th>
+                <th>Cache</th>
+                <th>Latency</th>
+                <th>PII</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in audit_rows %}
+            <tr>
+                <td>{{ row.created_at|fmt_dt }}</td>
+                <td>{{ row.identity_id|identity_label(row.identity_name, row.identity_deleted) }}</td>
+                <td>{{ row.source_id or '-' }}</td>
+                <td>{{ row.operation or '-' }}</td>
+                <td><span class="badge badge-{{ row.status|default('pending')|lower }}">{{ row.status|default('-') }}</span></td>
+                <td>
+                    {% if row.cache_hit %}
+                    <span class="badge badge-completed">hit</span>
+                    {% else %}
+                    <span class="badge badge-cancelled">miss</span>
+                    {% endif %}
+                </td>
+                <td>{{ row.latency_ms|fmt_ms }}</td>
+                <td>{% if row.pii_detected %}<span class="pii-tag">PII</span>{% else %}<span class="muted">-</span>{% endif %}</td>
+                <td><a class="btn btn-link" href="/dashboard/audit-costs/events/{{ row.id }}"
+                       hx-get="/dashboard/audit-costs/events/{{ row.id }}"
+                       hx-target="#main-content" hx-push-url="true">Details</a></td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="9">
+                    <div class="empty-state"><p>No audit log entries found.</p></div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% set pagination_url = '/dashboard/audit-costs/log' %}
+{% if audit_total_pages is defined and audit_total_pages > 1 %}
+<div class="pagination">
+    {% if audit_page > 1 %}
+    <a href="#"
+       hx-get="{{ pagination_url }}?source={{ filter_source|default('') }}&operation={{ filter_operation|default('') }}&status={{ filter_status|default('') }}&page={{ audit_page - 1 }}"
+       hx-target="#audit-log-container">Prev</a>
+    {% else %}
+    <span class="disabled">Prev</span>
+    {% endif %}
+
+    {% for p in range(1, audit_total_pages + 1) %}
+        {% if p == audit_page %}
+        <span class="current">{{ p }}</span>
+        {% elif p <= 3 or p > audit_total_pages - 2 or (p >= audit_page - 1 and p <= audit_page + 1) %}
+        <a href="#"
+           hx-get="{{ pagination_url }}?source={{ filter_source|default('') }}&operation={{ filter_operation|default('') }}&status={{ filter_status|default('') }}&page={{ p }}"
+           hx-target="#audit-log-container">{{ p }}</a>
+        {% elif p == 4 or p == audit_total_pages - 2 %}
+        <span>...</span>
+        {% endif %}
+    {% endfor %}
+
+    {% if audit_page < audit_total_pages %}
+    <a href="#"
+       hx-get="{{ pagination_url }}?source={{ filter_source|default('') }}&operation={{ filter_operation|default('') }}&status={{ filter_status|default('') }}&page={{ audit_page + 1 }}"
+       hx-target="#audit-log-container">Next</a>
+    {% else %}
+    <span class="disabled">Next</span>
+    {% endif %}
+</div>
+{% endif %}

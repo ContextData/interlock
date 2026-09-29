@@ -1,0 +1,122 @@
+InterLock
+Copyright 2026 ContextData
+
+This product includes software developed at ContextData.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License in the LICENSE file distributed with this work or at
+http://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+Third-party dependencies
+--------------------------------------------------------------------------------
+
+InterLock depends on third-party Python packages distributed under their own
+licenses. `make license-report` installs exactly what the published image
+installs (`requirements-production.txt`) and writes the per-package inventory
+to `build/release-evidence/licenses.{json,md}`; it fails if any package's
+license falls outside the position stated here. `make sbom` writes a CycloneDX
+bill of materials for the same set.
+
+That position:
+
+  - Permissive licenses (Apache-2.0, MIT, BSD, ISC, PSF, Zlib, CC0 and
+    similar) make up almost all of it.
+  - LGPL-3.0: PyGithub and python-gitlab, described in the next section.
+  - MPL-2.0 (file-level copyleft): certifi, tqdm, and orjson (orjson is
+    Apache-2.0 OR MIT with MPL-2.0 files). They are installed as unmodified
+    upstream distributions from PyPI, where their source is published; MPL-2.0
+    obligations attach only to modified MPL-covered files, and none are
+    modified.
+
+--------------------------------------------------------------------------------
+Copyleft components (included in the published image)
+--------------------------------------------------------------------------------
+
+The following dependencies are licensed under the GNU Lesser General Public
+License v3.0 (LGPL-3.0). They are part of the `connectors-repo` extra, which
+the `production` and `production-worker` extras include, and they are therefore
+present in the published container image and in `requirements-production.txt`:
+
+  - PyGithub          LGPL-3.0    https://github.com/PyGithub/PyGithub
+  - python-gitlab     LGPL-3.0    https://github.com/python-gitlab/python-gitlab
+
+They were previously excluded so that the published image carried no copyleft
+dependency. That made the GitHub and GitLab connectors unusable in the only
+image most people run: the adapters raise `PyGithub is not installed`, so a
+documented capability could not work as shipped. Including the libraries was
+judged the more honest of the two positions.
+
+InterLock's own license is unaffected. This project remains Apache-2.0, and
+using an LGPL-3.0 library does not place InterLock under the LGPL: the LGPL
+exists precisely to permit that combination.
+
+How the LGPL-3.0 obligations are met:
+
+  - The libraries are installed as unmodified upstream distributions from
+    PyPI, and their complete corresponding source is published there and at
+    the URLs above. Neither library is modified, embedded, or statically
+    linked; InterLock imports them dynamically at runtime.
+  - The image stores them as ordinary Python packages in `site-packages`, so a
+    recipient may replace either with a modified version - for example
+    `pip install --target` over the installed copy, or a derived image layer -
+    and InterLock will use the replacement, since it imports by module name.
+  - `requirements-production.txt` records the exact versions shipped.
+
+Anyone redistributing this image, or a derivative of it, carries the same
+obligations and should reproduce this notice.
+
+If you need a build with no copyleft dependency, install the `production`
+extra's components without `connectors-repo`. The GitHub and GitLab source
+connectors then fail closed rather than degrading silently, and nothing else
+changes.
+
+--------------------------------------------------------------------------------
+Optional model and runtime components
+--------------------------------------------------------------------------------
+
+The `pii`, `ml`, `vector`, and `ingestion` extras pull in additional runtimes
+(Presidio, spaCy, sentence-transformers, PyTorch, FAISS) under their own
+permissive licenses. Machine-learning model weights downloaded at runtime are
+governed by the license of the individual model and are not distributed with
+this project.
+
+--------------------------------------------------------------------------------
+Bundled JavaScript
+--------------------------------------------------------------------------------
+
+htmx 1.9.12 (src/interlock/admin/static/js/htmx.min.js) is redistributed
+unmodified in this repository and in every image built from it.
+
+htmx
+    Copyright (c) 2020, Big Sky Software
+    https://github.com/bigskysoftware/htmx
+    BSD 2-Clause License - see src/interlock/admin/static/js/LICENSE-htmx.txt
+
+--------------------------------------------------------------------------------
+Bundled fonts
+--------------------------------------------------------------------------------
+
+Unlike the dependencies above, these font files are redistributed inside this
+repository and inside any container image built from it. Both are licensed
+under the SIL Open Font License 1.1, which permits that redistribution. The
+full license text ships alongside each font in
+src/interlock/admin/static/assets/fonts/.
+
+Instrument Sans
+    Copyright 2022 The Instrument Sans Project Authors
+    https://github.com/Instrument/instrument-sans
+    SIL Open Font License 1.1 - see LICENSE-InstrumentSans-OFL.txt
+    File: InstrumentSans-Variable.woff2 (upright variable, wdth 75-100,
+    wght 400-700)
+
+JetBrains Mono
+    Copyright 2020 The JetBrains Mono Project Authors
+    https://github.com/JetBrains/JetBrainsMono
+    SIL Open Font License 1.1 - see LICENSE-JetBrainsMono-OFL.txt
+    File: JetBrainsMono-Variable.woff2 (upright variable, wght 100-800,
+    converted from the upstream variable TTF; outlines unmodified)
+
+Neither font is renamed, so both retain their Reserved Font Names. Anything
+derived from them must comply with OFL 1.1 clause 3.

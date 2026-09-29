@@ -1,0 +1,110 @@
+{# New Identity form. Mints an API key the agent will present. #}
+<div class="form-card" id="new-identity-form">
+  {% set data_sources = data_sources|default([]) %}
+  {% set role_options_by_source = role_options_by_source|default({}) %}
+  <h3>New Identity</h3>
+  {% if error %}
+  <div class="form-error" role="alert">{{ error }}</div>
+  {% endif %}
+
+  <form id="identity-form">
+    <div class="form-row">
+      <label>Name
+        <input name="name" required value="{{ form.name }}"
+               placeholder="demo-agent">
+      </label>
+      <label>Agent type
+        <select name="agent_type">
+          {% for opt in ('custom', 'claude_code', 'copilot', 'codex') %}
+          <option value="{{ opt }}" {% if form.agent_type == opt %}selected{% endif %}>{{ opt }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="form-row">
+      <label>Team
+        <input name="team" value="{{ form.team }}" placeholder="engineering">
+      </label>
+    </div>
+
+    <h4 class="form-subheader">Source access</h4>
+    <p class="muted">Attach one or more data sources, then choose one of that source's defined roles. Roles are source-scoped permission sets, not global labels.</p>
+    <div id="source-role-grants" data-role-options='{{ role_options_by_source|tojson }}'>
+      {% set grants = form.source_roles if form.source_roles else [{'source_id': '', 'role': ''}] %}
+      {% for grant in grants %}
+      <div class="form-row source-role-row">
+        <label>Data source
+          <select name="grant_source_id" class="grant-source-select">
+            <option value="">Select source</option>
+            {% for source in data_sources %}
+            <option value="{{ source.source_id }}" {% if grant.source_id == source.source_id %}selected{% endif %}>
+              {{ source.name }} ({{ source.source_id }})
+            </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Source role
+          <select name="grant_role_id" class="grant-role-select" data-selected="{{ grant.role_id|default('') }}">
+            <option value="">Select role</option>
+            {% if grant.source_id and role_options_by_source.get(grant.source_id) %}
+              {% for role in role_options_by_source.get(grant.source_id) %}
+              <option value="{{ role.id }}" data-role-key="{{ role.role_key }}"
+                      {% if grant.role_id|default('')|string == role.id|string or grant.role == role.role_key %}selected{% endif %}>
+                {{ role.name }} ({{ role.role_key }}){% if role.review_required %} - review{% endif %}
+              </option>
+              {% endfor %}
+            {% endif %}
+          </select>
+        </label>
+        <button type="button" class="btn btn-link js-remove-grant-row">Remove</button>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn btn-secondary js-add-grant-row">Add source role</button>
+    <input type="hidden" name="roles" value="{{ form.roles }}">
+
+    <div class="form-row">
+      <label>Mapped PG role
+        <input name="mapped_pg_role" value="{{ form.mapped_pg_role }}"
+               placeholder="onyx_reader">
+      </label>
+      <label>Dedicated PG username
+        <input name="pg_username" value="{{ form.pg_username }}"
+               placeholder="e2e_pg_user">
+      </label>
+    </div>
+
+    <div class="form-row">
+      <label>Dedicated PG password
+        <input name="pg_password" type="password" value="{{ form.pg_password }}"
+               placeholder="leave blank to skip PG password auth">
+        <span class="field-help">Stored as a hash and shown only during entry.</span>
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" name="generate_key" value="on"
+               {% if form.generate_key == 'on' %}checked{% endif %}
+               class="js-toggle-custom-api-key"
+               data-toggle-target="custom-api-key-row">
+        Auto-generate API key
+      </label>
+    </div>
+
+    <div class="form-row {% if form.generate_key == 'on' %}hidden{% endif %}" id="custom-api-key-row">
+      <label>Custom API key (used only when auto-generate is off)
+        <input name="api_key" value="{{ form.api_key }}"
+               placeholder="leave blank to auto-generate">
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/access-control/identities/create"
+              hx-include="#identity-form"
+              hx-target="#new-identity-form-slot"
+              hx-swap="innerHTML">Save</button>
+      <button type="button" class="btn js-clear-target"
+              data-clear-target="new-identity-form-slot">Cancel</button>
+    </div>
+  </form>
+</div>

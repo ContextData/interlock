@@ -1,0 +1,60 @@
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Worker</th>
+                <th>Stage</th>
+                <th>Retry</th>
+                <th>Priority</th>
+                <th>Progress</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr>
+                <td>{{ job.id }}</td>
+                <td>{{ job.source_id }}</td>
+                <td><span class="badge badge-{{ job.status }}">{{ job.status }}</span></td>
+                <td>{{ job.worker_id or "-" }}</td>
+                <td>{{ job.stage or job.status or "-" }}</td>
+                <td>{{ job.retry_count or 0 }}</td>
+                <td>{{ job.priority_score | default(0) }}</td>
+                <td>{{ job.progress_current or 0 }} / {{ job.progress_total or "-" }}</td>
+                <td>{{ job.created_at|fmt_dt }}</td>
+                <td>
+                    <a class="btn btn-link" href="/dashboard/ingestion/jobs/{{ job.id }}"
+                       hx-get="/dashboard/ingestion/jobs/{{ job.id }}"
+                       hx-target="#main-content" hx-push-url="true">Details</a>
+                    {% if job.status in ["failed", "cancelled"] %}
+                    <button class="btn btn-link"
+                            hx-post="/dashboard/ingestion/jobs/{{ job.id }}/retry"
+                            hx-target="#job-table-container"
+                            hx-swap="innerHTML"
+                            hx-include=".filter-bar select, .filter-bar input">Retry</button>
+                    {% endif %}
+                    {% if job.status in ["queued", "processing", "extracting", "summarizing", "indexing"] %}
+                    <button class="btn btn-link"
+                            hx-post="/dashboard/ingestion/jobs/{{ job.id }}/cancel"
+                            hx-target="#job-table-container"
+                            hx-swap="innerHTML"
+                            hx-include=".filter-bar select, .filter-bar input">Cancel</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="10">
+                    <div class="empty-state"><p>No ingestion jobs found.</p></div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% include "partials/pagination.html" %}

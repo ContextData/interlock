@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="52" viewBox="0 0 240 52" fill="none" role="img" aria-label="context.data">
+  <!-- Light-theme lockup. Identical geometry to context-data-lockup.svg; only
+       the bracket stroke and wordmark fill change so the mark stays legible on
+       a light surface. The lime accent is unchanged in both. -->
+  <g transform="translate(0,6) scale(0.55)">
+    <path d="M26 16 H16 V56 H26" stroke="#414B58" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"></path>
+    <path d="M54 16 H64 V56 H54" stroke="#414B58" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"></path>
+    <circle cx="40" cy="36" r="8.5" fill="#8FC01E"></circle>
+  </g>
+  <text x="52" y="34" class="wm" font-family="Instrument Sans, ui-sans-serif, system-ui, sans-serif" font-size="21" font-weight="600" letter-spacing="-0.3" fill="#0B0D11">context<tspan fill="#8FC01E">.</tspan>data</text>
+</svg>

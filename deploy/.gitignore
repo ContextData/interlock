@@ -1,0 +1,8 @@
+# The root scripts/ rule covers nested directories too. Release automation is
+# source, not generated output, so explicitly keep this narrow deploy subtree.
+!scripts/
+scripts/*
+!scripts/release/
+!scripts/release/*.sh
+!scripts/certification/
+!scripts/certification/*.sh

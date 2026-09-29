@@ -1,0 +1,31 @@
+{# One level of a source's catalog tree; deeper levels load when opened. #}
+{% if nodes %}
+<ul class="catalog-tree">
+  {% for node in nodes %}
+  <li>
+    {% if node.expandable %}
+    <details hx-get="/dashboard/catalog/children?source_id={{ source_id | urlencode }}&amp;path={{ node.path_param | urlencode }}{% if pick %}&amp;pick=1{% endif %}"
+             hx-trigger="toggle once"
+             hx-target="find .catalog-children"
+             hx-swap="innerHTML">
+      <summary>{% include "partials/catalog_node_row.html" %}{% if pick %}{% include "partials/catalog_pick_button.html" %}{% endif %}</summary>
+      <div class="catalog-children"><span class="muted">Loading...</span></div>
+    </details>
+    {% else %}
+    <div class="catalog-leaf">
+      {% include "partials/catalog_node_row.html" %}
+      {% if pick %}
+      {% include "partials/catalog_pick_button.html" %}
+      {% else %}
+      {% with path_param=node.path_param, classification=node.classification, classification_source=node.classification_source %}
+      {% include "partials/catalog_classification.html" %}
+      {% endwith %}
+      {% endif %}
+    </div>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">Nothing recorded at this level.</p>
+{% endif %}

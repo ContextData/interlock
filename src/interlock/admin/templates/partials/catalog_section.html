@@ -1,0 +1,143 @@
+{# The Catalog section of a data source's detail page. #}
+<div class="section-header-row">
+  <h2>Catalog</h2>
+  {% if status.collectable %}
+  <div class="row-actions">
+    <button class="btn btn-secondary"
+            hx-post="/dashboard/data-sources/{{ source_id }}/catalog/rescan"
+            hx-target="#catalog-section"
+            hx-swap="innerHTML">Rescan</button>
+  </div>
+  {% endif %}
+</div>
+
+{% if notice %}<p class="catalog-notice" role="status">{{ notice }}</p>{% endif %}
+
+{% if not status.collectable %}
+<div class="empty-state">
+  <p>InterLock cannot record this connector's structure yet, so roles and policies for this source are written by hand, without a picker or validation.</p>
+</div>
+{% else %}
+<p class="muted">The structure InterLock recorded from this source: names and types only, never values. It is captured when the source is saved, on Rescan, and on the scheduled refresh.</p>
+{% if not enforced %}
+<p><span class="badge badge-warning">Not enforced on agent paths yet</span>
+  <span class="muted">This inventory is for review and role authoring. Agent requests to this source are not yet checked against it.</span></p>
+{% endif %}
+
+<dl class="form-summary fact-table">
+  <dt>Last scan</dt>
+  <dd>
+    {% if status.last_scan %}
+    <span class="badge badge-{{ 'success' if status.last_scan.status == 'succeeded' else ('error' if status.last_scan.status == 'failed' else 'warning') }}">{{ status.last_scan.status }}</span>
+    {{ status.last_scan.finished_at | fmt_dt }} <small class="muted">{{ status.last_scan.trigger }}{% if status.last_scan.requested_by %} by {{ status.last_scan.requested_by }}{% endif %}</small>
+    {% if status.last_scan.error_code %}<br><code>{{ status.last_scan.error_code }}</code> {{ status.last_scan.error_message or '' }}{% endif %}
+    {% else %}
+    <span class="muted">Not scanned yet.</span>
+    {% endif %}
+    {% if status.running %}<span class="badge badge-warning">running</span>{% endif %}
+    {% if status.pending %}<span class="badge">queued</span>{% endif %}
+  </dd>
+  {% if status.last_success and (not status.last_scan or status.last_success.id != status.last_scan.id) %}
+  <dt>Last success</dt><dd>{{ status.last_success.finished_at | fmt_dt }}</dd>
+  {% endif %}
+  <dt>Recorded</dt>
+  <dd>
+    {% for node_type, count in status.counts | dictsort if node_type != 'source' %}
+    <span class="badge">{{ count }} {{ node_type | replace('_', ' ') }}{{ '' if count == 1 else 's' }}</span>
+    {% else %}
+    <span class="muted">Nothing yet.</span>
+    {% endfor %}
+  </dd>
+  {% if status.last_success and status.last_success.truncated %}
+  <dt>Incomplete</dt>
+  <dd><span class="badge badge-warning">truncated</span> The last scan stopped at a limit ({{ status.last_success.truncation | tojson }}). Objects beyond it are not recorded, and none are marked removed.</dd>
+  {% endif %}
+  {% set facts = status.source_attributes %}
+  {% if facts.get('default_schema') %}<dt>Default schema</dt><dd><code>{{ facts.get('default_schema') }}</code></dd>{% endif %}
+  {% if facts.get('search_path') %}<dt>Search path</dt><dd><code>{{ facts.get('search_path') }}</code></dd>{% endif %}
+  {% if facts.get('login') %}<dt>Scanned as</dt><dd><code>{{ facts.get('login') }}</code> <small class="muted">the catalog shows what this login can see</small></dd>{% endif %}
+  {% if facts.get('server_version') %}<dt>Server version</dt><dd>{{ facts.get('server_version') }}</dd>{% endif %}
+</dl>
+
+<h3>Structure</h3>
+{% include "partials/catalog_children.html" %}
+
+<div class="section-header-row">
+  <h3>Changes since the previous scan</h3>
+  <a class="btn btn-ghost" href="/dashboard/catalog/analytics?source={{ source_id | urlencode }}"
+     hx-get="/dashboard/catalog/analytics?source={{ source_id | urlencode }}" hx-target="#main-content" hx-push-url="true">Access analytics</a>
+  {% if changes %}
+  <div class="row-actions">
+    <button class="btn btn-secondary"
+            hx-post="/dashboard/data-sources/{{ source_id }}/catalog/changes/acknowledge"
+            hx-target="#catalog-section"
+            hx-swap="innerHTML">Acknowledge all</button>
+  </div>
+  {% endif %}
+</div>
+{% if changes %}
+<div class="table-wrapper">
+  <table>
+    <thead><tr><th>Change</th><th>Type</th><th>Path</th><th>Detail</th><th>Readable by</th><th>Seen</th><th></th></tr></thead>
+    <tbody>
+      {% for change in changes %}
+      <tr>
+        <td><span class="badge badge-{{ 'success' if change.change == 'added' else ('error' if change.change == 'removed' else 'warning') }}">{{ change.change }}</span></td>
+        <td>{{ change.node_type | replace('_', ' ') }}</td>
+        <td><code>{{ change.path | join('.') }}</code></td>
+        <td>
+          {% if change.change == 'changed' and change.before.get('data_type') != change.after.get('data_type') %}
+          <code>{{ change.before.get('data_type') }}</code> to <code>{{ change.after.get('data_type') }}</code>
+          {% elif change.after.get('data_type') %}<code>{{ change.after.get('data_type') }}</code>{% endif %}
+        </td>
+        <td>
+          {% if change.exposure.get('roles') %}
+          <span class="badge badge-warning">{{ change.exposure.get('identities', 0) }} identit{{ 'y' if change.exposure.get('identities') == 1 else 'ies' }}</span>
+          <small class="muted">via {{ change.exposure.get('roles') | join(', ') }}</small>
+          {% elif change.change == 'added' and change.exposure %}
+          <small class="muted">no role</small>
+          {% endif %}
+        </td>
+        <td>{{ change.created_at | fmt_dt }}</td>
+        <td>
+          <form hx-post="/dashboard/data-sources/{{ source_id }}/catalog/changes/acknowledge"
+                hx-target="#catalog-section" hx-swap="innerHTML">
+            <input type="hidden" name="change_id" value="{{ change.id }}">
+            <button class="btn btn-ghost" type="submit">Acknowledge</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="muted">No unacknowledged changes.</p>
+{% endif %}
+
+{% if history %}
+<details class="catalog-history">
+  <summary>Scan history</summary>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Scan</th><th>Trigger</th><th>Status</th><th>Finished</th><th>Nodes</th><th>Added</th><th>Removed</th><th>Changed</th><th>Error</th></tr></thead>
+      <tbody>
+        {% for scan in history %}
+        <tr>
+          <td>{{ scan.id }}</td>
+          <td>{{ scan.trigger }}</td>
+          <td>{{ scan.status }}{% if scan.baseline %} <small class="muted">baseline</small>{% endif %}{% if scan.truncated %} <span class="badge badge-warning">truncated</span>{% endif %}</td>
+          <td>{{ scan.finished_at | fmt_dt }}</td>
+          <td>{{ scan.nodes_seen if scan.nodes_seen is not none else '' }}</td>
+          <td>{{ scan.added if scan.added is not none else '' }}</td>
+          <td>{{ scan.removed if scan.removed is not none else '' }}</td>
+          <td>{{ scan.changed if scan.changed is not none else '' }}</td>
+          <td>{% if scan.error_code %}<code>{{ scan.error_code }}</code>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</details>
+{% endif %}
+{% endif %}

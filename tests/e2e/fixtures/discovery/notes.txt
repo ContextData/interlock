@@ -1,0 +1,1 @@
+AgentGate E2E notes fixture for text extraction.

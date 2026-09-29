@@ -1,0 +1,51 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Ingestion - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Ingestion Jobs</h1>
+</div>
+
+<div class="summary-stats">
+    <div class="summary-stat summary-stat--queued"><span class="count">{{ status_counts.queued|default(0) }}</span><span class="label">Queued</span></div>
+    <div class="summary-stat summary-stat--processing"><span class="count">{{ status_counts.processing|default(0) }}</span><span class="label">Processing</span></div>
+    <div class="summary-stat summary-stat--completed"><span class="count">{{ status_counts.completed|default(0) }}</span><span class="label">Completed</span></div>
+    <div class="summary-stat summary-stat--failed"><span class="count">{{ status_counts.failed|default(0) }}</span><span class="label">Failed</span></div>
+</div>
+
+<div class="filter-tabs" role="tablist">
+    {% for s in ["all", "queued", "processing", "completed", "failed"] %}
+    <button class="filter-tab {% if status == s %}active{% endif %}"
+            hx-get="/dashboard/ingestion?status={{ s }}&source={{ filter_source }}&since={{ filter_since }}&until={{ filter_until }}&page=1"
+            hx-target="#job-table-container"
+            hx-push-url="/dashboard/ingestion?status={{ s }}&source={{ filter_source }}&since={{ filter_since }}&until={{ filter_until }}&page=1"
+            role="tab">
+        {{ s | capitalize }}
+    </button>
+    {% endfor %}
+</div>
+
+<form class="filter-bar">
+    <label>Source
+        <select name="source" hx-get="/dashboard/ingestion" hx-target="#job-table-container" hx-include=".filter-bar select, .filter-bar input">
+            <option value="">All sources</option>
+            {% for src in sources %}
+            <option value="{{ src }}" {% if filter_source == src %}selected{% endif %}>{{ src }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>Since
+        <input name="since" type="datetime-local" value="{{ filter_since }}"
+               hx-get="/dashboard/ingestion" hx-target="#job-table-container" hx-include=".filter-bar select, .filter-bar input">
+    </label>
+    <label>Until
+        <input name="until" type="datetime-local" value="{{ filter_until }}"
+               hx-get="/dashboard/ingestion" hx-target="#job-table-container" hx-include=".filter-bar select, .filter-bar input">
+    </label>
+    <input type="hidden" name="status" value="{{ status }}">
+</form>
+
+<div id="job-table-container">
+    {% include "partials/job_table.html" %}
+</div>
+{% endblock %}

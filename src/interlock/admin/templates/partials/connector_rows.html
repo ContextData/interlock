@@ -1,0 +1,28 @@
+<div class="table-wrapper">
+  <table class="connector-table">
+    <thead>
+      <tr><th>Connector</th><th>Category</th><th>Maturity</th><th class="num">Sources</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for c in rows %}
+      <tr data-connector-key="{{ c.key }}">
+        <td>
+          <div class="connector-name">{{ c.name }}</div>
+          <div class="muted connector-description">{{ c.description }}</div>
+        </td>
+        <td>{{ c.category }}</td>
+        <td><span class="badge {% if c.maturity == 'Stable' %}badge-success{% else %}badge-warning{% endif %}">{{ c.maturity }}</span></td>
+        <td class="num">{{ c.sources }}</td>
+        <td>
+          <form hx-post="/dashboard/connectors/{{ c.key }}/activation"
+                hx-target="#main-content" hx-swap="innerHTML"
+                {% if not action_value %}hx-confirm="Deactivate {{ c.name }}? It will no longer be offered when adding a source. {{ c.sources }} existing source(s) keep working."{% endif %}>
+            <input type="hidden" name="active" value="{{ action_value }}">
+            <button class="btn {% if action_value %}btn-secondary{% else %}btn-link{% endif %}" type="submit">{{ action_label }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

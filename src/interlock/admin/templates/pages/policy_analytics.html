@@ -1,0 +1,192 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Policy Analytics - InterLock Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Policy Analytics</h1>
+</div>
+
+<form class="filter-bar" method="get" action="/dashboard/policy-analytics"
+      hx-get="/dashboard/policy-analytics"
+      hx-target="#main-content"
+      hx-push-url="true">
+    <label>Time range
+        <select name="range">
+            <option value="1h" {% if range == '1h' %}selected{% endif %}>Last hour</option>
+            <option value="24h" {% if range == '24h' %}selected{% endif %}>Last 24h</option>
+            <option value="7d" {% if range == '7d' %}selected{% endif %}>Last 7d</option>
+        </select>
+    </label>
+    <label>Source
+        <select name="source">
+            <option value="">All sources</option>
+            {% for source in sources_for_filter %}
+            <option value="{{ source.source_id }}" {% if source_filter == source.source_id %}selected{% endif %}>{{ source.name }} ({{ source.source_id }})</option>
+            {% endfor %}
+        </select>
+    </label>
+    <button class="btn btn-secondary" type="submit">Apply</button>
+</form>
+
+<div class="stat-grid">
+    <div class="stat-card stat-card--info">
+        <div class="stat-value">{{ total_decisions }}</div>
+        <div class="stat-label">Total Decisions (24h)</div>
+    </div>
+    <div class="stat-card stat-card--success">
+        <div class="stat-value">{{ allow_rate }}%</div>
+        <div class="stat-label">Allow Rate</div>
+    </div>
+    <div class="stat-card stat-card--error">
+        <div class="stat-value">{{ deny_rate }}%</div>
+        <div class="stat-label">Deny Rate</div>
+    </div>
+    <div class="stat-card stat-card--warning">
+        <div class="stat-value">{{ queued_count }}</div>
+        <div class="stat-label">Queued Writes</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ error_count }}</div>
+        <div class="stat-label">Errors</div>
+    </div>
+</div>
+
+<div class="split-section">
+    <h2>Decisions Over Time</h2>
+    {% if trend_total.line %}
+    <div class="chart-card">
+        <p class="chart-subheading">Governed requests per {{ trend_bucket }}, peak {{ trend_total.max }}</p>
+        {# Server-rendered geometry: an SVG path is markup, so this needs no
+           charting library and no CSP exception. #}
+        <svg class="sparkline" viewBox="0 0 {{ trend_total.width }} {{ trend_total.height }}"
+             preserveAspectRatio="none" role="img"
+             aria-label="Total governed requests per {{ trend_bucket }}, peak {{ trend_total.max }}">
+            <polygon class="sparkline-area" points="{{ trend_total.area }}"></polygon>
+            <polyline class="sparkline-line" points="{{ trend_total.line }}"></polyline>
+        </svg>
+        {% if trend_denied.line %}
+        <p class="chart-subheading">Denied per {{ trend_bucket }}, peak {{ trend_denied.max }}</p>
+        <svg class="sparkline sparkline--denied" viewBox="0 0 {{ trend_denied.width }} {{ trend_denied.height }}"
+             preserveAspectRatio="none" role="img"
+             aria-label="Denied requests per {{ trend_bucket }}, peak {{ trend_denied.max }}">
+            <polyline class="sparkline-line" points="{{ trend_denied.line }}"></polyline>
+        </svg>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <strong>Not enough history yet</strong>
+        <p>A trend needs at least two {{ trend_bucket }}s of governed traffic in this window. Widen the time range, or send a request through the gateway.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="split-section">
+    <h2>Decisions by Source</h2>
+    {% if not source_decisions %}
+    <div class="empty-state">
+        <strong>No decisions recorded</strong>
+        <p>No governed request matched this time range and source filter.</p>
+    </div>
+    {% endif %}
+    {% for source_id, counts in source_decisions.items() %}
+    <div class="decision-row">
+        <span class="source-label">{{ source_id }}</span>
+        <div class="decision-progress-group">
+            {% if counts.total > 0 %}
+            <progress class="decision-progress decision-progress--success" max="{{ counts.total }}" value="{{ counts.success }}" aria-label="{{ counts.success }} allowed"></progress>
+            <progress class="decision-progress decision-progress--denied" max="{{ counts.total }}" value="{{ counts.denied }}" aria-label="{{ counts.denied }} denied"></progress>
+            <progress class="decision-progress decision-progress--queued" max="{{ counts.total }}" value="{{ counts.queued }}" aria-label="{{ counts.queued }} queued"></progress>
+            <progress class="decision-progress decision-progress--error" max="{{ counts.total }}" value="{{ counts.error }}" aria-label="{{ counts.error }} errors"></progress>
+            {% endif %}
+        </div>
+        <span class="counts">{{ counts.success }}/<span class="metric-denied">{{ counts.denied }}</span>/{{ counts.queued }}/{{ counts.error }}</span>
+    </div>
+    {% endfor %}
+    {% if source_decisions %}
+    <div class="chart-legend">Format: allowed / denied / queued / errors</div>
+    {% endif %}
+</div>
+
+{% if denied_identities %}
+<div class="split-section">
+    <h2>Most Denied Identities</h2>
+    <div class="table-wrapper">
+        <table class="mini-table">
+            <thead><tr><th>Identity ID</th><th>Deny Count</th></tr></thead>
+            <tbody>
+                {% for d in denied_identities %}
+                <tr><td>{{ d.identity_id|identity_label(d.identity_name, d.identity_deleted) }}</td><td>{{ d.cnt }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if operations %}
+<div class="split-section">
+    <h2>Operations Breakdown</h2>
+    <div class="table-wrapper">
+        <table class="mini-table">
+            <thead><tr><th>Operation</th><th>Allowed</th><th>Denied</th><th>Queued</th><th>Errors</th></tr></thead>
+            <tbody>
+                {% for op, counts in operations.items() %}
+                <tr>
+                    <td><span class="badge badge-{{ op }}">{{ op | upper }}</span></td>
+                    <td class="metric-success">{{ counts.success }}</td>
+                    <td class="metric-denied">{{ counts.denied }}</td>
+                    <td class="metric-queued">{{ counts.queued }}</td>
+                    <td class="metric-error">{{ counts.error }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if rule_decisions %}
+<div class="split-section">
+    <h2>Matched Rule Breakdown</h2>
+    <div class="table-wrapper">
+        <table class="mini-table">
+            <thead><tr><th>Rule</th><th>Allowed</th><th>Denied</th><th>Queued</th><th>Errors</th></tr></thead>
+            <tbody>
+                {% for rule_id, counts in rule_decisions.items() %}
+                <tr>
+                    <td><code>{{ rule_id }}</code></td>
+                    <td class="metric-success">{{ counts.success }}</td>
+                    <td class="metric-denied">{{ counts.denied }}</td>
+                    <td class="metric-queued">{{ counts.queued }}</td>
+                    <td class="metric-error">{{ counts.error }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if denied_examples %}
+<div class="split-section">
+    <h2>Denied Examples</h2>
+    <div class="table-wrapper">
+        <table class="mini-table">
+            <thead><tr><th>When</th><th>Source</th><th>Identity</th><th>Operation</th><th>Error</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for item in denied_examples %}
+                <tr>
+                    <td>{{ item.created_at|fmt_dt }}</td>
+                    <td><code>{{ item.source_id or '-' }}</code></td>
+                    <td>{{ item.identity_id|identity_label(item.identity_name, item.identity_deleted) }}</td>
+                    <td>{{ item.operation or '-' }}</td>
+                    <td>{{ item.error_message or '-' }}</td>
+                    <td><a class="btn btn-link" href="/dashboard/audit-costs/events/{{ item.id }}">Details</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

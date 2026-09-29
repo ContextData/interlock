@@ -1,0 +1,320 @@
+name: Release signed InterLock artifacts
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  PYTHON_BASE_IMAGE: python:3.12-slim@sha256:ffd5d35f5cf6dfba89eaaebd93d5ad142faa7a7f2c728742c5b50cb81baff526
+
+jobs:
+  preflight:
+    name: Certify tagged source before publication
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      # connectors-repo is included because it is part of `production` and
+      # therefore of the image this job certifies. Without it the type
+      # baseline is evaluated against a dependency set the release does not
+      # ship, and the `github`/`gitlab` import ignores flip between used and
+      # unused depending on which workflow runs.
+      - name: Install locked validation dependencies
+        run: >-
+          uv sync --locked --extra dev --extra pii --extra vector --extra ml
+          --extra ingestion --extra otel --extra connectors-tier1
+          --extra connectors-tier2 --extra connectors-repo
+
+      # Cheapest gate first: a forgotten version bump should fail in seconds,
+      # not after fifteen minutes of tests. The console prints this version in
+      # its sidebar, so a stale package version is visible to every operator.
+      - name: Check the packaged version matches the release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_version="$(deploy/scripts/release/validate-release-tag.sh "${GITHUB_REF_NAME}")"
+          packaged="$(uv run python -c 'import interlock; print(interlock.release_version())')"
+          if [[ "${tag_version}" != "${packaged}" ]]; then
+            printf 'tag %s is version %s but the package reports %s: bump version in pyproject.toml\n' \
+              "${GITHUB_REF_NAME}" "${tag_version}" "${packaged}" >&2
+            exit 1
+          fi
+          printf 'packaged version %s matches tag %s\n' "${packaged}" "${GITHUB_REF_NAME}"
+
+      - name: Run static, unit, integration, and supply-chain gates
+        run: |
+          make check-quick
+          make type
+          make security
+          make audit-cover
+          make release-evidence
+
+      - name: Run release and Helm contract tests
+        run: >-
+          uv run pytest tests/unit/test_release_cloud_automation.py
+          tests/unit/test_helm_validation.py -q
+
+  release:
+    name: Build, sign, and publish
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: release
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag and derive immutable names
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(deploy/scripts/release/validate-release-tag.sh "${GITHUB_REF_NAME}")"
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          image="${REGISTRY}/${owner}/interlock-runtime"
+          chart="${REGISTRY}/${owner}/charts/interlock"
+          {
+            echo "version=${version}"
+            echo "owner=${owner}"
+            echo "image=${image}"
+            echo "chart=${chart}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate OCI image metadata
+        id: metadata
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ${{ steps.release.outputs.image }}
+          tags: |
+            type=raw,value=${{ steps.release.outputs.version }}
+            type=sha,format=long
+          labels: |
+            org.opencontainers.image.title=InterLock multi-service runtime
+            org.opencontainers.image.description=Runs interlock.gateway, interlock.admin, or interlock.worker from one immutable image
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.release.outputs.version }}
+
+      - name: Build and push multi-platform runtime image
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          pull: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          sbom: true
+          provenance: mode=max
+          build-args: |
+            PYTHON_BASE_IMAGE=${{ env.PYTHON_BASE_IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign runtime image by digest with GitHub OIDC
+        shell: bash
+        env:
+          IMAGE_NAME: ${{ steps.release.outputs.image }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          cosign sign --yes "${IMAGE_NAME}@${IMAGE_DIGEST}"
+
+      - name: Prepare release evidence directory
+        run: mkdir -p build
+
+      - name: Generate image SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: ${{ steps.release.outputs.image }}@${{ steps.build.outputs.digest }}
+          format: spdx-json
+          output-file: build/interlock-runtime.spdx.json
+          artifact-name: interlock-runtime-sbom.spdx.json
+          upload-release-assets: false
+
+      - name: Attest runtime provenance
+        # GitHub's attestation store is a paid feature for private
+        # repositories, so this is skipped while the repo is private and
+        # resumes by itself once it is public - no edit required, and a
+        # genuine failure once it is available still fails the release.
+        # Skipping it does not leave the artifact unattested: the build
+        # publishes SLSA v1 provenance and an SPDX SBOM into the registry
+        # alongside the image (`provenance: mode=max`, `sbom: true`), and
+        # cosign signs the digest against this workflow's OIDC identity.
+        if: github.event.repository.visibility == 'public'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-name: ${{ steps.release.outputs.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest runtime SBOM
+        # GitHub's attestation store is a paid feature for private
+        # repositories, so this is skipped while the repo is private and
+        # resumes by itself once it is public - no edit required, and a
+        # genuine failure once it is available still fails the release.
+        # Skipping it does not leave the artifact unattested: the build
+        # publishes SLSA v1 provenance and an SPDX SBOM into the registry
+        # alongside the image (`provenance: mode=max`, `sbom: true`), and
+        # cosign signs the digest against this workflow's OIDC identity.
+        if: github.event.repository.visibility == 'public'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-name: ${{ steps.release.outputs.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: build/interlock-runtime.spdx.json
+          push-to-registry: true
+
+      - name: Install Helm
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # v4
+        with:
+          version: v3.19.0
+
+      - name: Package and publish OCI Helm chart
+        id: chart
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_OWNER: ${{ steps.release.outputs.owner }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/chart
+          printf '%s' "${GHCR_TOKEN}" | helm registry login ghcr.io \
+            --username "${GITHUB_ACTOR}" --password-stdin
+          helm lint deploy/helm/interlock
+          helm package deploy/helm/interlock \
+            --version "${VERSION}" \
+            --app-version "${VERSION}" \
+            --destination build/chart
+          helm push "build/chart/interlock-${VERSION}.tgz" \
+            "oci://ghcr.io/${REGISTRY_OWNER}/charts" 2>&1 | tee build/chart/push.log
+          digest="$(awk '/^Digest: sha256:/ {print $2}' build/chart/push.log | tail -1)"
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "digest=${digest}" >> "${GITHUB_OUTPUT}"
+
+      - name: Sign OCI Helm chart by digest with GitHub OIDC
+        shell: bash
+        env:
+          CHART_NAME: ${{ steps.release.outputs.chart }}
+          CHART_DIGEST: ${{ steps.chart.outputs.digest }}
+        run: |
+          set -euo pipefail
+          cosign sign --yes "${CHART_NAME}@${CHART_DIGEST}"
+
+      - name: Attest OCI Helm chart provenance
+        # GitHub's attestation store is a paid feature for private
+        # repositories, so this is skipped while the repo is private and
+        # resumes by itself once it is public - no edit required, and a
+        # genuine failure once it is available still fails the release.
+        # Skipping it does not leave the artifact unattested: the build
+        # publishes SLSA v1 provenance and an SPDX SBOM into the registry
+        # alongside the image (`provenance: mode=max`, `sbom: true`), and
+        # cosign signs the digest against this workflow's OIDC identity.
+        if: github.event.repository.visibility == 'public'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-name: ${{ steps.release.outputs.chart }}
+          subject-digest: ${{ steps.chart.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest packaged Helm chart
+        # GitHub's attestation store is a paid feature for private
+        # repositories, so this is skipped while the repo is private and
+        # resumes by itself once it is public - no edit required, and a
+        # genuine failure once it is available still fails the release.
+        # Skipping it does not leave the artifact unattested: the build
+        # publishes SLSA v1 provenance and an SPDX SBOM into the registry
+        # alongside the image (`provenance: mode=max`, `sbom: true`), and
+        # cosign signs the digest against this workflow's OIDC identity.
+        if: github.event.repository.visibility == 'public'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: build/chart/interlock-${{ steps.release.outputs.version }}.tgz
+
+      - name: Write release manifest
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_COMMIT: ${{ github.sha }}
+          GITHUB_ATTESTATIONS: ${{ github.event.repository.visibility == 'public' }}
+          IMAGE_NAME: ${{ steps.release.outputs.image }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          CHART_NAME: ${{ steps.release.outputs.chart }}
+          CHART_DIGEST: ${{ steps.chart.outputs.digest }}
+          SBOM_PATH: build/interlock-runtime.spdx.json
+        run: deploy/scripts/release/create-release-manifest.sh build/release-manifest.json
+
+      - name: Upload immutable release evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: interlock-${{ steps.release.outputs.version }}-release-evidence
+          if-no-files-found: error
+          path: |
+            build/interlock-runtime.spdx.json
+            build/release-manifest.json
+            build/chart/interlock-${{ steps.release.outputs.version }}.tgz
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          prerelease=()
+          if [[ "${VERSION}" == *-* ]]; then
+            prerelease=(--prerelease)
+          fi
+          gh release create "${GITHUB_REF_NAME}" \
+            --verify-tag \
+            --generate-notes \
+            --title "InterLock ${VERSION}" \
+            "${prerelease[@]}" \
+            build/release-manifest.json \
+            build/interlock-runtime.spdx.json \
+            "build/chart/interlock-${VERSION}.tgz"

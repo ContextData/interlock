@@ -1,0 +1,455 @@
+{
+  "schema_version": 1,
+  "errors": [
+    {
+      "path": "src/interlock/admin/app.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"run_dependency_checks\" has incompatible type \"dict[str, Callable[[], object]]\"; expected \"Mapping[str, Callable[[], Awaitable[Mapping[str, Any] | None] | Mapping[str, Any] | None]]\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/app.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"str\"",
+      "count": 2
+    },
+    {
+      "path": "src/interlock/admin/app.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/app.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"EmbeddingEngine | None\" has no attribute \"initialize\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/audit.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"dict[str, Any] | None\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/audit.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"dict[str, Any]\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/auth.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"dict[str, Any] | None\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/auth_middleware.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"Response\"",
+      "count": 3
+    },
+    {
+      "path": "src/interlock/admin/middleware.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"Response\"",
+      "count": 3
+    },
+    {
+      "path": "src/interlock/admin/routes/approvals.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"str\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/approvals.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/dashboard.py",
+      "code": "arg-type",
+      "message": "Argument \"classification_tags\" to \"evaluate\" of \"PolicyEngine\" has incompatible type \"object\"; expected \"list[str] | None\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/dashboard.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"round\" has incompatible type \"float | None\"; expected \"_SupportsRound2[float]\"",
+      "count": 4
+    },
+    {
+      "path": "src/interlock/admin/routes/dashboard.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"bool\", target has type \"Collection[Any]\")",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/dashboard.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"bool\", target has type \"Sequence[Collection[Any]]\")",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/dashboard.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"HTMLResponse\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/dashboard.py",
+      "code": "return-value",
+      "message": "Incompatible return value type (got \"Response\", expected \"HTMLResponse\")",
+      "count": 8
+    },
+    {
+      "path": "src/interlock/admin/routes/dashboard.py",
+      "code": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "count": 3
+    },
+    {
+      "path": "src/interlock/admin/routes/dashboard.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | None\" has no attribute \"get\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/dashboard.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | None\" has no attribute \"scan\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/dashboard.py",
+      "code": "unused-ignore",
+      "message": "Unused \"type: ignore\" comment",
+      "count": 2
+    },
+    {
+      "path": "src/interlock/admin/routes/data_sources.py",
+      "code": "attr-defined",
+      "message": "Module \"interlock.security.egress\" does not explicitly export attribute \"EgressBlockedError\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/data_sources.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/identities.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/ingestion.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"dict\" has incompatible type \"Any | dict[Any, Any] | None\"; expected \"SupportsKeysAndGetItem[Any, Any]\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/ingestion.py",
+      "code": "dict-item",
+      "message": "Unpacked dict entry 6 has incompatible type \"Any | dict[Any, Any] | None\"; expected \"SupportsKeysAndGetItem[Any, Any]\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/ingestion.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/admin/routes/ingestion.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | dict[Any, Any] | None\" has no attribute \"get\"",
+      "count": 3
+    },
+    {
+      "path": "src/interlock/admin/routes/policies.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "arg-type",
+      "message": "Argument \"auth\" to \"post\" of \"AsyncClient\" has incompatible type \"tuple[str, str] | None\"; expected \"tuple[str | bytes, str | bytes] | Callable[[Request], Request] | Auth | UseClientDefault\"",
+      "count": 2
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"add\" of \"set\" has incompatible type \"Table\"; expected \"str\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"Any | None\", variable has type \"str\")",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"str\", variable has type \"Table\")",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "attr-defined",
+      "message": "\"Table\" has no attribute \"split\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "attr-defined",
+      "message": "Module \"simple_salesforce\" does not explicitly export attribute \"Salesforce\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"BaseConnectorAdapter\"",
+      "count": 2
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"bytes\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"dict[str, Any]\"",
+      "count": 4
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"from_service_account_file\" of \"Credentials\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"from_service_account_info\" of \"Credentials\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | dict[Any, Any] | None\" has no attribute \"values\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/connections/connectors.py",
+      "code": "unused-ignore",
+      "message": "Unused \"type: ignore\" comment",
+      "count": 18
+    },
+    {
+      "path": "src/interlock/connections/manager.py",
+      "code": "arg-type",
+      "message": "Argument \"transport\" to \"AsyncClient\" has incompatible type \"object\"; expected \"AsyncBaseTransport | None\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/connections/manager.py",
+      "code": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "count": 2
+    },
+    {
+      "path": "src/interlock/connections/manager.py",
+      "code": "unused-ignore",
+      "message": "Unused \"type: ignore\" comment",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/app.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"run_dependency_checks\" has incompatible type \"dict[str, Callable[[], object]]\"; expected \"Mapping[str, Callable[[], Awaitable[Mapping[str, Any] | None] | Mapping[str, Any] | None]]\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/app.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"None\", variable has type \"EmbeddingEngine\")",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/app.py",
+      "code": "dict-item",
+      "message": "Dict entry 0 has incompatible type \"type[AuditUnavailableError]\": \"Callable[[Request[State], AuditUnavailableError], Coroutine[Any, Any, JSONResponse]]\"; expected \"Any\": \"Callable[[Request[State], Exception], Response | Awaitable[Response]] | Callable[[WebSocket[State], Exception], Awaitable[None]]\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/http_proxy.py",
+      "code": "arg-type",
+      "message": "Argument \"transport\" to \"AsyncClient\" has incompatible type \"object\"; expected \"AsyncBaseTransport | None\"",
+      "count": 2
+    },
+    {
+      "path": "src/interlock/gateway/http_proxy.py",
+      "code": "attr-defined",
+      "message": "Module \"interlock.security.egress\" does not explicitly export attribute \"EgressBlockedError\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/http_proxy.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"IdentityContext | None\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/http_proxy.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"bytes\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/http_proxy.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "count": 3
+    },
+    {
+      "path": "src/interlock/gateway/mcp_adapter.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"loads\" has incompatible type \"bytes | memoryview[int]\"; expected \"str | bytes | bytearray\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/mcp_adapter.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"NormalizedQuery | None\", variable has type \"NormalizedQuery | list[NormalizedQuery]\")",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/mcp_adapter.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"IdentityContext | None\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/mcp_adapter.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"events\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/mcp_adapter.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/mcp_adapter.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/mcp_adapter.py",
+      "code": "union-attr",
+      "message": "Item \"list[NormalizedQuery]\" of \"NormalizedQuery | list[NormalizedQuery]\" has no attribute \"normalized_sql\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/mcp_adapter.py",
+      "code": "union-attr",
+      "message": "Item \"list[NormalizedQuery]\" of \"NormalizedQuery | list[NormalizedQuery]\" has no attribute \"operation\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/mcp_adapter.py",
+      "code": "union-attr",
+      "message": "Item \"list[NormalizedQuery]\" of \"NormalizedQuery | list[NormalizedQuery]\" has no attribute \"tables\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/multi_instance.py",
+      "code": "type-arg",
+      "message": "Missing type arguments for generic type \"Task\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/multi_instance.py",
+      "code": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "count": 2
+    },
+    {
+      "path": "src/interlock/gateway/multi_instance.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Redis | None\" has no attribute \"delete\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/multi_instance.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Redis | None\" has no attribute \"set\"",
+      "count": 2
+    },
+    {
+      "path": "src/interlock/gateway/pg_messages.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"bool\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/pg_proxy.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"NormalizedQuery | None\", variable has type \"NormalizedQuery | list[NormalizedQuery]\")",
+      "count": 3
+    },
+    {
+      "path": "src/interlock/gateway/pg_proxy.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"str | None\", variable has type \"str\")",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/pg_proxy.py",
+      "code": "attr-defined",
+      "message": "\"None\" has no attribute \"authenticate\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/pg_proxy.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"IdentityContext\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/pg_proxy.py",
+      "code": "unused-ignore",
+      "message": "Unused \"type: ignore\" comment",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/pipeline.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"RateLimitResult\"",
+      "count": 2
+    },
+    {
+      "path": "src/interlock/gateway/pipeline.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"WriteClassification | None\"",
+      "count": 1
+    },
+    {
+      "path": "src/interlock/gateway/pipeline.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | None\" has no attribute \"check\"",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+# Code owners are requested for review automatically on matching paths.
+# The last matching pattern wins, so the security-sensitive entries below
+# deliberately come after the catch-all.
+
+*                               @ContextData/maintainers
+
+# Data plane: anything here can change what an agent is allowed to reach.
+/src/interlock/gateway/         @ContextData/maintainers
+/src/interlock/core/            @ContextData/maintainers
+/src/interlock/pipeline/        @ContextData/maintainers
+/src/interlock/connections/     @ContextData/maintainers
+
+# Authentication, authorization, secrets, and egress control.
+/src/interlock/admin/auth.py            @ContextData/maintainers
+/src/interlock/admin/auth_middleware.py @ContextData/maintainers
+/src/interlock/security/                @ContextData/maintainers
+/src/interlock/secrets/                 @ContextData/maintainers
+
+# Audit is a compliance surface; changes need a second pair of eyes.
+/src/interlock/audit/           @ContextData/maintainers
+
+# Schema changes are irreversible in deployed databases.
+/migrations/                    @ContextData/maintainers
+
+# Release, supply-chain, and deployment surfaces.
+/.github/workflows/             @ContextData/maintainers
+/deploy/                        @ContextData/maintainers
+/Dockerfile                     @ContextData/maintainers
+/pyproject.toml                 @ContextData/maintainers
+/uv.lock                        @ContextData/maintainers
+/requirements-production.txt    @ContextData/maintainers
+
+# Published contracts: changing these changes what we promise users.
+/docs-site/src/content/docs/reference/contracts/  @ContextData/maintainers
+/docs-site/src/content/docs/operations/runbooks/  @ContextData/maintainers
+/LICENSE                        @ContextData/maintainers
+/NOTICE                         @ContextData/maintainers
+/SECURITY.md                    @ContextData/maintainers

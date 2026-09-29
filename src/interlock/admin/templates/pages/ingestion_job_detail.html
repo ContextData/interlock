@@ -1,0 +1,44 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Ingestion Job #{{ job.id }} - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/ingestion" class="back-link"
+     hx-get="/dashboard/ingestion" hx-target="#main-content">Ingestion</a>
+  <h1>Ingestion Job #{{ job.id }}</h1>
+</div>
+
+<div class="detail-stack">
+  <section class="card">
+    <h2>Status</h2>
+    <dl class="form-summary fact-table">
+      <dt>Source</dt><dd>{{ job.source_id or '-' }}</dd>
+      <dt>Status</dt><dd><span class="badge badge-{{ job.status }}">{{ job.status }}</span></dd>
+      <dt>Stage</dt><dd>{{ job.stage or job.status or '-' }}</dd>
+      <dt>Worker</dt><dd>{{ job.worker_id or '-' }}</dd>
+      <dt>Priority</dt><dd>{{ job.priority_score or job.priority or 0 }}</dd>
+      <dt>Lease expiry</dt><dd>{{ job.lease_expires_at|default(None)|fmt_dt }}</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Progress</h2>
+    <dl class="form-summary fact-table">
+      <dt>Progress</dt><dd>{{ job.progress_current|default(0) or 0 }} / {{ job.progress_total|default('-') or '-' }}</dd>
+      <dt>Retry count</dt><dd>{{ job.retry_count|default(0) or 0 }}</dd>
+      <dt>Cost</dt><dd>{{ job.cost_metadata|default(None) or job.ocr_cost_metadata|default(None) or '-' }}</dd>
+      <dt>Duration</dt><dd>{{ job.duration_ms|default(None)|fmt_ms }}</dd>
+      <dt>Updated</dt><dd>{{ job.updated_at|default(None)|fmt_dt }}</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Error and Metadata</h2>
+    <dl class="form-summary fact-table">
+      <dt>Last error</dt><dd>{{ job.last_error or job.error or '-' }}</dd>
+      <dt>File path</dt><dd><code>{{ job.file_path or '-' }}</code></dd>
+      <dt>Metadata</dt><dd><pre class="json-block">{{ job.metadata or {} }}</pre></dd>
+    </dl>
+  </section>
+</div>
+{% endblock %}

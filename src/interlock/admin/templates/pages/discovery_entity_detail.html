@@ -1,0 +1,67 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}{{ entity_text }} - Discovery{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="/dashboard/discovery?tab=entities" class="back-link">&larr; Discovery</a>
+        <h1>
+            {{ entity_text }}
+            <span class="disc-badge disc-badge-{{ entity_type }}">{{ entity_type }}</span>
+        </h1>
+    </div>
+</div>
+
+<h2>Assets referencing this entity ({{ assets|length }})</h2>
+{% if assets %}
+<div class="table-wrapper">
+<table class="disc-table">
+    <thead>
+        <tr><th>Asset</th><th>Source</th><th>Type</th><th>Category</th><th class="num">Prominence</th></tr>
+    </thead>
+    <tbody>
+        {% for a in assets %}
+        <tr class="disc-row">
+            <td>
+                <a href="/dashboard/discovery/assets/{{ a.asset_id }}">
+                    <strong>{{ a.title or a.asset_path }}</strong>
+                </a>
+                <div class="disc-asset-path"><code>{{ a.asset_path }}</code></div>
+            </td>
+            <td>{{ a.source_id }}</td>
+            <td><span class="disc-badge">{{ a.asset_type }}</span></td>
+            <td>{% if a.category_path %}<code>{{ a.category_path }}</code>{% else %}<span class="muted">-</span>{% endif %}</td>
+            <td class="num">{{ "%.2f"|format(a.prominence) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="disc-empty muted">No assets reference this entity.</div>
+{% endif %}
+
+<h2>Co-occurring entities</h2>
+{% if co_occurring %}
+<div class="table-wrapper">
+<table class="disc-table">
+    <thead><tr><th>Entity</th><th>Type</th><th class="num">Co-occurrences</th></tr></thead>
+    <tbody>
+        {% for c in co_occurring %}
+        <tr>
+            <td>
+                <a href="/dashboard/discovery/entities/{{ c.entity_type|urlencode }}/{{ c.entity_text|urlencode }}">
+                    {{ c.entity_text }}
+                </a>
+            </td>
+            <td><span class="disc-badge disc-badge-{{ c.entity_type }}">{{ c.entity_type }}</span></td>
+            <td class="num">{{ c.co_occurrence_count }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="disc-empty muted">No co-occurring entities found.</div>
+{% endif %}
+{% endblock %}

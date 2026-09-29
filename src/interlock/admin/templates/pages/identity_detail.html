@@ -1,0 +1,154 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}{{ ident.name }} - Identity - InterLock{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <a href="/dashboard/access-control/identities" class="back-link"
+       hx-get="/dashboard/access-control/identities" hx-target="#main-content">← Identities</a>
+    <h1>{{ ident.name }}</h1>
+  </div>
+  <div class="row-actions">
+    <button class="btn btn-secondary"
+            hx-post="/dashboard/access-control/identities/{{ ident.id }}/rotate-key"
+            hx-confirm="Rotate the API key for {{ ident.name }}? Any agent still using the old key will need to be reconfigured."
+            hx-target="#rotate-result-slot"
+            hx-swap="innerHTML">Rotate API Key</button>
+  </div>
+</div>
+
+<p class="muted">Rotating issues a new API key and invalidates the previously-cached
+   session immediately. The new key is shown <strong>once</strong>; copy it before
+   navigating away.</p>
+
+<div id="rotate-result-slot"></div>
+
+<div class="detail-stack">
+
+  <section class="card">
+    <h2>Identity</h2>
+    <dl class="form-summary fact-table">
+      <dt>Name</dt><dd>{{ ident.name }}</dd>
+      <dt>Agent type</dt><dd>{{ ident.agent_type }}</dd>
+      <dt>Team</dt><dd>{{ ident.team or '-' }}</dd>
+      <dt>Source roles</dt>
+      <dd>
+        {% for grant in ident.source_roles %}
+        {% if grant.role_id %}
+        <a class="badge" href="/dashboard/data-sources/{{ grant.source_id }}/roles/{{ grant.role_id }}/edit"
+           hx-get="/dashboard/data-sources/{{ grant.source_id }}/roles/{{ grant.role_id }}/edit"
+           hx-target="#main-content" hx-push-url="true">{{ grant.source_id }}:{{ grant.role }}</a>
+        {% else %}
+        <span class="badge">{{ grant.source_id }}:{{ grant.role }}</span>
+        {% endif %}
+        {% else %}
+        <span class="muted">No source-scoped roles assigned.</span>
+        {% endfor %}
+      </dd>
+      <dt>Compatibility roles</dt>
+      <dd>{% for r in ident.roles %}<span class="badge">{{ r }}</span>{% else %}<span class="muted">-</span>{% endfor %}</dd>
+      <dt>Mapped PG role</dt><dd data-mapped-pg-role="{{ ident.mapped_pg_role or '' }}">{{ ident.mapped_pg_role or '-' }}</dd>
+      <dt>PG username</dt><dd><code>{{ ident.pg_username or '-' }}</code></dd>
+      <dt>API key hash</dt><dd><code>{{ ident.api_key_hash_prefix or '-' }}</code></dd>
+      <dt>PG password hash</dt><dd><code>{{ ident.pg_password_hash_prefix or '-' }}</code></dd>
+      <dt>Enabled</dt><dd>
+        {% if ident.enabled %}
+        <span class="health-dot health-green"></span> enabled
+        {% else %}
+        <span class="health-dot health-red"></span> disabled
+        {% endif %}
+      </dd>
+      <dt>Created</dt><dd>{{ ident.created_at|fmt_dt }}</dd>
+      <dt>Updated</dt><dd>{{ ident.updated_at|fmt_dt }}</dd>
+      <dt>Last used</dt><dd>{{ ident.last_used_at|fmt_dt('never') }}</dd>
+      <dt>Last rotated</dt><dd>{{ ident.rotated_at|fmt_dt('never') }}</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Source-role grants</h2>
+    <p class="muted">
+      Granting or revoking here never changes the identity's API key. A
+      revocation takes effect on the agent's next request.
+    </p>
+    {% include "partials/identity_grants.html" %}
+  </section>
+
+  <section class="card">
+    <h2>Last 24 Hours</h2>
+    <div class="table-wrapper">
+      <table class="metrics-row">
+        <thead>
+          <tr>
+            <th>Requests</th><th>Cache hit</th><th>p95 latency</th><th>Denials</th><th>Errors</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ stats.requests_24h }}</td>
+            <td>{{ stats.cache_hit_pct }}%</td>
+            <td>{{ stats.p95_ms }}<small>ms</small></td>
+            <td>{{ stats.denials }}</td>
+            <td>{{ stats.errors }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Top Sources (24h)</h2>
+    {% if top_sources %}
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Source</th><th class="num">Requests</th></tr></thead>
+        <tbody>
+          {% for s in top_sources %}
+          <tr>
+            <td>
+              <a href="/dashboard/data-sources/{{ s.source_id }}"
+                 hx-get="/dashboard/data-sources/{{ s.source_id }}" hx-target="#main-content">{{ s.source_id }}</a>
+            </td>
+            <td class="num">{{ s.cnt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><p>No source activity in the last 24h.</p></div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Recent Activity</h2>
+    {% if recent %}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>When</th><th>Source</th><th>Op</th><th>Tier</th>
+            <th>Latency</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recent %}
+          <tr>
+            <td>{{ r.created_at|fmt_dt }}</td>
+            <td>{{ r.source_id or '-' }}</td>
+            <td>{{ r.operation }}</td>
+            <td>{{ r.cache_tier or ('hit' if r.cache_hit else 'miss') }}</td>
+            <td>{{ r.latency_ms|fmt_ms }}</td>
+            <td><span class="badge badge-{{ r.status|default('success')|lower }}">{{ r.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><p>No requests from this identity yet.</p></div>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}

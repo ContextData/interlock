@@ -1,0 +1,36 @@
+# Local development overrides.
+#
+# Copy to docker-compose.override.yml (gitignored) and Docker Compose will
+# merge it automatically:
+#
+#     cp docker-compose.override.yml.example docker-compose.override.yml
+#
+# Host port mappings live in docker-compose.yml, so this file only carries
+# genuinely local concerns: live source mounts, verbose logging, and the
+# first-run admin bootstrap password.
+
+services:
+  gateway:
+    # Live-reload the source tree instead of rebuilding the image.
+    volumes:
+      - ./src:/app/src
+    environment:
+      INTERLOCK_LOG_LEVEL: debug
+
+  admin:
+    volumes:
+      - ./src:/app/src
+    environment:
+      INTERLOCK_LOG_LEVEL: debug
+      # Seeds the initial admin user on first boot when admin_identities is
+      # empty. Export the variable before `docker compose up`, then rotate the
+      # password and unset it.
+      INTERLOCK_ADMIN__BOOTSTRAP_PASSWORD: ${INTERLOCK_ADMIN__BOOTSTRAP_PASSWORD:-}
+
+  worker-1:
+    environment:
+      INTERLOCK_LOG_LEVEL: debug
+
+  worker-2:
+    environment:
+      INTERLOCK_LOG_LEVEL: debug

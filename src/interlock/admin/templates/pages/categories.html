@@ -1,0 +1,12 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Categories - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Category Browser</h1>
+</div>
+
+<div id="category-tree-container">
+    {% include "partials/category_tree.html" %}
+</div>
+{% endblock %}

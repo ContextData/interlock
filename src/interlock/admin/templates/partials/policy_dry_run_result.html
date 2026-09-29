@@ -1,0 +1,50 @@
+<div class="dry-run-result">
+  <div class="card-title">
+    Decision:
+    <span class="badge badge-{{ decision.effect|default('deny') }}">
+      {{ decision.effect|default('deny')|upper }}
+    </span>
+  </div>
+  <p class="muted">{{ decision.reason }}</p>
+  <dl class="form-summary">
+    <dt>Source role decision</dt>
+    <dd>
+      {% if source_role_decision %}
+        <span class="badge badge-{{ 'allow' if source_role_decision.allowed else 'deny' }}">
+          {{ 'ALLOW' if source_role_decision.allowed else 'DENY' }}
+        </span>
+        {{ source_role_decision.reason }}
+      {% else %}
+        -
+      {% endif %}
+    </dd>
+    <dt>Matched source roles</dt>
+    <dd>{{ source_role_decision.matched_role_ids|join(', ') if source_role_decision and source_role_decision.matched_role_ids else '-' }}</dd>
+    <dt>Matched permissions</dt>
+    <dd>{{ source_role_decision.matched_permission_ids|join(', ') if source_role_decision and source_role_decision.matched_permission_ids else '-' }}</dd>
+    <dt>Missing permissions</dt>
+    <dd>
+      {% if source_role_decision and source_role_decision.missing_permissions %}
+        <pre class="json-block">{{ source_role_decision.missing_permissions }}</pre>
+      {% else %}
+        -
+      {% endif %}
+    </dd>
+    <dt>Permission request</dt>
+    <dd><pre class="json-block">{{ permission_request or {} }}</pre></dd>
+    <dt>Matched rules</dt>
+    <dd>
+      {% if matched %}
+        {% for rule in matched %}
+        <span class="badge">#{{ rule.id }} {{ rule.name }}</span>
+        {% endfor %}
+      {% else %}
+        -
+      {% endif %}
+    </dd>
+    <dt>Redactions</dt><dd>{{ decision.redactions|join(', ') if decision.redactions else '-' }}</dd>
+    <dt>Rate limit</dt><dd>{{ decision.rate_limit or '-' }}</dd>
+    <dt>Write risk cap</dt><dd>{{ decision.write_risk_cap or '-' }}</dd>
+    <dt>Classification tags</dt><dd>{{ decision.classification_tags|join(', ') if decision.classification_tags else '-' }}</dd>
+  </dl>
+</div>

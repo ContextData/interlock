@@ -1,0 +1,125 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}{{ asset.title or asset.asset_path }} - Discovery{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="/dashboard/discovery" class="back-link">&larr; Discovery</a>
+        <h1>{{ asset.title or asset.asset_path }}</h1>
+    </div>
+</div>
+
+<dl class="kv">
+    <dt>Source</dt>
+    <dd>{{ asset.source_id }}</dd>
+    <dt>Asset type</dt>
+    <dd><span class="disc-badge">{{ asset.asset_type }}</span></dd>
+    <dt>Path</dt>
+    <dd><code>{{ asset.asset_path }}</code></dd>
+    <dt>Category</dt>
+    <dd>
+        {% if asset.category_path %}
+        <a href="/dashboard/discovery/categories/{{ asset.category_path|urlencode }}">
+            <code>{{ asset.category_path }}</code>
+        </a>
+        {% else %}
+        <span class="muted">-</span>
+        {% endif %}
+    </dd>
+    <dt>Topics</dt>
+    <dd>
+        {% if asset.topics %}
+            {% for t in asset.topics %}
+            <span class="disc-pill">{{ t }}</span>
+            {% endfor %}
+        {% else %}
+        <span class="muted">-</span>
+        {% endif %}
+    </dd>
+    <dt>Quality score</dt>
+    <dd>{{ asset.quality_score }}</dd>
+    <dt>Updated</dt>
+    <dd><code>{{ asset.updated_at }}</code></dd>
+    {% if row_estimate is not none %}
+    <dt>Estimated rows</dt>
+    <dd>{{ row_estimate }}</dd>
+    {% endif %}
+</dl>
+
+<h2>Columns</h2>
+{% if columns %}
+<div class="table-wrapper">
+<table class="disc-table">
+    <thead>
+        <tr><th>#</th><th>Column</th><th>Type</th><th>Nullable</th><th>Default</th></tr>
+    </thead>
+    <tbody>
+        {% for c in columns %}
+        <tr>
+            <td class="num">{{ c.ordinal_position }}</td>
+            <td><strong>{{ c.column_name }}</strong></td>
+            <td><code>{{ c.data_type }}</code></td>
+            <td>{{ c.is_nullable }}</td>
+            <td>{% if c.column_default %}<code>{{ c.column_default }}</code>{% else %}<span class="muted">-</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="disc-empty muted">No column metadata captured for this asset.</div>
+{% endif %}
+
+<h2>Entities ({{ entities|length }})</h2>
+{% if entities %}
+<div class="table-wrapper">
+<table class="disc-table">
+    <thead>
+        <tr><th>Entity</th><th>Type</th><th class="num">Prominence</th></tr>
+    </thead>
+    <tbody>
+        {% for e in entities %}
+        <tr>
+            <td>
+                <a href="/dashboard/discovery/entities/{{ e.entity_type|urlencode }}/{{ e.entity_text|urlencode }}">
+                    {{ e.entity_text }}
+                </a>
+            </td>
+            <td><span class="disc-badge disc-badge-{{ e.entity_type }}">{{ e.entity_type }}</span></td>
+            <td class="num">{{ "%.2f"|format(e.prominence) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="disc-empty muted">No entities cross-referenced.</div>
+{% endif %}
+
+<h2>Related assets</h2>
+{% if related %}
+<div class="table-wrapper">
+<table class="disc-table">
+    <thead>
+        <tr><th>Asset</th><th>Source</th><th class="num">Shared entities</th></tr>
+    </thead>
+    <tbody>
+        {% for r in related %}
+        <tr class="disc-row">
+            <td>
+                <a href="/dashboard/discovery/assets/{{ r.asset_id }}">
+                    <strong>{{ r.title or r.asset_path }}</strong>
+                </a>
+                <div class="disc-asset-path"><code>{{ r.asset_path }}</code></div>
+            </td>
+            <td>{{ r.source_id }}</td>
+            <td class="num">{{ r.shared_entities }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="disc-empty muted">No related assets found yet.</div>
+{% endif %}
+{% endblock %}

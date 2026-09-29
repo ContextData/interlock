@@ -1,0 +1,117 @@
+{# Inner tab body for /dashboard/discovery. Returned when active_tab
+   changes via HTMX. #}
+{% if active_tab == 'entities' %}
+<div class="disc-tab-body">
+    <input type="text"
+           name="q"
+           class="disc-tab-search"
+           placeholder="Filter entities..."
+           hx-get="/dashboard/discovery?tab=entities"
+           hx-trigger="keyup changed delay:250ms"
+           hx-target="#discovery-content"
+           hx-include="this"
+           value="{{ q|default('') }}">
+    {% if entities %}
+    <div class="table-wrapper">
+    <table class="disc-table">
+        <thead>
+            <tr>
+                <th>Entity</th>
+                <th>Type</th>
+                <th class="num">Mentions</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in entities %}
+            <tr class="disc-row">
+                <td><a href="/dashboard/discovery/entities/{{ e.entity_type|urlencode }}/{{ e.text|urlencode }}">{{ e.text }}</a></td>
+                <td><span class="disc-badge disc-badge-{{ e.entity_type }}">{{ e.entity_type }}</span></td>
+                <td class="num">{{ e.doc_count }}</td>
+                <td><a class="btn btn-link" href="/dashboard/discovery/entities/{{ e.entity_type|urlencode }}/{{ e.text|urlencode }}">Details</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="disc-empty">No entities yet. Run a rescan or wait for the initial scan to finish.</div>
+    {% endif %}
+</div>
+{% elif active_tab == 'categories' %}
+<div class="disc-tab-body">
+    {% if categories %}
+    <div class="table-wrapper">
+    <table class="disc-table">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Path</th>
+                <th class="num">Assets</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in categories %}
+            <tr class="disc-row">
+                <td><a href="/dashboard/discovery/categories/{{ c.path|urlencode }}">{{ c.name }}</a></td>
+                <td><code>{{ c.path }}</code></td>
+                <td class="num">{{ c.doc_count }}</td>
+                <td>{% if c.has_children %}<span class="disc-pill">has children</span>{% endif %}</td>
+                <td><a class="btn btn-link" href="/dashboard/discovery/categories/{{ c.path|urlencode }}">Details</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="disc-empty">No categories yet. The cataloger creates these from source + schema during a rescan.</div>
+    {% endif %}
+</div>
+{% else %}
+<div class="disc-tab-body">
+    <input type="text"
+           name="q"
+           class="disc-tab-search"
+           placeholder="Filter assets..."
+           hx-get="/dashboard/discovery?tab=assets"
+           hx-trigger="keyup changed delay:250ms"
+           hx-target="#discovery-content"
+           hx-include="this"
+           value="{{ q|default('') }}">
+    {% if assets %}
+    <div class="table-wrapper">
+    <table class="disc-table">
+        <thead>
+            <tr>
+                <th>Asset</th>
+                <th>Source</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in assets %}
+            <tr class="disc-row">
+                <td>
+                    <a href="/dashboard/discovery/assets/{{ a.id }}">
+                        <strong>{{ a.title or a.asset_path }}</strong>
+                    </a>
+                    <div class="disc-asset-path"><code>{{ a.asset_path }}</code></div>
+                </td>
+                <td>{{ a.source_id }}</td>
+                <td><span class="disc-badge">{{ a.asset_type }}</span></td>
+                <td>{% if a.category_path %}<code>{{ a.category_path }}</code>{% else %}<span class="muted">-</span>{% endif %}</td>
+                <td><a class="btn btn-link" href="/dashboard/discovery/assets/{{ a.id }}">Details</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="disc-empty">No assets yet. Click Rescan Sources to introspect registered PostgreSQL sources.</div>
+    {% endif %}
+</div>
+{% endif %}

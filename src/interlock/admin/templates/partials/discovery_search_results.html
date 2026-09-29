@@ -1,0 +1,35 @@
+{# HTMX partial: ranked results from /dashboard/discovery/search #}
+{% if q %}
+    {% if results %}
+    <div class="disc-search-meta">
+        {{ results|length }} result{{ '' if results|length == 1 else 's' }}
+        for "<strong>{{ q }}</strong>"
+        {% if not engine_available %}
+            <span class="disc-engine-warn">
+                (semantic engine unavailable; PG-only fallback)
+            </span>
+        {% endif %}
+    </div>
+    <ul class="disc-result-list">
+        {% for r in results %}
+        <li class="disc-result">
+            <a href="/dashboard/discovery/assets/{{ r.asset_id }}" class="disc-result-link">
+                <div class="disc-result-title">
+                    <strong>{{ r.title or r.asset_path }}</strong>
+                    <span class="disc-badge">{{ r.asset_type }}</span>
+                </div>
+                <div class="disc-result-meta">
+                    <span class="disc-result-source">{{ r.source_id }}</span>
+                    <code>{{ r.asset_path }}</code>
+                    <span class="disc-result-score">
+                        {{ r.strategy }}, RRF {{ "%.4f"|format(r.score) }}
+                    </span>
+                </div>
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <div class="disc-empty">No results for "{{ q }}".</div>
+    {% endif %}
+{% endif %}

@@ -1,0 +1,117 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Overview - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Overview</h1>
+</div>
+
+{% if pending_approvals > 0 %}
+<div class="alert-banner alert-banner--warning">
+    <a href="/dashboard/write-safety" hx-get="/dashboard/write-safety" hx-target="#main-content" hx-push-url="true">
+        {{ pending_approvals }} pending approval{{ ' requires' if pending_approvals == 1 else 's require' }} attention.
+    </a>
+</div>
+{% endif %}
+{% if errors_24h > 0 %}
+<div class="alert-banner alert-banner--error">
+    {{ errors_24h }} error{{ 's' if errors_24h != 1 else '' }} in the last 24 hours
+</div>
+{% endif %}
+
+<div class="stat-grid">
+    <div class="stat-card stat-card--info">
+        <div class="stat-value">{{ requests_24h }}</div>
+        <div class="stat-label">Requests 24h</div>
+    </div>
+    <div class="stat-card stat-card--success">
+        <div class="stat-value">{{ cache_hit_rate }}%</div>
+        <div class="stat-label">Cache Hit Rate</div>
+    </div>
+    <a class="stat-card" href="/dashboard/data-sources" hx-get="/dashboard/data-sources" hx-target="#main-content" hx-push-url="true">
+        <div class="stat-value">{{ active_sources }}</div>
+        <div class="stat-label">Active Sources</div>
+    </a>
+    <a class="stat-card" href="/dashboard/workers" hx-get="/dashboard/workers" hx-target="#main-content" hx-push-url="true">
+        <div class="stat-value">{{ healthy_workers|default(active_workers) }}</div>
+        <div class="stat-label">Healthy Workers</div>
+    </a>
+    <a class="stat-card stat-card--warning" href="/dashboard/write-safety" hx-get="/dashboard/write-safety" hx-target="#main-content" hx-push-url="true">
+        <div class="stat-value">{{ pending_approvals }}</div>
+        <div class="stat-label">Pending Approvals</div>
+    </a>
+    <div class="stat-card stat-card--error">
+        <div class="stat-value">{{ errors_24h }}</div>
+        <div class="stat-label">Errors 24h</div>
+    </div>
+</div>
+
+<div class="split-section">
+    <h2>Job Pipeline</h2>
+    <div class="summary-stats">
+        <div class="summary-stat summary-stat--queued"><span class="count">{{ queue_depth|default(job_queued) }}</span><span class="label">Queue Depth</span></div>
+        <div class="summary-stat summary-stat--processing"><span class="count">{{ active_jobs|default(job_processing) }}</span><span class="label">Active Jobs</span></div>
+        <div class="summary-stat summary-stat--failed"><span class="count">{{ stale_workers|default(0) }}</span><span class="label">Stale Workers</span></div>
+        <div class="summary-stat summary-stat--completed"><span class="count">{{ job_completed }}</span><span class="label">Completed</span></div>
+        <div class="summary-stat summary-stat--failed"><span class="count">{{ job_failed }}</span><span class="label">Failed</span></div>
+    </div>
+</div>
+
+<div class="split-section">
+    <h2>Recent Activity</h2>
+    {% if recent_activity %}
+    <div class="table-wrapper">
+        <table class="mini-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Identity</th>
+                    <th>Source</th>
+                    <th>Operation</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in recent_activity %}
+                <tr>
+                    <td>{{ row.created_at|fmt_dt }}</td>
+                    <td>{{ row.identity_id|identity_label(row.identity_name, row.identity_deleted) }}</td>
+                    <td>{{ row.source_id or '-' }}</td>
+                    <td>{{ row.operation or '-' }}</td>
+                    <td><span class="badge badge-{{ row.status|default('pending')|lower }}">{{ row.status|default('-') }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><p>No recent activity.</p></div>
+    {% endif %}
+</div>
+
+<div class="split-section">
+    <h2>System Components</h2>
+    {# P1-B: component health dots are driven by real status checks
+       supplied by the route, not hard-coded green. ``components`` is a
+       list of dicts ``{name, detail, status}`` where status is one of
+       ``ok``, ``degraded``, ``down``, ``unknown``. #}
+    <div class="component-grid"
+         hx-get="/dashboard/overview/components"
+         hx-trigger="every 5s"
+         hx-swap="innerHTML">
+        {% for c in components %}
+        <div class="component-item" data-component="{{ c.name }}" data-status="{{ c.status }}">
+            <span class="health-dot health-{% if c.status == 'ok' %}green{% elif c.status == 'degraded' %}yellow{% elif c.status == 'down' %}red{% else %}gray{% endif %}" aria-hidden="true"></span>
+            <div><div class="comp-name">{{ c.name }}</div><div class="comp-detail"><span class="status-label">{{ c.status }}</span> - {{ c.detail|default('') }}</div></div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if cache_tiers %}
+<div class="split-section">
+    <h2>Cache Performance (24h)</h2>
+    {% include "partials/cache_tier_chart.html" %}
+</div>
+{% endif %}
+{% endblock %}

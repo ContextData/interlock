@@ -1,0 +1,261 @@
+services:
+  gateway:
+    environment:
+      INTERLOCK_E2E: "1"
+      INTERLOCK_ADMIN__SECRET_KEY: "interlock-e2e-admin-secret"
+      INTERLOCK_ADMIN__BOOTSTRAP_PASSWORD: "e2e-admin-password"
+      INTERLOCK_ADMIN__CATALOG_ON_STARTUP: "false"
+      INTERLOCK_EMBEDDING_MODEL: "deterministic-test"
+      ANTHROPIC_API_KEY: ""
+      MISTRAL_API_KEY: ""
+      # Production requires strict (config.py validates it), and the e2e stack
+      # ran `retriable` - the one mode in which AuditBuffer.log() can never
+      # refuse a request. Every fail-closed behaviour pinned by unit tests was
+      # therefore unreachable end to end, and the stack certified a
+      # configuration nobody ships.
+      INTERLOCK_AUDIT__DURABILITY_MODE: "strict"
+      INTERLOCK_AUDIT__SPOOL_PATH: "/var/lib/interlock/audit-spool"
+      # Approval notifications against a fake Slack receiver on the mock
+      # upstream. The Gateway uses the webhook transport and the Admin uses the
+      # bot transport, so one stack certifies both. A short sweep interval
+      # keeps the expiry test from taking half a minute.
+      INTERLOCK_NOTIFICATIONS__ENABLED: "true"
+      INTERLOCK_NOTIFICATIONS__SLACK_WEBHOOK_URL_REF: "env://E2E_SLACK_WEBHOOK_URL"
+      INTERLOCK_NOTIFICATIONS__ADMIN_BASE_URL: "http://localhost:9090"
+      INTERLOCK_NOTIFICATIONS__ALLOW_PRIVATE_EGRESS: "true"
+      E2E_SLACK_WEBHOOK_URL: "http://http-upstream:8088/slack/webhook"
+      # Sweep interval left at the default. A short one was set here for an
+      # expiry test that was not kept, and it made the sweep re-query the
+      # control database every few seconds - including while the durability
+      # tests hold that database down, where it competes with the audit
+      # flusher for pool connections during recovery.
+      INTERLOCK_APPROVALS__EXPIRY_SECONDS: "3600"
+    volumes:
+      # The spool has to outlive the container for a replay test to mean
+      # anything: on the writable layer it vanishes with `--force-recreate`,
+      # so a "replayed after restart" assertion would be proving that an empty
+      # spool replays nothing.
+      - audit-spool:/var/lib/interlock/audit-spool
+    # AuditBuffer.shutdown() can take up to 20s (a 10s task join plus a 10s
+    # drain deadline). Docker's default grace is 10s, so a restart used to
+    # SIGKILL the gateway mid-drain and lose the in-memory backlog - which
+    # would have shown up as data loss caused by the test harness rather than
+    # by the system under test.
+    stop_grace_period: 30s
+    depends_on:
+      source-postgres:
+        condition: service_healthy
+      source-mysql:
+        condition: service_healthy
+      http-upstream:
+        condition: service_started
+      s3-upstream:
+        condition: service_healthy
+      source-opensearch:
+        condition: service_healthy
+      source-qdrant:
+        condition: service_healthy
+      enterprise-sources:
+        condition: service_started
+
+  admin:
+    environment:
+      INTERLOCK_E2E: "1"
+      INTERLOCK_ADMIN__SECRET_KEY: "interlock-e2e-admin-secret"
+      INTERLOCK_ADMIN__BOOTSTRAP_PASSWORD: "e2e-admin-password"
+      INTERLOCK_ADMIN__CATALOG_ON_STARTUP: "false"
+      INTERLOCK_EMBEDDING_MODEL: "deterministic-test"
+      ANTHROPIC_API_KEY: ""
+      MISTRAL_API_KEY: ""
+      # Bot-token transport; the token shape deliberately avoids the real
+      # xoxb-<digits> pattern the secret scanner blocks.
+      INTERLOCK_NOTIFICATIONS__ENABLED: "true"
+      INTERLOCK_NOTIFICATIONS__SLACK_BOT_TOKEN_REF: "env://E2E_SLACK_BOT_TOKEN"
+      INTERLOCK_NOTIFICATIONS__SLACK_CHANNEL: "#e2e-approvals"
+      INTERLOCK_NOTIFICATIONS__SLACK_API_BASE_URL: "http://http-upstream:8088/slack/api"
+      INTERLOCK_NOTIFICATIONS__ADMIN_BASE_URL: "http://localhost:9090"
+      INTERLOCK_NOTIFICATIONS__ALLOW_PRIVATE_EGRESS: "true"
+      E2E_SLACK_BOT_TOKEN: "xoxb-e2e-fake"
+      INTERLOCK_APPROVALS__EXPIRY_SECONDS: "3600"
+    depends_on:
+      source-postgres:
+        condition: service_healthy
+      source-mysql:
+        condition: service_healthy
+      http-upstream:
+        condition: service_started
+      s3-upstream:
+        condition: service_healthy
+      source-opensearch:
+        condition: service_healthy
+      source-qdrant:
+        condition: service_healthy
+      enterprise-sources:
+        condition: service_started
+
+  worker-1:
+    environment:
+      INTERLOCK_E2E: "1"
+      WORKER_ID: "e2e-worker-1"
+      HEARTBEAT_INTERVAL: "2"
+      MAX_CONCURRENT_DOCS: "1"
+      MAX_RETRIES: "2"
+      INTERLOCK_EMBEDDING_MODEL: "deterministic-test"
+      ANTHROPIC_API_KEY: ""
+      MISTRAL_API_KEY: ""
+    volumes:
+      - ./tests/e2e/fixtures:/e2e/fixtures:ro
+    depends_on:
+      source-postgres:
+        condition: service_healthy
+      source-mysql:
+        condition: service_healthy
+      s3-upstream:
+        condition: service_healthy
+      source-opensearch:
+        condition: service_healthy
+      source-qdrant:
+        condition: service_healthy
+      enterprise-sources:
+        condition: service_started
+
+  worker-2:
+    environment:
+      INTERLOCK_E2E: "1"
+      WORKER_ID: "e2e-worker-2"
+      HEARTBEAT_INTERVAL: "2"
+      MAX_CONCURRENT_DOCS: "1"
+      MAX_RETRIES: "2"
+      INTERLOCK_EMBEDDING_MODEL: "deterministic-test"
+      ANTHROPIC_API_KEY: ""
+      MISTRAL_API_KEY: ""
+    volumes:
+      - ./tests/e2e/fixtures:/e2e/fixtures:ro
+    depends_on:
+      source-postgres:
+        condition: service_healthy
+      source-mysql:
+        condition: service_healthy
+      s3-upstream:
+        condition: service_healthy
+      source-opensearch:
+        condition: service_healthy
+      source-qdrant:
+        condition: service_healthy
+      enterprise-sources:
+        condition: service_started
+
+  source-postgres:
+    image: postgres:16
+    ports:
+      - "55433:5432"
+    environment:
+      POSTGRES_USER: source_user
+      POSTGRES_PASSWORD: source_pass
+      POSTGRES_DB: source_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U source_user -d source_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - interlock-net
+
+  source-mysql:
+    image: mariadb:11.4
+    ports:
+      - "33306:3306"
+    environment:
+      MARIADB_DATABASE: source_db
+      MARIADB_USER: source_user
+      MARIADB_PASSWORD: source_pass
+      MARIADB_ROOT_PASSWORD: root_pass
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -proot_pass --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - ./tests/e2e/fixtures/mysql/init.sql:/docker-entrypoint-initdb.d/001_seed.sql:ro
+    networks:
+      - interlock-net
+
+  http-upstream:
+    image: python:3.12-slim
+    command: ["python", "-u", "/app/http_upstream.py"]
+    environment:
+      HTTP_UPSTREAM_PORT: "8088"
+    ports:
+      - "18088:8088"
+    volumes:
+      - ./tests/e2e/support/http_upstream.py:/app/http_upstream.py:ro
+    networks:
+      - interlock-net
+
+  enterprise-sources:
+    image: python:3.12-slim
+    command: ["python", "-u", "/app/enterprise_sources.py"]
+    environment:
+      ENTERPRISE_SOURCES_PORT: "8090"
+    ports:
+      - "18090:8090"
+    volumes:
+      - ./tests/e2e/support/enterprise_sources.py:/app/enterprise_sources.py:ro
+    networks:
+      - interlock-net
+
+  source-opensearch:
+    image: opensearchproject/opensearch:2.17.1
+    ports:
+      - "19200:9200"
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks:
+      - interlock-net
+
+  source-qdrant:
+    image: qdrant/qdrant:v1.12.4
+    ports:
+      - "16333:6333"
+      - "16334:6334"
+    healthcheck:
+      test: ["CMD", "/qdrant/qdrant", "--version"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks:
+      - interlock-net
+
+  # adobe/s3mock rather than MinIO: MinIO withdrew its images from public
+  # registries - quay.io now requires authentication and Docker Hub no longer
+  # carries the repository - so `make e2e-up` failed at image pull for everyone.
+  # localstack was tried first and is license-gated: every published tag exits
+  # 55 without an auth token. s3mock serves the S3 API the connector drives
+  # through boto3 and creates its buckets at startup, so no client container is
+  # needed; the discovery fixtures are uploaded by tests/e2e/support/seed.py.
+  s3-upstream:
+    image: adobe/s3mock:4.7.0
+    ports:
+      - "19000:9090"
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: "interlock-e2e,interlock-spaces-e2e"
+      COM_ADOBE_TESTING_S3MOCK_STORE_REGION: us-east-1
+    healthcheck:
+      # wget, not curl: the s3mock image ships busybox wget and no curl, so a
+      # curl healthcheck never passes and `up --wait` waits forever.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9090/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - interlock-net
+
+volumes:
+  audit-spool:

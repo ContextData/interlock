@@ -1,0 +1,14 @@
+{# Connection probe result strip. Swapped in by the Test button. #}
+{% if ok %}
+<div class="test-result test-ok" role="status">
+  <span class="health-dot health-green"></span>
+  Connected in {{ latency_ms }} ms
+  {% if error %}<span class="muted"> - note: {{ error }}</span>{% endif %}
+</div>
+{% else %}
+<div class="test-result test-fail" role="alert">
+  <span class="health-dot health-red"></span>
+  Connection failed: {{ error or 'unknown error' }}
+  <span class="muted"> ({{ latency_ms }} ms)</span>
+</div>
+{% endif %}

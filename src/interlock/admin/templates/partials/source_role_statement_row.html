@@ -1,0 +1,98 @@
+{# One permission statement, rendered from the source's vocabulary
+   (connections/role_vocabulary.py). Changing the action re-renders the row so
+   the resource types, pattern hint and suggestions follow it. A value outside
+   the vocabulary - saved before the vocabulary existed - is shown as "Kept as
+   saved" and posts back unchanged. #}
+{% set action_known = perm.action in vocab.actions or perm.action == '*' %}
+{% set rtypes = vocab.resource_types_for(perm.action) if perm.action else () %}
+{% set rspec = vocab.resource_types.get(perm.resource_type) %}
+{% set refresh %}hx-get="/dashboard/data-sources/{{ source_id }}/roles/statement-row" hx-trigger="change" hx-include="closest .permission-row" hx-target="closest .permission-row" hx-swap="outerHTML"{% endset %}
+<div class="permission-row" id="perm-row-{{ uid }}">
+  <input type="hidden" name="row_uid" value="{{ uid }}">
+  <label>Effect
+    <select name="permission_effect">
+      <option value="allow" {% if perm.effect != 'deny' %}selected{% endif %}>Allow</option>
+      <option value="deny" {% if perm.effect == 'deny' %}selected{% endif %}>Deny</option>
+    </select>
+  </label>
+  <label>Action
+    <select name="permission_action" id="perm-action-{{ uid }}" {{ refresh }}>
+      {% if not perm.action %}<option value="" selected>Choose an action</option>{% endif %}
+      {% for group_label, members in vocab.grouped_actions() %}
+      <optgroup label="{{ group_label }}">
+        {% for a in members %}
+        <option value="{{ a.key }}" title="{{ a.description }}" {% if a.key == perm.action %}selected{% endif %}>{{ a.label }}</option>
+        {% endfor %}
+      </optgroup>
+      {% endfor %}
+      <optgroup label="Everything">
+        <option value="*" {% if perm.action == '*' %}selected{% endif %}>Any action (*)</option>
+      </optgroup>
+      {% if perm.action and not action_known %}
+      <optgroup label="Kept as saved">
+        <option value="{{ perm.action }}" selected>{{ perm.action }}</option>
+      </optgroup>
+      {% endif %}
+    </select>
+    {% if perm.action in vocab.actions %}<span class="field-help"><code>{{ perm.action }}</code> - {{ vocab.actions[perm.action].description }}</span>{% endif %}
+  </label>
+  <label>Resource type
+    <select name="permission_resource_type" id="perm-type-{{ uid }}" {{ refresh }}>
+      {% for key in rtypes %}
+      <option value="{{ key }}" {% if key == perm.resource_type %}selected{% endif %}>{{ vocab.resource_types[key].label }}</option>
+      {% endfor %}
+      <option value="*" {% if perm.resource_type == '*' %}selected{% endif %}>Any (*)</option>
+      {% if perm.resource_type and perm.resource_type != '*' and perm.resource_type not in rtypes %}
+      <option value="{{ perm.resource_type }}" selected>{{ perm.resource_type }} (kept as saved)</option>
+      {% endif %}
+    </select>
+    {% if rspec %}<span class="field-help"><code>{{ rspec.key }}</code></span>{% endif %}
+  </label>
+  <label>Resource pattern
+    <input name="permission_resource_pattern" value="{{ perm.resource_pattern }}" data-catalog-pick="pattern"
+           {% if rspec %}list="role-patterns-{{ rspec.key|replace('.', '-') }}" placeholder="{{ rspec.examples[0] if rspec.examples else '*' }}"{% else %}placeholder="*"{% endif %}
+           autocomplete="off">
+    <span class="field-help">{% if rspec %}{{ rspec.pattern_hint }}{% else %}* matches everything.{% endif %}</span>
+  </label>
+  {% set applicable = vocab.constraints_for(perm.action) if perm.action else () %}
+  {% set current = perm.constraints if perm.constraints is mapping else {} %}
+  <div class="constraint-cell">
+    <details class="constraint-builder" {% if current %}open{% endif %}>
+      <summary>Conditions{% if current %} ({{ current|length }}){% else %} (optional){% endif %}</summary>
+      {% if applicable %}
+      <p class="field-help">A statement applies only to requests that meet every condition set here.</p>
+      {% for key in applicable %}
+      {% set spec = vocab.constraints[key] %}
+      <fieldset class="constraint-field" data-constraint-key="{{ key }}" data-constraint-type="{{ spec.type }}">
+        <legend>{{ spec.label }}</legend>
+        {% if spec.type == 'enum_list' %}
+        <div class="constraint-choices">
+          {% for choice in spec.choices %}
+          <label class="checkbox"><input type="checkbox" class="js-constraint-input" value="{{ choice }}" {% if choice in (current.get(key) or []) %}checked{% endif %}> {{ choice }}</label>
+          {% endfor %}
+        </div>
+        {% elif spec.type == 'bool' %}
+        <label class="checkbox"><input type="checkbox" class="js-constraint-input" value="true" {% if current.get(key) %}checked{% endif %}> Yes</label>
+        {% else %}
+        <input type="text" class="js-constraint-input" list="constraint-suggest-{{ key }}" autocomplete="off"
+               value="{{ (current.get(key) or [])|join(', ') }}" placeholder="Comma-separated">
+        {% endif %}
+        <span class="field-help">{{ spec.help }}</span>
+      </fieldset>
+      {% endfor %}
+      {% else %}
+      <p class="field-help">No conditions apply to this action on this source.</p>
+      {% endif %}
+      {% set unknown = current.keys()|reject('in', applicable)|list %}
+      {% if unknown %}
+      <p class="field-help">Also set, not offered for this action: {% for key in unknown %}<code>{{ key }}</code>{% if not loop.last %}, {% endif %}{% endfor %}. Edit them as JSON.</p>
+      {% endif %}
+      <details class="constraint-json">
+        <summary>Edit as JSON</summary>
+        <textarea name="permission_constraints" class="js-constraint-json" rows="2"
+                  {{ refresh }}>{{ perm.constraints if perm.constraints is string else (perm.constraints or {})|tojson }}</textarea>
+      </details>
+    </details>
+  </div>
+  <button type="button" class="btn btn-link js-remove-permission-row">Remove</button>
+</div>

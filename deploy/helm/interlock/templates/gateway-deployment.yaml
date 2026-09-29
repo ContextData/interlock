@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "interlock.fullname" . }}-gateway
+  labels:
+    {{- include "interlock.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  serviceName: {{ include "interlock.fullname" . }}-gateway
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  replicas: {{ .Values.gateway.replicas }}
+  selector:
+    matchLabels:
+      {{- include "interlock.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  template:
+    metadata:
+      annotations:
+        {{- include "interlock.podAnnotations" . | nindent 8 }}
+      labels:
+        {{- include "interlock.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: gateway
+    spec:
+      {{- include "interlock.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: gateway
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          image: {{ include "interlock.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "-m", "interlock.gateway"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.service.httpPort }}
+              protocol: TCP
+            - name: pg
+              containerPort: {{ .Values.gateway.service.pgPort }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "interlock.fullname" . }}-config
+            {{- with .Values.gateway.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            - name: INTERLOCK_SERVICE_ROLE
+              value: gateway
+            - name: INTERLOCK_DATABASE__USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | default (printf "%s-db-credentials" (include "interlock.fullname" .)) }}
+                  key: {{ .Values.database.secretUserKey }}
+            - name: INTERLOCK_DATABASE__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | default (printf "%s-db-credentials" (include "interlock.fullname" .)) }}
+                  key: {{ .Values.database.secretPasswordKey }}
+            - name: INTERLOCK_AUTH__API_KEY_PEPPER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "auth.apiKeyPepperExistingSecret is required" .Values.auth.apiKeyPepperExistingSecret }}
+                  key: {{ .Values.auth.apiKeyPepperSecretKey }}
+            {{- include "interlock.redisEnv" . | nindent 12 }}
+            {{- with .Values.gateway.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.gateway.probes.livenessPath | quote }}
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.gateway.probes.readinessPath | quote }}
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: home
+              mountPath: /home/interlock
+            - name: audit-spool
+              mountPath: {{ .Values.gateway.auditSpool.mountPath | quote }}
+            - name: control-db-ca
+              mountPath: /run/secrets/control-db-ca
+              readOnly: true
+            - name: pg-listener-tls
+              mountPath: /run/secrets/pg-listener-tls
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: home
+          emptyDir: {}
+        {{- if .Values.gateway.auditSpool.existingClaim }}
+        - name: audit-spool
+          persistentVolumeClaim:
+            claimName: {{ .Values.gateway.auditSpool.existingClaim | quote }}
+        {{- else if not .Values.gateway.auditSpool.enabled }}
+        - name: audit-spool
+          emptyDir: {}
+        {{- end }}
+        - name: control-db-ca
+          secret:
+            secretName: {{ required "database.caExistingSecret is required" .Values.database.caExistingSecret }}
+            items:
+              - key: {{ .Values.database.caSecretKey }}
+                path: ca.crt
+        - name: pg-listener-tls
+          secret:
+            secretName: {{ required "gateway.pgTls.existingSecret is required" .Values.gateway.pgTls.existingSecret }}
+            items:
+              - key: {{ .Values.gateway.pgTls.certKey }}
+                path: tls.crt
+              - key: {{ .Values.gateway.pgTls.privateKeyKey }}
+                path: tls.key
+  {{- if and .Values.gateway.auditSpool.enabled (not .Values.gateway.auditSpool.existingClaim) }}
+  volumeClaimTemplates:
+    {{- /*
+      Stable labels only. volumeClaimTemplates is immutable, and the full label
+      set carries helm.sh/chart and app.kubernetes.io/version, which change with
+      every release, so an upgrade to any newer chart was refused and rolled back.
+    */}}
+    - metadata:
+        name: audit-spool
+        labels:
+          {{- include "interlock.selectorLabels" . | nindent 10 }}
+          app.kubernetes.io/component: gateway
+      spec:
+        accessModes:
+          {{- toYaml .Values.gateway.auditSpool.accessModes | nindent 10 }}
+        {{- if .Values.gateway.auditSpool.storageClassName }}
+        storageClassName: {{ .Values.gateway.auditSpool.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.gateway.auditSpool.size | quote }}
+  {{- end }}

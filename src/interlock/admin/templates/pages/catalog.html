@@ -1,0 +1,55 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Catalog - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Catalog</h1>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="/dashboard/catalog/analytics"
+       hx-get="/dashboard/catalog/analytics" hx-target="#main-content" hx-push-url="true">Access analytics</a>
+  </div>
+</div>
+
+<div class="detail-stack">
+  <section class="card">
+    <p class="muted">The structure of every source InterLock can enumerate: schemas, tables and columns, recorded by the workers' scans. Names and types only - no values are ever stored.</p>
+    <dl class="form-summary fact-table">
+      <dt>Sources</dt><dd>{{ overview.succeeded }}/{{ overview.sources_scanned }} scanned successfully{% if overview.failed %}, {{ overview.failed }} failing{% endif %}</dd>
+      <dt>Recorded</dt><dd>{{ overview.tables }} tables and views, {{ overview.columns }} columns</dd>
+      <dt>Last scan</dt><dd>{% if overview.last_finished_at %}{{ overview.last_finished_at | fmt_dt }}{% else %}<span class="muted">none yet</span>{% endif %}{% if overview.running or overview.pending %} <small class="muted">{{ overview.running }} running, {{ overview.pending }} waiting</small>{% endif %}</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <form class="filter-bar" hx-get="/dashboard/catalog" hx-target="#catalog-results" hx-swap="innerHTML">
+      <div class="form-row"><label for="catalog-q">Search</label><input id="catalog-q" type="search" name="q" value="{{ q }}" placeholder="Name or dotted path"></div>
+      <div class="form-row"><label for="catalog-source">Source</label>
+        <select id="catalog-source" name="source">
+          <option value="">All sources</option>
+          {% for s in sources %}<option value="{{ s }}" {% if s == source %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-row"><label for="catalog-node_type">Type</label>
+        <select id="catalog-node_type" name="node_type">
+          <option value="">Any type</option>
+          {% for t in node_types %}<option value="{{ t }}" {% if t == node_type %}selected{% endif %}>{{ t }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-row"><label for="catalog-classification">Classification</label>
+        <select id="catalog-classification" name="classification">
+          <option value="">Any</option>
+          <option value="pii_any" {% if classification == 'pii_any' %}selected{% endif %}>PII or sensitive, including likely</option>
+          <option value="pii" {% if classification == 'pii' %}selected{% endif %}>pii</option>
+          <option value="sensitive" {% if classification == 'sensitive' %}selected{% endif %}>sensitive</option>
+          <option value="not_pii" {% if classification == 'not_pii' %}selected{% endif %}>not pii</option>
+          <option value="public" {% if classification == 'public' %}selected{% endif %}>public</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">Search</button>
+    </form>
+    <div id="catalog-results">
+      {% include "partials/catalog_results.html" %}
+    </div>
+  </section>
+</div>
+{% endblock %}

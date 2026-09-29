@@ -1,0 +1,70 @@
+# Live certification overlay.
+#
+# The governed live sources store `env://` references in their
+# connection_config rather than literal credentials, so that no live secret is
+# written to the control database or served back by /api/data-sources. Those
+# references are resolved by the *gateway*, inside its container, which
+# therefore needs the variables in its own environment.
+#
+# Every entry below is a pass-through: a name with no value inherits from the
+# process running `docker compose`. That process is
+# `tests/live/support/stack.py`, which loads the credential file and exports
+# into its own environment before exec'ing compose - so the values never
+# appear in this file, in shell history, or in the command line.
+#
+# Deliberately a separate overlay rather than an addition to
+# docker-compose.e2e.yml: pointing the stack at production systems must be an
+# explicit act, not something the ordinary e2e stack does by default.
+#
+# Usage:  make live-up   (never `docker compose up` by hand)
+
+services:
+  gateway:
+    environment:
+      # PostgreSQL - the source connects as generic_write_user, which holds
+      # SELECT plus INSERT/UPDATE, so both read and write governance are
+      # testable against it.
+      INTERLOCK_LIVE_PG_PASSWORD_GENERIC_WRITE_USER:
+      # MySQL - deliberately generic_full_user, which holds ALL PRIVILEGES on
+      # the database. Using the *least* restricted upstream user is what makes
+      # the governance conclusion falsifiable: if the request is refused, only
+      # InterLock can have refused it. A restricted upstream user would make
+      # "InterLock blocked the write" indistinguishable from "the database
+      # blocked the write".
+      INTERLOCK_LIVE_MYSQL_PASSWORD_GENERIC_FULL_USER:
+      INTERLOCK_LIVE_S3_ACCESS_KEY_ID:
+      INTERLOCK_LIVE_S3_SECRET_ACCESS_KEY:
+      INTERLOCK_LIVE_SLACK_BOT_TOKEN:
+      INTERLOCK_LIVE_GWS_SERVICE_ACCOUNT_JSON:
+
+  admin:
+    environment:
+      # The admin console resolves the same references when probing a source
+      # from the UI or the JSON API.
+      INTERLOCK_LIVE_PG_PASSWORD_GENERIC_WRITE_USER:
+      INTERLOCK_LIVE_MYSQL_PASSWORD_GENERIC_FULL_USER:
+      INTERLOCK_LIVE_S3_ACCESS_KEY_ID:
+      INTERLOCK_LIVE_S3_SECRET_ACCESS_KEY:
+      INTERLOCK_LIVE_SLACK_BOT_TOKEN:
+      INTERLOCK_LIVE_GWS_SERVICE_ACCOUNT_JSON:
+
+  # The workers run catalog scans, which connect to the sources, so they need
+  # the same references. Without them every scan of a live source fails on an
+  # unresolvable `env://` reference.
+  worker-1:
+    environment:
+      INTERLOCK_LIVE_PG_PASSWORD_GENERIC_WRITE_USER:
+      INTERLOCK_LIVE_MYSQL_PASSWORD_GENERIC_FULL_USER:
+      INTERLOCK_LIVE_S3_ACCESS_KEY_ID:
+      INTERLOCK_LIVE_S3_SECRET_ACCESS_KEY:
+      INTERLOCK_LIVE_SLACK_BOT_TOKEN:
+      INTERLOCK_LIVE_GWS_SERVICE_ACCOUNT_JSON:
+
+  worker-2:
+    environment:
+      INTERLOCK_LIVE_PG_PASSWORD_GENERIC_WRITE_USER:
+      INTERLOCK_LIVE_MYSQL_PASSWORD_GENERIC_FULL_USER:
+      INTERLOCK_LIVE_S3_ACCESS_KEY_ID:
+      INTERLOCK_LIVE_S3_SECRET_ACCESS_KEY:
+      INTERLOCK_LIVE_SLACK_BOT_TOKEN:
+      INTERLOCK_LIVE_GWS_SERVICE_ACCOUNT_JSON:

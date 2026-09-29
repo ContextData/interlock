@@ -1,0 +1,20 @@
+<div class="modal-backdrop js-modal-backdrop" data-modal-root="source-modal-root">
+  <section class="modal-dialog modal-dialog-large"
+           role="dialog"
+           aria-modal="true"
+           aria-labelledby="source-wizard-modal-title">
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">Data Sources</p>
+        <h2 id="source-wizard-modal-title">New Source</h2>
+      </div>
+      <button type="button"
+              class="btn btn-link js-close-modal"
+              data-modal-root="source-modal-root"
+              aria-label="Close new source dialog">Close</button>
+    </div>
+    <div id="new-source-form-slot">
+      {% include "partials/wizard/step1_type.html" %}
+    </div>
+  </section>
+</div>

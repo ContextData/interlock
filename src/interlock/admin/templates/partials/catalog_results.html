@@ -1,0 +1,26 @@
+{% if results %}
+<div class="table-wrapper">
+  <table>
+    <thead><tr><th>Source</th><th>Type</th><th>Path</th><th>Data type</th><th>Classification</th><th>Last seen</th></tr></thead>
+    <tbody>
+      {% for node in results %}
+      <tr>
+        <td><a href="/dashboard/data-sources/{{ node.source_id }}" hx-get="/dashboard/data-sources/{{ node.source_id }}" hx-target="#main-content" hx-push-url="true">{{ node.source_id }}</a></td>
+        <td>{{ node.node_type | replace('_', ' ') }}</td>
+        <td><code>{{ node.path | join('.') }}</code></td>
+        <td>{{ node.data_type or '' }}</td>
+        <td>
+          {% if node.classification %}<span class="badge">{{ node.classification | replace('_', ' ') }}</span> <small class="muted">{{ node.classification_source }}</small>
+          {% elif node.likely_pii %}<span class="badge badge-warning">likely PII</span>
+          {% endif %}
+        </td>
+        <td>{{ node.last_seen_at | fmt_dt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if results | length >= result_limit %}<p class="muted">Showing the first {{ result_limit }} matches. Narrow the search to see more.</p>{% endif %}
+{% else %}
+<div class="empty-state"><p>No catalogued objects match.</p></div>
+{% endif %}

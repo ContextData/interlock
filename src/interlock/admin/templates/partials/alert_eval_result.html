@@ -1,0 +1,18 @@
+{# Strip shown after "Evaluate now". #}
+{% if error %}
+<div class="test-result test-fail" role="alert">
+  <span class="health-dot health-red"></span>
+  {{ error }}
+</div>
+{% elif result.fired %}
+<div class="test-result test-fail" role="status">
+  <span class="health-dot health-red"></span>
+  FIRED - {{ result.message }}
+  <span class="muted">(observed: {{ "%.4g"|format(result.observed_value) if result.observed_value is not none else '-' }})</span>
+</div>
+{% else %}
+<div class="test-result test-ok" role="status">
+  <span class="health-dot health-green"></span>
+  ok - {{ result.message }}
+</div>
+{% endif %}

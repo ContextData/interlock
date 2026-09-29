@@ -1,0 +1,23 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Entities - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Entity Explorer</h1>
+</div>
+
+<div class="search-box">
+    <input type="text"
+           name="q"
+           placeholder="Search entities..."
+           hx-get="/dashboard/entities/search"
+           hx-trigger="keyup changed delay:300ms"
+           hx-target="#entity-results-container"
+           hx-include="this"
+           value="{{ q }}">
+</div>
+
+<div id="entity-results-container">
+    {% include "partials/entity_results.html" %}
+</div>
+{% endblock %}

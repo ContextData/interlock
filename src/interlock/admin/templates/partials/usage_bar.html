@@ -1,0 +1,10 @@
+{# One stacked bar. Inline SVG because the console's CSP forbids style
+   attributes: each segment is a <rect> sized in percent of the busiest row
+   and coloured by class. #}
+<svg class="usage-bar" viewBox="0 0 100 10" preserveAspectRatio="none" role="img"
+     aria-label="{% for seg in row.segments %}{{ seg.count }} {{ outcome_labels[seg.outcome]|lower }}{% if not loop.last %}, {% endif %}{% endfor %}">
+  {% for seg in row.segments %}
+  <rect class="usage-seg usage-seg--{{ seg.outcome }}" x="{{ seg.x }}" y="0" width="{{ seg.width }}" height="10"><title>{{ outcome_labels[seg.outcome] }}: {{ seg.count }}</title></rect>
+  {% endfor %}
+</svg>
+<span class="usage-total num">{{ row.total }}</span>

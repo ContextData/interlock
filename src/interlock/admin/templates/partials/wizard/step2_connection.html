@@ -1,0 +1,173 @@
+{# Wizard step 2: connection config + Test button. #}
+<div class="form-card wizard">
+  <div class="wizard-progress" data-step="2">
+    <span class="step done">1. Type</span>
+    <span class="step active">2. Connection</span>
+    <span class="step">3. Schema</span>
+    <span class="step">4. Cache</span>
+    <span class="step">5. Review</span>
+  </div>
+  <h3>Connection details</h3>
+  <p class="muted">Connection tests contact the configured host through the gateway probe guard. Credentials used during this wizard stay in the server-side draft until the source is saved or cancelled.</p>
+  {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+
+  <form id="wizard-form">
+    <input type="hidden" name="wizard_id" value="{{ state.wizard_id|default('') }}">
+    <input type="hidden" name="name" value="{{ state.name }}">
+    <input type="hidden" name="source_type" value="{{ state.source_type }}">
+    <input type="hidden" name="connector_key" value="{{ state.connector_key }}">
+    <input type="hidden" name="create_default_roles" value="{{ state.create_default_roles|default('off') }}">
+
+    {% if state.source_type in ['postgresql', 'mysql', 'database'] %}
+    <div class="form-row">
+      <label>Host
+        <input name="host" required value="{{ state.host|default('') }}"
+               placeholder="postgres or db.internal">
+      </label>
+      <label>Port
+        <input name="port" type="number" value="{{ state.port|default(5432) }}">
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Database
+        <input name="database" value="{{ state.database|default('') }}">
+      </label>
+      <label>User
+        <input name="user" value="{{ state.user|default('') }}">
+      </label>
+      <label>Password
+        <input name="password" type="password" value="">
+        <span class="field-help">{% if state.password %}Inline password supplied in this draft. Enter a new value only to replace it.{% else %}Inline literal for beta/local use. Prefer a secret ref for production.{% endif %}</span>
+      </label>
+      <label>Password secret ref
+        <input name="password_ref" value="{{ state.password_ref|default('') }}"
+               placeholder="env:SOURCE_DB_PASSWORD">
+        <span class="field-help">Preferred for production.</span>
+      </label>
+    </div>
+    {% if state.source_type == 'postgresql' %}
+    <div class="form-row">
+      <label>TLS mode
+        <select name="sslmode">
+          {% for mode in ['verify-full', 'verify-ca', 'require', 'disable'] %}
+          <option value="{{ mode }}" {% if (state.sslmode or 'verify-full') == mode %}selected{% endif %}>{{ mode }}</option>
+          {% endfor %}
+        </select>
+        <span class="field-help">Production accepts only verify-full or verify-ca.</span>
+      </label>
+      <label>CA certificate
+        <input name="ssl_ca" value="{{ state.ssl_ca|default('') }}" placeholder="/run/secrets/source-ca/ca.crt">
+        <span class="field-help">A path the gateway can read, or a secret ref resolving to one.</span>
+      </label>
+    </div>
+    {% endif %}
+    {% elif state.source_type == 's3' or state.source_type == 'object_storage' %}
+    <div class="form-row">
+      <label>Bucket
+        <input name="bucket" required value="{{ state.bucket|default('') }}" placeholder="company-data">
+      </label>
+      <label>Prefix
+        <input name="prefix" value="{{ state.prefix|default('') }}" placeholder="analytics/reports/">
+      </label>
+      <label>Region
+        <input name="region_name" value="{{ state.region_name|default('us-east-1') }}">
+      </label>
+      <label>Endpoint URL
+        <input name="endpoint_url" value="{{ state.endpoint_url|default('') }}" placeholder="http://minio:9000">
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Access key ref
+        <input name="aws_access_key_id_ref" value="{{ state.aws_access_key_id_ref|default('') }}" placeholder="env://AWS_ACCESS_KEY_ID">
+      </label>
+      <label>Secret key ref
+        <input name="aws_secret_access_key_ref" value="{{ state.aws_secret_access_key_ref|default('') }}" placeholder="env://AWS_SECRET_ACCESS_KEY">
+      </label>
+    </div>
+    {% elif state.source_type == 'warehouse' %}
+    <div class="form-row">
+      <label>Account / Project
+        <input name="account" value="{{ state.account|default('') }}" placeholder="xy12345.us-east-1 or project-id">
+      </label>
+      <label>Warehouse / Location
+        <input name="warehouse" value="{{ state.warehouse|default('') }}" placeholder="COMPUTE_WH or us-central1">
+      </label>
+      <label>Database
+        <input name="database" value="{{ state.database|default('') }}">
+      </label>
+      <label>Schema
+        <input name="schema" value="{{ state.schema|default('') }}">
+      </label>
+    </div>
+    <div class="form-row">
+      <label>User
+        <input name="user" value="{{ state.user|default('') }}">
+      </label>
+      <label>Password secret ref
+        <input name="password_ref" value="{{ state.password_ref|default('') }}" placeholder="env://SNOWFLAKE_PASSWORD">
+      </label>
+    </div>
+    {% elif state.source_type in ['saas', 'collaboration', 'search'] %}
+    <div class="form-row">
+      <label>Base / Instance URL
+        <input name="base_url" value="{{ state.base_url|default('') }}" placeholder="https://company.example.com">
+      </label>
+      <label>Workspace / Org / Subdomain
+        <input name="subdomain" value="{{ state.subdomain|default(state.workspace|default(state.org|default(''))) }}" placeholder="acme">
+      </label>
+      <label>Email / Username
+        <input name="email" value="{{ state.email|default('') }}">
+      </label>
+    </div>
+    <div class="form-row">
+      <label>API token ref
+        <input name="api_token_ref" value="{{ state.api_token_ref|default('') }}" placeholder="env://API_TOKEN">
+      </label>
+      <label>Token ref
+        <input name="token_ref" value="{{ state.token_ref|default('') }}" placeholder="env://CONNECTOR_TOKEN">
+      </label>
+      <label>Bot token ref
+        <input name="bot_token_ref" value="{{ state.bot_token_ref|default('') }}" placeholder="env://SLACK_BOT_TOKEN">
+      </label>
+    </div>
+    {% else %}
+    <div class="form-row">
+      <label>Base URL
+        <input name="base_url" required value="{{ state.base_url|default('') }}"
+               placeholder="https://api.example.com">
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Auth header
+        <input name="auth_header" value="{{ state.auth_header|default('') }}"
+               placeholder="Authorization">
+      </label>
+      <label>Token
+        <input name="token" type="password" value="">
+        <span class="field-help">{% if state.token %}Inline token supplied in this draft. Enter a new value only to replace it.{% else %}Inline literal for beta/local use. Prefer a secret ref for production.{% endif %}</span>
+      </label>
+      <label>Token secret ref
+        <input name="token_ref" value="{{ state.token_ref|default('') }}"
+               placeholder="env:UPSTREAM_TOKEN">
+      </label>
+    </div>
+    {% endif %}
+
+    <div id="wizard-test-result"></div>
+
+    <div class="form-actions">
+      <button type="button" class="btn"
+              hx-post="/dashboard/source-wizard/step1"
+              hx-include="#wizard-form"
+              hx-target="#new-source-form-slot">← Back</button>
+      <button type="button" class="btn btn-secondary"
+              hx-post="/dashboard/source-wizard/test"
+              hx-include="#wizard-form"
+              hx-target="#wizard-test-result">Test Connection</button>
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/source-wizard/step3"
+              hx-include="#wizard-form"
+              hx-target="#new-source-form-slot">Next</button>
+    </div>
+  </form>
+</div>

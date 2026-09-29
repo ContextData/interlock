@@ -1,0 +1,96 @@
+schema_version = 1
+config = "mypy-v1.ini"
+baseline = "typecheck/v1_baseline.json"
+
+[[areas]]
+name = "gateway"
+max_baseline_errors = 41
+paths = ["src/interlock/gateway"]
+strict_files = [
+  "src/interlock/gateway/__init__.py",
+  "src/interlock/gateway/__main__.py",
+]
+
+[[areas]]
+name = "admin"
+max_baseline_errors = 49
+paths = ["src/interlock/admin"]
+strict_files = [
+  "src/interlock/admin/__init__.py",
+  "src/interlock/admin/__main__.py",
+  "src/interlock/admin/alerts.py",
+  "src/interlock/admin/catalog_hooks.py",
+  "src/interlock/admin/defaults.py",
+  "src/interlock/admin/identity_labels.py",
+  "src/interlock/admin/policy_summary.py",
+  "src/interlock/admin/source_ids.py",
+  "src/interlock/admin/routes/__init__.py",
+  "src/interlock/admin/routes/auth.py",
+  "src/interlock/admin/routes/catalog.py",
+  "src/interlock/admin/routes/connectors.py",
+  "src/interlock/admin/routes/password.py",
+]
+
+[[areas]]
+name = "worker"
+max_baseline_errors = 0
+paths = ["src/interlock/worker"]
+strict_files = [
+  "src/interlock/worker/__init__.py",
+  "src/interlock/worker/__main__.py",
+  "src/interlock/worker/chunk_indexer.py",
+  "src/interlock/worker/chunker.py",
+  "src/interlock/worker/extractors/__init__.py",
+  "src/interlock/worker/extractors/base.py",
+  "src/interlock/worker/extractors/csv_extractor.py",
+  "src/interlock/worker/extractors/docx.py",
+  "src/interlock/worker/extractors/html.py",
+  "src/interlock/worker/extractors/mistral_ocr.py",
+  "src/interlock/worker/extractors/text.py",
+  "src/interlock/worker/extractors/xlsx.py",
+  "src/interlock/worker/indexer.py",
+  "src/interlock/worker/loop.py",
+  "src/interlock/worker/sampler.py",
+  "src/interlock/worker/summarizer.py",
+]
+
+[[areas]]
+name = "stable_connectors"
+max_baseline_errors = 39
+paths = [
+  "src/interlock/connections/__init__.py",
+  "src/interlock/connections/adapters/__init__.py",
+  "src/interlock/connections/adapters/s3.py",
+  "src/interlock/connections/circuit_breaker.py",
+  "src/interlock/connections/connectors.py",
+  "src/interlock/connections/manager.py",
+  "src/interlock/connections/source_config.py",
+  "src/interlock/connections/activation.py",
+  "src/interlock/connections/role_vocabulary.py",
+]
+strict_files = [
+  "src/interlock/connections/__init__.py",
+  "src/interlock/connections/activation.py",
+  "src/interlock/connections/role_vocabulary.py",
+  "src/interlock/connections/adapters/__init__.py",
+  "src/interlock/connections/adapters/s3.py",
+  "src/interlock/connections/circuit_breaker.py",
+  "src/interlock/connections/source_config.py",
+]
+
+[[areas]]
+name = "catalog"
+max_baseline_errors = 0
+paths = ["src/interlock/catalog"]
+strict_files = [
+  "src/interlock/catalog/__init__.py",
+  "src/interlock/catalog/collectors/__init__.py",
+  "src/interlock/catalog/collectors/mysql.py",
+  "src/interlock/catalog/collectors/postgres.py",
+  "src/interlock/catalog/collectors/snowflake.py",
+  "src/interlock/catalog/errors.py",
+  "src/interlock/catalog/model.py",
+  "src/interlock/catalog/queue.py",
+  "src/interlock/catalog/runner.py",
+  "src/interlock/catalog/store.py",
+]

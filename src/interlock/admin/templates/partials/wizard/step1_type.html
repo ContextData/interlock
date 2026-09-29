@@ -1,0 +1,64 @@
+{# Wizard step 1: name + type.
+   State is carried forward via hidden inputs in each subsequent step. #}
+<div class="form-card wizard">
+  <div class="wizard-progress" data-step="1">
+    <span class="step active">1. Type</span>
+    <span class="step">2. Connection</span>
+    <span class="step">3. Schema</span>
+    <span class="step">4. Cache</span>
+    <span class="step">5. Review</span>
+  </div>
+  <h3>New Data Source</h3>
+  {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+
+  <form id="wizard-form">
+    <input type="hidden" name="wizard_id" value="{{ state.wizard_id|default('') }}">
+    <div class="form-row">
+      <label>Display name
+        <input name="name" required placeholder="Shop DB"
+               value="{{ state.name|default('') }}">
+        <span class="field-help">Agents reach the source by an id generated from this name, shown before you save.</span>
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Connector
+        <select name="connector_key" class="js-wizard-connector-select">
+          {% for category, connector_list in connector_groups %}
+          <optgroup label="{{ category }}">
+            {% for connector in connector_list %}
+            <option value="{{ connector.key }}"
+                    data-source-type="{{ connector.source_type }}"
+                    data-cache="{{ connector.default_cache_strategy }}"
+                    {% if state.connector_key == connector.key %}selected{% endif %}>{{ connector.name }}</option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+        <input type="hidden" name="source_type" value="{{ state.source_type|default('postgresql') }}">
+      </label>
+    </div>
+    <div class="form-section">
+      <h4 class="form-subheader">Source roles</h4>
+      <p class="muted">Roles are managed after the source is created. InterLock can create conservative default role templates to edit later.</p>
+      <label class="checkbox">
+        <input type="checkbox" name="create_default_roles" value="on"
+               {% if state.create_default_roles|default('on') == 'on' %}checked{% endif %}>
+        Create default source role templates
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/source-wizard/step2"
+              hx-include="#wizard-form"
+              hx-target="#new-source-form-slot"
+              hx-swap="innerHTML">Next</button>
+      <button type="button" class="btn js-clear-target"
+              hx-post="/dashboard/source-wizard/cancel"
+              hx-include="#wizard-form"
+              hx-target="#main-content"
+              hx-swap="innerHTML"
+              data-clear-target="new-source-form-slot">Cancel</button>
+    </div>
+  </form>
+</div>

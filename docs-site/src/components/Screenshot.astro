@@ -1,0 +1,46 @@
+---
+// A console screenshot in the reader's theme. Scenes are captured in light and
+// dark by `make docs-screenshots`; a missing theme fails the build.
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  name: string;
+  alt: string;
+}
+
+const { name, alt } = Astro.props;
+const images = import.meta.glob<{ default: ImageMetadata }>(
+  '../assets/screenshots/*/*.png',
+);
+const light = images[`../assets/screenshots/light/${name}.png`];
+const dark = images[`../assets/screenshots/dark/${name}.png`];
+if (!light || !dark) {
+  throw new Error(`Screenshot "${name}" is missing its light or dark capture`);
+}
+const lightSrc = (await light()).default;
+const darkSrc = (await dark()).default;
+---
+
+<figure class="interlock-screenshot">
+  <Image src={lightSrc} alt={alt} class="only-light" widths={[720, 1440]} sizes="(max-width: 800px) 100vw, 720px" />
+  <Image src={darkSrc} alt={alt} class="only-dark" widths={[720, 1440]} sizes="(max-width: 800px) 100vw, 720px" />
+</figure>
+
+<style>
+  .interlock-screenshot img {
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    width: 100%;
+    height: auto;
+  }
+  .only-dark {
+    display: none;
+  }
+  :global([data-theme='dark']) .only-dark {
+    display: block;
+  }
+  :global([data-theme='dark']) .only-light {
+    display: none;
+  }
+</style>

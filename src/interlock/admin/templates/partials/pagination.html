@@ -1,0 +1,32 @@
+{% if total_pages is defined and total_pages > 1 %}
+{% set base_url = pagination_url|default('/dashboard/ingestion') %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="#"
+       hx-get="{{ base_url }}?status={{ status }}&page={{ page - 1 }}"
+       hx-target="#job-table-container">Prev</a>
+    {% else %}
+    <span class="disabled">Prev</span>
+    {% endif %}
+
+    {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+        <span class="current">{{ p }}</span>
+        {% elif p <= 3 or p > total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+        <a href="#"
+           hx-get="{{ base_url }}?status={{ status }}&page={{ p }}"
+           hx-target="#job-table-container">{{ p }}</a>
+        {% elif p == 4 or p == total_pages - 2 %}
+        <span>...</span>
+        {% endif %}
+    {% endfor %}
+
+    {% if page < total_pages %}
+    <a href="#"
+       hx-get="{{ base_url }}?status={{ status }}&page={{ page + 1 }}"
+       hx-target="#job-table-container">Next</a>
+    {% else %}
+    <span class="disabled">Next</span>
+    {% endif %}
+</div>
+{% endif %}

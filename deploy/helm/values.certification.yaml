@@ -1,0 +1,95 @@
+# Helm values for the disposable cloud-certification run.
+#
+# Used by .github/workflows/cloud-certification.yml after
+# deploy/scripts/certification/bootstrap-cluster-fixtures.sh has created the
+# in-cluster PostgreSQL, Redis, TLS material, and Secrets.
+#
+# This is NOT a production example - see values.cloud.example.yaml for that.
+# The difference is only where the data tier lives: everything the production
+# config gate enforces (verify-full database TLS, strict audit durability,
+# HMAC-peppered API keys, client TLS on the PostgreSQL listener, secure
+# cookies) is left exactly as production runs it, because certifying a relaxed
+# configuration would certify nothing.
+#
+# image.repository, image.digest, and the storage class are supplied on the
+# command line by the workflow, which resolves them from the signed release.
+
+# The release image lives in GHCR, which is private until the repository is
+# public. The workflow creates this Secret from the job's short-lived token
+# immediately before installing; once the packages are public it is harmless.
+imagePullSecrets:
+  - name: ghcr-pull
+
+database:
+  # Service created by bootstrap-cluster-fixtures.sh. The generated server
+  # certificate carries this name as a SAN so verify-full succeeds.
+  host: interlock-cert-postgres.interlock.svc.cluster.local
+  port: 5432
+  name: interlock
+  existingSecret: interlock-db-credentials
+  secretUserKey: username
+  secretPasswordKey: password
+  sslMode: verify-full
+  caExistingSecret: interlock-control-db-ca
+  caSecretKey: ca.crt
+
+redis:
+  url: redis://interlock-cert-redis.interlock.svc.cluster.local:6379/0
+
+auth:
+  apiKeyPepperExistingSecret: interlock-api-key-pepper
+  apiKeyPepperSecretKey: pepper
+  allowLegacySha256Keys: false
+  oidc:
+    enabled: false
+
+admin:
+  replicas: 1
+  secret:
+    existingSecret: interlock-admin-secret
+    secretKey: secret-key
+    value: ""
+
+gateway:
+  replicas: 1
+  pgTls:
+    existingSecret: interlock-pg-listener-tls
+    certKey: tls.crt
+    privateKeyKey: tls.key
+    trustedOffload: false
+  auditSpool:
+    enabled: true
+    mountPath: /var/lib/interlock/audit-spool
+    # Left empty so the provider default StorageClass is used; the workflow
+    # overrides it per provider when a specific class is needed.
+    storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+  upstreamPostgres:
+    # The same in-cluster PostgreSQL instance hosts a separate `source`
+    # database, so the governed-query certification has a real upstream to
+    # proxy to rather than pointing the gateway at its own control database.
+    host: interlock-cert-postgres.interlock.svc.cluster.local
+    port: 5432
+  mcpAllowedOrigins: []
+
+worker:
+  replicas: 1
+  hpa:
+    # Disposable clusters have no metrics-server, and an HPA without one sits
+    # in a permanent unknown-metrics state that muddies the evidence.
+    enabled: false
+
+config:
+  logLevel: info
+  auditDurabilityMode: strict
+  cache:
+    l1MaxSize: 1000
+    l1TtlSeconds: 60
+    l2TtlSeconds: 300
+
+# Certification reaches the services through kubectl port-forward, so no
+# ingress, DNS, or public TLS certificate is needed.
+ingress:
+  enabled: false

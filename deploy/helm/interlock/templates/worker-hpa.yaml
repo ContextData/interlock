@@ -1,0 +1,32 @@
+{{- if .Values.worker.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "interlock.fullname" . }}-worker
+  labels:
+    {{- include "interlock.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "interlock.fullname" . }}-worker
+  minReplicas: {{ .Values.worker.minReplicas }}
+  maxReplicas: {{ .Values.worker.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.worker.hpa.cpuTargetUtilization }}
+    {{- if .Values.worker.hpa.customMetric.enabled }}
+    - type: Pods
+      pods:
+        metric:
+          name: {{ .Values.worker.hpa.customMetric.name }}
+        target:
+          type: AverageValue
+          averageValue: {{ .Values.worker.hpa.customMetric.targetValue | quote }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,87 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Audit &amp; Costs - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Audit &amp; Costs</h1>
+</div>
+
+{% include "partials/usage_breakdown.html" %}
+
+<div class="split-section">
+    <h2>Audit Log</h2>
+
+    <div class="quick-filters">
+        <a class="btn btn-secondary" hx-get="/dashboard/audit-costs/log?since={{ quick_since_hour|default('') }}" hx-target="#audit-log-container">Last hour</a>
+        <a class="btn btn-secondary" hx-get="/dashboard/audit-costs/log?since={{ quick_since_day|default('') }}" hx-target="#audit-log-container">Last 24h</a>
+        <a class="btn btn-secondary" hx-get="/dashboard/audit-costs/log?status=denied" hx-target="#audit-log-container">Denied</a>
+        <a class="btn btn-secondary" hx-get="/dashboard/audit-costs/log?status=queued" hx-target="#audit-log-container">Queued writes</a>
+        <a class="btn btn-secondary" hx-get="/dashboard/audit-costs/log?pii=yes" hx-target="#audit-log-container">PII detected</a>
+        <a class="btn btn-secondary" hx-get="/dashboard/audit-costs/log?cache_tier=miss" hx-target="#audit-log-container">Cache misses</a>
+    </div>
+    {% set _hx = 'hx-get="/dashboard/audit-costs/log" hx-target="#audit-log-container" hx-include=".filter-bar select, .filter-bar input"' %}
+    <form class="filter-bar" id="audit-filters">
+        <label>Source
+        <select name="source" {{ _hx|safe }}>
+            <option value="">All Sources</option>
+            {% for src in sources|default([]) %}
+            <option value="{{ src }}" {% if filter_source == src %}selected{% endif %}>{{ src }}</option>
+            {% endfor %}
+        </select>
+        </label>
+        <label>Operation
+        <select name="operation" {{ _hx|safe }}>
+            <option value="">All Operations</option>
+            {% for op in operations|default([]) %}
+            <option value="{{ op }}" {% if filter_operation == op %}selected{% endif %}>{{ op }}</option>
+            {% endfor %}
+        </select>
+        </label>
+        <label>Status
+        <select name="status" {{ _hx|safe }}>
+            <option value="">All Statuses</option>
+            {% for st in statuses|default([]) %}
+            <option value="{{ st }}" {% if filter_status == st %}selected{% endif %}>{{ st }}</option>
+            {% endfor %}
+        </select>
+        </label>
+        <label>Cache
+        <select name="cache_tier" {{ _hx|safe }}>
+            <option value="">All Tiers</option>
+            {% for t in cache_tiers|default([]) %}
+            <option value="{{ t }}" {% if filter_cache_tier == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+        </label>
+        <label>PII
+        <select name="pii" {{ _hx|safe }}>
+            <option value="">PII: any</option>
+            <option value="yes" {% if filter_pii == 'yes' %}selected{% endif %}>PII: yes</option>
+            <option value="no"  {% if filter_pii == 'no'  %}selected{% endif %}>PII: no</option>
+        </select>
+        </label>
+        <label>Identity
+        <input name="identity_id" type="number" min="1" placeholder="identity id"
+               value="{{ filter_identity_id|default('') }}"
+               {{ _hx|safe }} hx-trigger="change delay:300ms">
+        </label>
+        <label>Since
+        <input name="since" type="datetime-local"
+               value="{{ filter_since|default('') }}" {{ _hx|safe }}>
+        </label>
+        <label>Until
+        <input name="until" type="datetime-local"
+               value="{{ filter_until|default('') }}" {{ _hx|safe }}>
+        </label>
+        <a class="btn btn-secondary"
+           href="/dashboard/audit-costs/export.csv?source={{ filter_source }}&operation={{ filter_operation }}&status={{ filter_status }}&identity_id={{ filter_identity_id|default('') }}&cache_tier={{ filter_cache_tier|default('') }}&pii={{ filter_pii|default('') }}&since={{ filter_since|default('') }}&until={{ filter_until|default('') }}"
+           download>Export CSV</a>
+    </form>
+
+    <p class="muted">{{ audit_total|default(0) }} matching rows</p>
+
+    <div id="audit-log-container">
+        {% include "partials/audit_log_table.html" %}
+    </div>
+</div>
+{% endblock %}

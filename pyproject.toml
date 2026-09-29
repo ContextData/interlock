@@ -1,0 +1,292 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "interlock-runtime"
+version = "1.0.0rc12"
+description = "InterLock secure agent-to-data runtime proxy for enterprises"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "ContextData" }]
+maintainers = [{ name = "jogunjobi", email = "4750385+jogunjobi@users.noreply.github.com" }]
+keywords = [
+    "ai-agents", "data-governance", "postgresql-proxy", "mcp",
+    "pii-redaction", "audit-log", "access-control",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database :: Database Engines/Servers",
+    "Topic :: Security",
+    "Topic :: System :: Systems Administration",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    # Web frameworks
+    "starlette>=1.3.1,<2.0",
+    "fastapi>=0.111,<1.0",
+    "uvicorn[standard]>=0.29,<1.0",
+    "uvloop>=0.19,<1.0",
+    # Database
+    "asyncpg>=0.29,<1.0",
+    # Redis
+    "redis[hiredis]>=5.0,<6.0",
+    # SQL parsing
+    "sqlglot>=25.0,<30.0",
+    # Config
+    "pydantic>=2.7,<3.0",
+    "pydantic-settings>=2.14.2,<3.0",
+    "pyyaml>=6.0,<7.0",
+    # Caching
+    "cachetools>=5.3,<6.0",
+    "msgpack>=1.2.1,<2.0",
+    # HTTP client
+    "httpx>=0.27,<1.0",
+    # Auth
+    "authlib>=1.3,<2.0",
+    # Templating (dashboard)
+    "jinja2>=3.1,<4.0",
+    # Form data for admin login (FastAPI Form dependency)
+    "python-multipart>=0.0.31,<1.0",
+    "urllib3>=2.7,<3.0",
+    "idna>=3.15,<4.0",
+    "cryptography>=50.0.0,<51.0",
+    "pyopenssl>=26.0.0,<27.0",
+    "pynacl>=1.6.2,<2.0",
+]
+
+[project.optional-dependencies]
+pii = [
+    "presidio-analyzer>=2.2,<3.0",
+    "presidio-anonymizer>=2.2,<3.0",
+    "spacy>=3.7,<4.0",
+    "google-re2>=1.1,<2.0",
+]
+ml = [
+    "sentence-transformers>=5.0,<6.0",
+    # CVE-2026-9856 is fixed in 5.10.0, inside the existing range, so this
+    # raises the floor rather than widening it.
+    "transformers>=5.10.0,<6.0",
+    "torch>=2.13.0,<3.0",
+]
+vector = [
+    "faiss-cpu>=1.8,<2.0",
+]
+ingestion = [
+    "python-docx>=1.1,<2.0",
+    "openpyxl>=3.1,<4.0",
+    "pandas>=2.2,<3.0",
+    "beautifulsoup4>=4.12,<5.0",
+    "python-pptx>=0.6.23,<1.0",
+    "mistralai>=1.0,<2.0",
+]
+connectors-tier1 = [
+    "aiomysql>=0.2,<1.0",
+    "aiobotocore>=2.13,<3.0",
+    # CVE-2026-15925 is fixed in 4.7.1 (and in 3.18.1 on the older line).
+    # Seven minors on from the previous floor; the adapter has only mocked
+    # coverage, so see tests/integration/test_snowflake_live.py for what a
+    # credential holder should run before trusting it.
+    "snowflake-connector-python>=4.7.1,<5.0",
+    "slack-sdk>=3.33,<4.0",
+    "dlt>=1.27.2,<2.0",
+]
+# PyGithub and python-gitlab are LGPL-3.0, while this project and every other
+# dependency are permissive (Apache-2.0/MIT/BSD). They were isolated from
+# `production*` so the published image carried no copyleft dependency, but the
+# GitHub and GitLab connectors are advertised capabilities that then raised
+# `PyGithub is not installed` in the only image anyone actually runs - a
+# feature that could not work as shipped. They are now part of `production*`
+# and the published image; see NOTICE for the LGPL-3.0 obligations that
+# follow, and `ci.yml` denies the strongly reciprocal licenses still.
+# A redistributor who needs a copyleft-free build installs `production` minus
+# this extra and loses only these two connectors, which fail closed.
+connectors-repo = [
+    "PyGithub>=2.4,<3.0",
+    "python-gitlab>=4.10,<6.0",
+]
+connectors-tier2 = [
+    "opensearch-py>=2.7,<3.0",
+    "pymongo>=4.9,<5.0",
+    "simple-salesforce>=1.12,<2.0",
+    "atlassian-python-api>=3.41,<4.0",
+    "google-api-python-client>=2.140,<3.0",
+    "google-cloud-bigquery>=3.25,<4.0",
+    "pyodbc>=5.1,<6.0",
+]
+otel = [
+    "opentelemetry-api>=1.25,<2.0",
+    "opentelemetry-sdk>=1.25,<2.0",
+    "opentelemetry-instrumentation-fastapi>=0.46b0,<1.0",
+    "opentelemetry-exporter-otlp>=1.25,<2.0",
+]
+dev = [
+    "ruff>=0.4,<1.0",
+    "mypy>=1.10,<2.0",
+    "black>=26.3.1,<27.0",
+    "pytest>=9.0.3,<10.0",
+    "pytest-asyncio>=1.3,<2.0",
+    "pytest-cov>=5.0,<6.0",
+    "respx>=0.21,<1.0",
+    "bandit>=1.9.4",
+    "pip-audit>=2.10.0",
+    "types-cachetools>=7.0.0.20260518",
+    "types-pyyaml>=6.0.12.20260518",
+    "types-authlib>=1.6.11.20260518",
+    "playwright>=1.55,<2.0",
+]
+mcp-certification = [
+    # Isolated compatibility gate for the current MCP 2026 transport. The SDK
+    # is not installed in production images.
+    "mcp==2.0.0",
+    "mcp-types==2.0.0",
+]
+# The Salesforce and Google Workspace clients are permissively licensed
+# (Apache-2.0, as are their dependencies) and are in the published image so
+# those connectors work as shipped rather than failing on a missing import.
+connectors-published-saas = [
+    "simple-salesforce>=1.12,<2.0",
+    "google-api-python-client>=2.140,<3.0",
+]
+production = ["interlock-runtime[pii,vector,otel,connectors-tier1,connectors-repo,connectors-published-saas]"]
+production-worker = ["interlock-runtime[pii,vector,ingestion,otel,connectors-tier1,connectors-repo,connectors-published-saas]"]
+production-worker-ml = ["interlock-runtime[production-worker,ml]"]
+connectors = ["interlock-runtime[connectors-tier1,connectors-tier2,connectors-repo]"]
+all = ["interlock-runtime[pii,vector,ml,ingestion,otel,dev,connectors-tier1,connectors-tier2,connectors-repo]"]
+
+[project.urls]
+Homepage = "https://github.com/ContextData/interlock"
+Repository = "https://github.com/ContextData/interlock"
+Issues = "https://github.com/ContextData/interlock/issues"
+Changelog = "https://github.com/ContextData/interlock/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/ContextData/interlock/tree/main/docs-site/src/content/docs"
+
+[project.scripts]
+interlock-gateway = "interlock.gateway.__main__:main"
+interlock-admin = "interlock.admin.__main__:main"
+interlock-worker = "interlock.worker.__main__:main"
+interlock-migrate = "interlock.db.migrate:main"
+
+[tool.uv]
+constraint-dependencies = [
+    "aiohttp>=3.14.3",
+    "httplib2>=0.32.0",
+    # CVE-2026-84379/84380 are fixed in 2.11.0 and CVE-2026-84382 in 2.12.0.
+    # Reached only through `mcp` in the mcp-certification extra, so it is a
+    # test-and-tooling dependency: httpx2 does not appear in
+    # requirements-production.txt and is not in the published image. The
+    # runtime's own HTTP client is `httpx`, which is unaffected.
+    "httpx2>=2.12.0",
+    "joserfc>=1.6.8",
+    # PYSEC-2026-3721 is fixed in 26.2. Dev tooling only - pip does not
+    # appear in requirements-production.txt and is not in the image.
+    "pip>=26.2",
+    "pillow>=12.3.0",
+    "pyjwt>=2.13.0",
+    "pyasn1>=0.6.4",
+    "setuptools>=83.0.0",
+    "soupsieve>=2.8.4",
+    "zeep>=4.3.3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/interlock"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"migrations" = "interlock/migrations"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "benchmark: performance benchmark tests",
+    "security_adversarial: adversarial security and bypass regression tests",
+    "protocol: wire-protocol compatibility and abuse tests",
+    "durability: audit, cache, worker, and recovery durability tests",
+    "multi_instance: tests requiring more than one service instance",
+    "browser: browser-based Admin UI certification tests",
+    "load: load testing and performance profiling tests",
+    "integration: requires real PG and Redis (set INTEGRATION_TEST=1)",
+    "e2e: end-to-end tests requiring full Docker Compose stack",
+    "live: opt-in tests requiring external live-system credentials",
+    "slow: tests that take more than ~5 seconds",
+    "real_connector_activation: unit tests that read connector activation from the (fake) pool",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH"]
+ignore = [
+    # Black is the source of truth for wrapping long lines in this codebase.
+    "E501",
+    # Runtime imports are preferred for the current Pydantic/FastAPI patterns.
+    "TC001",
+    "TC002",
+    "TC003",
+    # Keep existing str+Enum model contracts stable for serialized values.
+    "UP042",
+    # The existing codebase still contains compact legacy idioms in admin
+    # templates/tests; keep lint focused on correctness while those are
+    # cleaned up incrementally.
+    "A002",
+    "B007",
+    "B905",
+    "E701",
+    "E702",
+    "F841",
+    "N802",
+    "N805",
+    "N806",
+    "SIM102",
+    "SIM103",
+    "SIM105",
+    "SIM108",
+    "SIM109",
+    "SIM115",
+    "SIM117",
+    "SIM401",
+    "UP017",
+    "UP032",
+    "UP037",
+    "UP041",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["tests/"]
+ignore_missing_imports = true
+disable_error_code = [
+    # Baseline legacy/dynamic-library debt. The type gate remains useful for
+    # syntax, imports, checked call signatures, and newly introduced errors
+    # outside these known noisy categories while the codebase is hardened.
+    "arg-type",
+    "attr-defined",
+    "call-overload",
+    "misc",
+    "name-defined",
+    "no-any-return",
+    "no-redef",
+    "no-untyped-def",
+    "type-arg",
+    "union-attr",
+    "unused-ignore",
+]
+
+[tool.black]
+target-version = ["py312"]
+line-length = 100

@@ -1,0 +1,38 @@
+{% if error %}
+<div class="form-error" role="alert">{{ error }}</div>
+{% elif decision %}
+<div class="connection-result {{ 'ok' if decision.allowed else 'error' }}">
+  <strong>{{ 'Allowed' if decision.allowed else 'Denied' }}</strong>
+  <span>{{ decision.reason }}</span>
+</div>
+<dl class="form-summary">
+  <dt>Action</dt><dd><code>{{ permission_request.action }}</code></dd>
+  <dt>Resources</dt>
+  <dd>{% for res in permission_request.resources %}<code>{{ res }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+  {% if permission_request.resource_variants %}
+  <dt>Other spellings</dt>
+  <dd>
+    {% for res, variants in permission_request.resource_variants.items() %}
+    <div><code>{{ res }}</code>
+      {% if variants.aliases %}is also matched as {% for a in variants.aliases %}<code>{{ a }}</code>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+      {% if variants.shadows %}{% if variants.aliases %}; {% endif %}deny statements also checked against {% for s in variants.shadows %}<code>{{ s }}</code>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+    </div>
+    {% endfor %}
+  </dd>
+  {% endif %}
+  {% if permission_request.naming_resolved is not none %}
+  <dt>Table names</dt>
+  <dd>{% if permission_request.naming_resolved %}Resolved from the source catalog.{% else %}Not every table is in the source catalog; unqualified names were resolved to the configured default schema.{% endif %}</dd>
+  {% endif %}
+  <dt>Matched roles</dt><dd>{{ decision.matched_role_ids|join(', ') if decision.matched_role_ids else '-' }}</dd>
+  <dt>Matched permissions</dt><dd>{{ decision.matched_permission_ids|join(', ') if decision.matched_permission_ids else '-' }}</dd>
+  <dt>Missing permissions</dt>
+  <dd>
+    {% if decision.missing_permissions %}
+    <code>{{ decision.missing_permissions|tojson }}</code>
+    {% else %}
+    <span class="muted">none</span>
+    {% endif %}
+  </dd>
+</dl>
+{% endif %}

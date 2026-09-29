@@ -1,0 +1,12 @@
+apiVersion: v2
+name: interlock
+description: InterLock secure agent-to-data runtime proxy
+version: 1.0.0-rc.12
+appVersion: "1.0.0-rc.12"
+type: application
+home: https://github.com/ContextData/interlock
+sources:
+  - https://github.com/ContextData/interlock
+maintainers:
+  - name: ContextData
+    url: https://github.com/ContextData

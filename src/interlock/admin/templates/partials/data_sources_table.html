@@ -1,0 +1,58 @@
+{# The data sources table. Rendered inside the page and returned on its own
+   after a successful Save, so both always show the same columns. The source
+   id stays on each row for navigation and tests; it is shown on the source's
+   own page, where agents' users look it up. #}
+<div id="data-sources-table" class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Connector</th>
+        <th>Enabled</th>
+        <th>Cache Strategy</th>
+        <th>Credentials</th>
+        <th>Health</th>
+        <th class="num">Requests 24h</th>
+        <th>Last Checked</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ds in data_sources %}
+      <tr data-source-id="{{ ds.source_id }}" class="row-link"
+          hx-get="/dashboard/data-sources/{{ ds.source_id }}"
+          hx-target="#main-content" hx-push-url="true">
+        <td><a href="/dashboard/data-sources/{{ ds.source_id }}"
+               hx-get="/dashboard/data-sources/{{ ds.source_id }}"
+               hx-target="#main-content" hx-push-url="true">{{ ds.name }}</a></td>
+        <td><span class="badge badge-{{ ds.source_type|lower }}">{{ ds.source_type }}</span></td>
+        <td>{{ ds.connector_name|default(ds.connector_key|default('-')) }}</td>
+        <td>
+          {% if ds.enabled %}
+          <span class="health-dot health-green" aria-hidden="true"></span> Enabled
+          {% else %}
+          <span class="health-dot health-red" aria-hidden="true"></span> Disabled
+          {% endif %}
+        </td>
+        <td>{{ ds.cache_strategy|default('-') }}</td>
+        <td><span class="badge">{{ ds.credential_mode|default('none') }}</span></td>
+        <td>
+          {% if ds.health_status == 'error' %}
+          <span class="health-dot health-red" aria-hidden="true"></span> Errors
+          {% else %}
+          <span class="health-dot health-green" aria-hidden="true"></span> Healthy
+          {% endif %}
+        </td>
+        <td class="num">{{ ds.request_count|default(0) }}</td>
+        <td>{{ ds.last_request_at|fmt_dt }}</td>
+        <td><a class="btn btn-link" href="/dashboard/data-sources/{{ ds.source_id }}"
+               hx-get="/dashboard/data-sources/{{ ds.source_id }}"
+               hx-target="#main-content" hx-push-url="true">View</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10"><div class="empty-state"><p>No data sources configured. Click <strong>+ New Source</strong> to add one.</p></div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

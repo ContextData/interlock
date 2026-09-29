@@ -1,0 +1,14 @@
+{# One node's classification control. Posting replaces this form in place. #}
+<form class="catalog-classification"
+      hx-post="/dashboard/data-sources/{{ source_id }}/catalog/annotations"
+      hx-trigger="change"
+      hx-swap="outerHTML">
+  <input type="hidden" name="path" value="{{ path_param }}">
+  <select name="classification" aria-label="Classification">
+    <option value="">unclassified</option>
+    {% for c in classifications %}
+    <option value="{{ c }}" {% if c == classification %}selected{% endif %}>{{ c | replace('_', ' ') }}</option>
+    {% endfor %}
+  </select>
+  {% if classification_source %}<small class="muted">set by {{ classification_source }}</small>{% endif %}
+</form>

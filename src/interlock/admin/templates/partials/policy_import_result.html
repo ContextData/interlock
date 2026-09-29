@@ -1,0 +1,41 @@
+{% if error %}
+<div class="form-error" role="alert">{{ error }}</div>
+{% else %}
+  {% if mode == "applied" %}
+  <div class="alert-banner alert-banner--success" role="status">
+    Applied {{ preview|length }} policy rule{% if preview|length != 1 %}s{% endif %} atomically.
+  </div>
+  {% else %}
+  <div class="alert-banner alert-banner--info" role="status">
+    Previewed {{ preview|length }} policy rule{% if preview|length != 1 %}s{% endif %}. Review the diff before applying.
+  </div>
+  {% endif %}
+  {% if preview %}
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Name</th><th>Action</th><th>Priority</th><th>Enabled</th></tr></thead>
+      <tbody>
+      {% for item in preview %}
+        <tr>
+          <td><code>{{ item.name }}</code></td>
+          <td><span class="badge">{{ item.action }}</span></td>
+          <td>{{ item.priority }}</td>
+          <td>{{ "yes" if item.enabled else "no" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% if mode != "applied" and preview %}
+  <form id="policy-import-apply-form">
+    <input type="hidden" name="policy_payload" value="{{ policy_payload|e }}">
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/policies/import/apply"
+              hx-include="#policy-import-apply-form"
+              hx-target="#policy-import-result">Apply Import</button>
+    </div>
+  </form>
+  {% endif %}
+{% endif %}

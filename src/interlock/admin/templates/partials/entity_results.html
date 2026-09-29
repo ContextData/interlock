@@ -1,0 +1,26 @@
+{% if entities %}
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>Entity</th>
+                <th>Type</th>
+                <th>Documents</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ent in entities %}
+            <tr>
+                <td>{{ ent.text }}</td>
+                <td><span class="badge badge-{{ ent.entity_type | lower }}">{{ ent.entity_type }}</span></td>
+                <td>{{ ent.doc_count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% elif q %}
+<div class="empty-state"><p>No entities found for "{{ q }}".</p></div>
+{% else %}
+<div class="empty-state"><p>No entities in the system yet.</p></div>
+{% endif %}

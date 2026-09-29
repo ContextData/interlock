@@ -1,0 +1,239 @@
+nameOverride: interlock
+fullnameOverride: ""
+
+# Attached to every pod, including the pre-install migration Job, which pulls
+# the same image. Required when the image lives in a private registry.
+# e.g. [{name: ghcr-pull}]
+imagePullSecrets: []
+
+image:
+  repository: ghcr.io/contextdata/interlock-runtime
+  # Empty means the chart's appVersion: the image released with this chart.
+  tag: ""
+  # Prefer digest-pinned releases in production, e.g. sha256:<digest>.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+migration:
+  enabled: true
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+gateway:
+  replicas: 2
+  # Connector credentials are `env://VAR` references resolved inside the pod,
+  # so the variables they name must be present here. Point extraEnvFrom at a
+  # Secret holding them; never inline a credential as extraEnv.
+  extraEnv: []
+  extraEnvFrom: []
+  # Exact browser origins permitted to call the canonical MCP endpoint.
+  # Leave empty for server-to-server MCP clients only.
+  mcpAllowedOrigins: []
+  auditSpool:
+    enabled: true
+    mountPath: /var/lib/interlock/audit-spool
+    # Use an existing RWX claim only when intentionally sharing storage.
+    # Otherwise the StatefulSet creates one RWO claim per Gateway replica.
+    existingClaim: ""
+    storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+  probes:
+    livenessPath: /health
+    # Placeholder for dependency-aware runtime readiness. Keep production Helm on
+    # /ready; local smoke charts may override to /health until runtime support
+    # lands.
+    readinessPath: /ready
+  upstreamPostgres:
+    # Default PG upstream used by the PostgreSQL proxy fallback path. In
+    # production, point this at a registered upstream source service rather
+    # than the control database.
+    host: source-postgres
+    port: 5432
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+  service:
+    type: ClusterIP
+    httpPort: 3000
+    pgPort: 5432
+    annotations: {}
+  # A second Service carrying only the PostgreSQL wire port. The Service above
+  # carries both ports, so exposing it as a LoadBalancer to reach PG-wire would
+  # publish the HTTP port on the same address. Enable this instead and leave
+  # the HTTP port behind the Ingress.
+  pgService:
+    enabled: false
+    type: LoadBalancer
+    port: 5432
+    annotations: {}
+    externalTrafficPolicy: ""
+  pgTls:
+    existingSecret: interlock-pg-listener-tls
+    certKey: tls.crt
+    privateKeyKey: tls.key
+    trustedOffload: false
+
+admin:
+  replicas: 1
+  # The Admin console resolves the same `env://` connector references when it
+  # probes a source, so it needs the same variables the Gateway does.
+  extraEnv: []
+  extraEnvFrom: []
+  # The first admin user's password, used once on an empty admin_identities
+  # table. Left empty, the first admin is admin / admin and must change the
+  # password at first sign-in: do that before exposing the console. Remove
+  # this value and the Secret after signing in; admins change their own
+  # password at /auth/change-password.
+  bootstrapPasswordExistingSecret: ""
+  bootstrapPasswordSecretKey: password
+  probes:
+    livenessPath: /health
+    readinessPath: /ready
+  secret:
+    # Session/CSRF signing secret. Production defaults require a pre-created
+    # Kubernetes Secret; set value only through a secure values mechanism during
+    # controlled local validation.
+    existingSecret: interlock-admin-secret
+    secretKey: secret-key
+    value: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  service:
+    type: ClusterIP
+    port: 9090
+  # The chart's main Ingress routes the Gateway only. Admin session cookies are
+  # unconditionally Secure, so the console needs its own TLS-terminated route.
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts: []
+    tls: []
+
+worker:
+  replicas: 2
+  extraEnv: []
+  extraEnvFrom: []
+  minReplicas: 1
+  maxReplicas: 10
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+  hpa:
+    enabled: true
+    cpuTargetUtilization: 70
+    # Custom metric for scaling on pending job count (requires metrics adapter).
+    customMetric:
+      enabled: false
+      name: interlock_pending_jobs
+      targetValue: 50
+
+database:
+  host: postgresql
+  port: 5432
+  name: interlock
+  existingSecret: interlock-db-credentials
+  secretUserKey: username
+  secretPasswordKey: password
+  sslMode: verify-full
+  caExistingSecret: interlock-control-db-ca
+  caSecretKey: ca.crt
+
+auth:
+  apiKeyPepperExistingSecret: interlock-api-key-pepper
+  apiKeyPepperSecretKey: pepper
+  allowLegacySha256Keys: false
+  oidc:
+    enabled: false
+    issuerUrl: ""
+    adminClientId: ""
+    adminClientSecretExistingSecret: ""
+    adminClientSecretKey: client-secret
+    adminRedirectUri: ""
+    agentAudience: ""
+    scopes:
+      - openid
+      - profile
+      - email
+      - groups
+    localBreakGlassEnabled: true
+    allowInsecureEndpoints: false
+    adminGroupRoleMap: {}
+
+redis:
+  # Ignored when existingSecret is set. A managed Redis requires a password
+  # inside this URL, and this value is rendered into a plaintext ConfigMap -
+  # use existingSecret for anything but a local, passwordless instance.
+  url: redis://redis:6379/0
+  existingSecret: ""
+  secretUrlKey: url
+
+# Approval notifications. The Slack credential itself is NOT set here: it
+# arrives as an env var through gateway.extraEnvFrom / admin.extraEnvFrom and
+# is named by the *Ref values below.
+notifications:
+  enabled: false
+  slackBotTokenRef: "env://INTERLOCK_SLACK_BOT_TOKEN"
+  slackChannel: ""
+  adminBaseUrl: ""
+
+approvals:
+  # Raise this when relying on notifications: 900s predates any way of being
+  # told an approval is waiting.
+  expirySeconds: 900
+
+config:
+  logLevel: info
+  auditDurabilityMode: strict
+  cache:
+    l1MaxSize: 10000
+    l1TtlSeconds: 60
+    l2TtlSeconds: 300
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: interlock.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []

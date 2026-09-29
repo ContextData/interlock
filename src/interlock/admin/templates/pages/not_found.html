@@ -1,0 +1,9 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Not found - InterLock{% endblock %}
+
+{% block content %}
+<div class="page-header"><h1>Not found</h1></div>
+<div class="empty-state">
+  <p>We could not find {{ what|default('the requested resource') }}.</p>
+</div>
+{% endblock %}

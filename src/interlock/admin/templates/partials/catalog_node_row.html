@@ -1,0 +1,8 @@
+<span class="catalog-node-row">
+  <span class="badge">{{ node.node_type | replace('_', ' ') }}</span>
+  <code>{{ node.name }}</code>
+  {% if node.data_type %}<small class="muted">{{ node.data_type }}</small>{% endif %}
+  {% if node.expandable %}<small class="muted">{{ node.child_count }} item{{ '' if node.child_count == 1 else 's' }}</small>{% endif %}
+  {% if node.likely_pii and not node.classification %}<span class="badge badge-warning" title="The column name suggests personal data">likely PII</span>{% endif %}
+  {% if node.attributes.get('row_estimate') %}<small class="muted">~{{ node.attributes.get('row_estimate') }} rows</small>{% endif %}
+</span>

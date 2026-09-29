@@ -1,0 +1,27 @@
+.git
+.venv
+.pytest_cache
+.ruff_cache
+.mypy_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+node_modules
+dist
+build
+config.yaml
+*.tfvars
+*.tfvars.json
+audit-spool
+*.spool
+*.deadletter
+credentials*.json
+service-account*.json
+*.pem
+*.p12
+*.pfx
+
+# The documentation site is never part of the runtime image.
+docs-site

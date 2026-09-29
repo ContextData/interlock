@@ -1,0 +1,75 @@
+{# Wizard step 4: cache strategy + classification tags. #}
+<div class="form-card wizard">
+  <div class="wizard-progress" data-step="4">
+    <span class="step done">1. Type</span>
+    <span class="step done">2. Connection</span>
+    <span class="step done">3. Schema</span>
+    <span class="step active">4. Cache</span>
+    <span class="step">5. Review</span>
+  </div>
+  <h3>Cache &amp; classification</h3>
+
+  <form id="wizard-form">
+    <input type="hidden" name="wizard_id" value="{{ state.wizard_id|default('') }}">
+    <input type="hidden" name="name" value="{{ state.name }}">
+    <input type="hidden" name="source_type" value="{{ state.source_type }}">
+    <input type="hidden" name="connector_key" value="{{ state.connector_key }}">
+    <input type="hidden" name="create_default_roles" value="{{ state.create_default_roles|default('off') }}">
+    <input type="hidden" name="host" value="{{ state.host|default('') }}">
+    <input type="hidden" name="port" value="{{ state.port|default('') }}">
+    <input type="hidden" name="database" value="{{ state.database|default('') }}">
+    <input type="hidden" name="user" value="{{ state.user|default('') }}">
+    <input type="hidden" name="password_ref" value="{{ state.password_ref|default('') }}">
+    <input type="hidden" name="base_url" value="{{ state.base_url|default('') }}">
+    <input type="hidden" name="token_ref" value="{{ state.token_ref|default('') }}">
+    <input type="hidden" name="bucket" value="{{ state.bucket|default('') }}">
+    <input type="hidden" name="prefix" value="{{ state.prefix|default('') }}">
+    <input type="hidden" name="region_name" value="{{ state.region_name|default('') }}">
+    <input type="hidden" name="endpoint_url" value="{{ state.endpoint_url|default('') }}">
+    <input type="hidden" name="aws_access_key_id_ref" value="{{ state.aws_access_key_id_ref|default('') }}">
+    <input type="hidden" name="aws_secret_access_key_ref" value="{{ state.aws_secret_access_key_ref|default('') }}">
+    <input type="hidden" name="account" value="{{ state.account|default('') }}">
+    <input type="hidden" name="warehouse" value="{{ state.warehouse|default('') }}">
+    <input type="hidden" name="schema" value="{{ state.schema|default('') }}">
+    <input type="hidden" name="role" value="{{ state.role|default('') }}">
+    <input type="hidden" name="subdomain" value="{{ state.subdomain|default('') }}">
+    <input type="hidden" name="email" value="{{ state.email|default('') }}">
+    <input type="hidden" name="api_token_ref" value="{{ state.api_token_ref|default('') }}">
+    <input type="hidden" name="workspace" value="{{ state.workspace|default('') }}">
+    <input type="hidden" name="bot_token_ref" value="{{ state.bot_token_ref|default('') }}">
+    <input type="hidden" name="org" value="{{ state.org|default('') }}">
+    <input type="hidden" name="group" value="{{ state.group|default('') }}">
+    {% for col in state.pii_columns|default([]) %}
+    <input type="hidden" name="pii_columns" value='{{ col }}'>
+    {% endfor %}
+
+    <div class="form-row">
+      <label>Cache strategy
+        <select name="cache_strategy">
+          <option value="deterministic_first" {% if state.cache_strategy == 'deterministic_first' %}selected{% endif %}>Deterministic-first (relational)</option>
+          <option value="semantic_first" {% if state.cache_strategy == 'semantic_first' %}selected{% endif %}>Semantic-first (file / API)</option>
+          <option value="semantic_only" {% if state.cache_strategy == 'semantic_only' %}selected{% endif %}>Semantic-only (search APIs)</option>
+          <option value="deterministic_only" {% if state.cache_strategy == 'deterministic_only' %}selected{% endif %}>Deterministic-only</option>
+          <option value="bypass" {% if state.cache_strategy == 'bypass' %}selected{% endif %}>Bypass</option>
+        </select>
+      </label>
+    </div>
+
+    {% if state.pii_columns %}
+    <p class="muted">{{ state.pii_columns|length }} PII column(s) flagged in step 3
+       will be recorded as <code>pii</code> in the source catalog. That marks them
+       for review; redaction still comes from the PII scanner and from policies.</p>
+    {% endif %}
+
+    <div class="form-actions">
+      <button type="button" class="btn"
+              hx-post="/dashboard/source-wizard/step3"
+              hx-include="#wizard-form"
+              hx-target="#new-source-form-slot">← Back</button>
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/source-wizard/step5"
+              hx-include="#wizard-form"
+              hx-target="#new-source-form-slot">Next</button>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,12 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}New Data Source - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/data-sources" class="back-link"
+     hx-get="/dashboard/data-sources" hx-target="#main-content">Data Sources</a>
+  <h1>New Data Source</h1>
+</div>
+
+{% include "partials/data_source_form.html" %}
+{% endblock %}

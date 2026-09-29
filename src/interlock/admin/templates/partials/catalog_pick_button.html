@@ -1,0 +1,31 @@
+{# A "Use" button for one catalog node; dashboard.js fills the last focused field.
+   data-patterns maps each resource type to the pattern this node stands for
+   (connections/role_vocabulary.py pick_targets); data-pattern and
+   data-resource-type are its default, and data-table/data-column serve the
+   policy editor. #}
+{% set key = node.resource_key %}
+{% set targets = picks.get(key) if picks else none %}
+{% if node.node_type == 'column' %}
+  {% set table_key = key.rsplit('.', 1)[0] %}
+  {% set column_name = table_key.rsplit('.', 1)[-1] ~ '.' ~ node.name|lower %}
+{% elif node.node_type in ('table', 'view', 'materialized_view', 'foreign_table') %}
+  {% set table_key = key %}{% set column_name = '' %}
+{% else %}
+  {% set table_key = '' %}{% set column_name = '' %}
+{% endif %}
+{% if targets %}
+  {% set rtype = targets.default_type %}{% set pattern = targets.patterns[rtype] %}
+{% elif node.node_type == 'column' %}
+  {% set rtype = 'db.column' %}{% set pattern = key %}
+{% elif node.node_type in ('table', 'view', 'materialized_view', 'foreign_table', 'schema') %}
+  {% set rtype = 'db.table' %}{% set pattern = key ~ '.*' %}
+{% else %}
+  {% set rtype = '' %}{% set pattern = '' %}
+{% endif %}
+{% if pattern or table_key %}
+<button type="button" class="btn btn-ghost js-catalog-pick"
+        data-pattern="{{ pattern }}" data-table="{{ table_key }}" data-column="{{ column_name }}"
+        data-resource-type="{{ rtype }}"
+        data-patterns='{{ (targets.patterns if targets else {}) | tojson }}'
+        title="Insert {{ pattern or table_key }}">Use</button>
+{% endif %}

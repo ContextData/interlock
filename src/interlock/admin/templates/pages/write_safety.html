@@ -1,0 +1,134 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Write Safety - InterLock Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Write Safety</h1>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card stat-card--warning">
+        <div class="stat-value">{{ pending_count }}</div>
+        <div class="stat-label">Pending</div>
+    </div>
+    <div class="stat-card stat-card--success">
+        <div class="stat-value">{{ approved_24h }}</div>
+        <div class="stat-label">Approved (24h)</div>
+    </div>
+    <div class="stat-card stat-card--error">
+        <div class="stat-value">{{ rejected_24h }}</div>
+        <div class="stat-label">Rejected (24h)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ expired_24h }}</div>
+        <div class="stat-label">Expired (24h)</div>
+    </div>
+</div>
+
+<div class="split-section">
+    <h2>Pending Approvals</h2>
+    {% if pending_approvals %}
+    {% for a in pending_approvals %}
+    <div class="approval-card approval-card--{{ a.risk_level | default('medium') }}">
+        <div class="approval-card-header">
+            <span class="badge badge-{{ a.risk_level | default('medium') }}">{{ a.risk_level | default('?') | upper }}</span>
+            <div class="approval-header-end">
+                <span class="approval-id">#{{ a.id }}</span>
+                <a class="btn btn-link" href="/dashboard/write-safety/{{ a.id }}"
+                   hx-get="/dashboard/write-safety/{{ a.id }}"
+                   hx-target="#main-content" hx-push-url="true">Details</a>
+            </div>
+        </div>
+        <div class="sql-preview{% if (a.sql_text | default('') | length) > 100 %} collapsed{% endif %}">{{ a.sql_text | default('N/A') }}</div>
+        {% if (a.sql_text | default('') | length) > 100 %}
+        <button class="sql-toggle">Show more</button>
+        {% endif %}
+        <div class="approval-meta">
+            <div class="meta-item"><span class="meta-label">Source</span>{{ a.source_id | default('-') }}</div>
+            <div class="meta-item"><span class="meta-label">Identity</span>{{ a.identity_id|identity_label(a.identity_name, a.identity_deleted) }}</div>
+            <div class="meta-item"><span class="meta-label">Created</span>{{ a.created_at|fmt_dt }}</div>
+            <div class="meta-item"><span class="meta-label">Expires</span>{{ a.expires_at|fmt_dt }}</div>
+            <div class="meta-item"><span class="meta-label">Impact</span>{{ a.request_metadata.cache_invalidation|default('source cache invalidation') if a.request_metadata else 'source cache invalidation' }}</div>
+        </div>
+        <p class="muted">{{ a.request_metadata.reason|default('Human approval required before executing this write.') if a.request_metadata else 'Human approval required before executing this write.' }}</p>
+        {# P1-B: a single clean POST per button. The previous markup
+           declared both ``hx-post`` and ``hx-get`` on the same element
+           which made the request non-deterministic. It also hardcoded
+           the actor as "admin-dashboard"; the actor now flows from the
+           authenticated session via the X-CSRF-Token header (the body
+           ``approved_by``/``rejected_by`` are no longer forwarded
+           because the route reads ``request.state.admin.username``). #}
+        <div class="approval-decisions">
+            <form class="decision decision--approve"
+                  hx-post="/api/approvals/{{ a.id }}/approve"
+                  hx-target="#main-content"
+                  hx-swap="innerHTML"
+                  {% if a.risk_level == 'high' %}hx-confirm="Approve this high-risk write?"{% endif %}>
+                <h4 class="decision-title">Approve</h4>
+                <div class="form-row">
+                    <label for="approve-comment-{{ a.id }}">Comment <span class="field-optional">optional</span></label>
+                    <input type="text" id="approve-comment-{{ a.id }}" name="comment"
+                           placeholder="Why this write is safe to run">
+                </div>
+                <button class="btn btn-approve" type="submit">Approve and execute</button>
+            </form>
+
+            <form class="decision decision--reject"
+                  hx-post="/api/approvals/{{ a.id }}/reject"
+                  hx-target="#main-content"
+                  hx-swap="innerHTML">
+                <h4 class="decision-title">Reject</h4>
+                <div class="form-row">
+                    <label for="reject-reason-{{ a.id }}">Reason</label>
+                    <select id="reject-reason-{{ a.id }}" name="reason" required>
+                        <option value="">Select a reason</option>
+                        <option value="unsafe">Unsafe</option>
+                        <option value="incorrect-source">Incorrect source</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label for="reject-comment-{{ a.id }}">Comment</label>
+                    <input type="text" id="reject-comment-{{ a.id }}" name="comment"
+                           placeholder="Recorded in the audit trail" required>
+                </div>
+                <button class="btn btn-reject" type="submit">Reject</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state"><p>No pending approvals.</p></div>
+    {% endif %}
+</div>
+
+<div class="split-section">
+    <h2>Approval History</h2>
+    {% if history %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>ID</th><th>Source</th><th>Risk</th><th>Status</th><th>SQL</th><th>By</th><th>Created</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for h in history %}
+                <tr>
+                    <td><a href="/dashboard/write-safety/{{ h.id }}">#{{ h.id }}</a></td>
+                    <td>{{ h.source_id | default('-') }}</td>
+                    <td><span class="badge badge-{{ h.risk_level | default('medium') }}">{{ h.risk_level | default('?') | upper }}</span></td>
+                    <td><span class="badge badge-{{ h.status | default('') }}">{{ h.status | default('?') | upper }}</span></td>
+                    <td class="detail-text">{{ (h.sql_text | default(''))[:60] }}{% if (h.sql_text | default('') | length) > 60 %}...{% endif %}</td>
+                    <td>{{ h.approved_by | default('-') }}</td>
+                    <td>{{ h.created_at|fmt_dt }}</td>
+                    <td><a class="btn btn-link" href="/dashboard/write-safety/{{ h.id }}"
+                           hx-get="/dashboard/write-safety/{{ h.id }}"
+                           hx-target="#main-content" hx-push-url="true">Details</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><p>No approval history yet.</p></div>
+    {% endif %}
+</div>
+{% endblock %}

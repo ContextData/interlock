@@ -1,0 +1,25 @@
+---
+title: Review queued writes
+description: Approve or reject writes that are waiting in the approval queue.
+sidebar:
+  order: 1
+---
+
+import Screenshot from '../../../../components/Screenshot.astro';
+
+**Write Safety** lists pending writes, with counts by state. Open one to see the
+statement, the identity, the source, the protocol, the risk and why it was
+classified that way.
+
+- **Approve** runs the stored statement against the source, as the original
+  identity, and records the result. If execution fails the approval is marked
+  failed with the reason; it is never shown as done when it was not.
+- **Reject** closes it without running anything.
+- An approval nobody decides **expires** after `approvals.expiry_seconds` (15
+  minutes by default) and can never run afterwards.
+
+<Screenshot name="write-safety" alt="Write Safety: pending writes and counts by state." />
+
+Reviewing needs the `approval_reviewer` or `security_admin` role. The API is
+`GET /api/approvals`, `POST /api/approvals/{id}/approve` and
+`POST /api/approvals/{id}/reject`.

@@ -1,0 +1,21 @@
+# Documentation screenshots. Each scene is captured in the light and the dark
+# theme by `make docs-screenshots` into src/assets/screenshots/<theme>/<name>.png.
+# Pages reference scenes by name through the Screenshot component; a test
+# checks every referenced scene exists in both themes and none is orphaned.
+scenes:
+  - name: overview
+    path: /dashboard/overview
+  - name: data-sources
+    path: /dashboard/data-sources
+  - name: source-detail
+    path: /dashboard/data-sources/sample_shop
+  - name: connectors
+    path: /dashboard/connectors
+  - name: identities
+    path: /dashboard/access-control/identities
+  - name: policies
+    path: /dashboard/policies
+  - name: audit
+    path: /dashboard/audit-costs
+  - name: write-safety
+    path: /dashboard/write-safety

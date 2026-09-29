@@ -1,0 +1,90 @@
+{# New Alert Rule form. #}
+<div class="form-card">
+  <h3>New Alert Rule</h3>
+  {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+
+  <form id="alert-form">
+    <div class="form-row">
+      <label>Name
+        <input name="name" required value="{{ form.name }}"
+               placeholder="high-error-rate-shop">
+      </label>
+      <label>Description
+        <input name="description" value="{{ form.description }}"
+               placeholder="alert when error rate > 5% in the last 5m">
+      </label>
+    </div>
+
+    <div class="form-row">
+      <label>Condition
+        <select name="condition_type">
+          {% for c in ('error_rate', 'denial_rate', 'p95_latency_ms',
+                       'request_volume', 'queue_depth') %}
+          <option value="{{ c }}" {% if form.condition_type == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Comparator
+        <select name="comparator">
+          {% for c in ('>', '>=', '<', '<=') %}
+          <option value="{{ c }}" {% if form.comparator == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Threshold
+        <input name="threshold" type="number" step="0.0001" required
+               value="{{ form.threshold }}">
+      </label>
+      <label>Window (seconds)
+        <input name="window_seconds" type="number" min="10" max="86400"
+               value="{{ form.window_seconds }}">
+      </label>
+    </div>
+
+    <div class="form-row">
+      <label>Scope source (optional)
+        <input name="source_id" value="{{ form.source_id }}"
+               placeholder="leave blank for global">
+      </label>
+      <label>Scope identity (optional)
+        <input name="identity_id" type="number" value="{{ form.identity_id }}"
+               placeholder="leave blank for global">
+      </label>
+    </div>
+
+    <div class="form-row">
+      <label>Channel
+        <select name="notification_channel">
+          {% for c in channels|default([{'name': 'log', 'enabled': true, 'note': ''}]) %}
+          <option value="{{ c.name }}"
+                  {% if form.notification_channel == c.name %}selected{% endif %}
+                  {% if not c.enabled %}disabled{% endif %}>
+            {{ c.name }}{% if not c.enabled %} (not configured){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        <span class="field-help">Only configured delivery channels can be selected.</span>
+      </label>
+      <label>Target (URL / address - optional)
+        <input name="notification_target" value=""
+               placeholder="https://hooks.slack.com/...">
+        {% if form.notification_target_supplied %}<span class="field-help">A target was supplied but is not redisplayed. Re-enter it after correcting the form.</span>{% endif %}
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/alerts/create"
+              hx-include="#alert-form"
+              hx-target="#main-content"
+              hx-swap="innerHTML">Save</button>
+      <button type="button" class="btn btn-secondary"
+              hx-post="/dashboard/alerts/dry-run"
+              hx-include="#alert-form"
+              hx-target="#alert-dry-run-result">Preview</button>
+      <button type="button" class="btn js-clear-target"
+              data-clear-target="new-alert-form-slot">Cancel</button>
+    </div>
+    <div id="alert-dry-run-result"></div>
+  </form>
+</div>

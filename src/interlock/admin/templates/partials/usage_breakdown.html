@@ -1,0 +1,81 @@
+{# Governed requests by outcome, for the chosen period. #}
+{% set outcome_labels = dict(usage_outcomes) %}
+<section class="split-section" id="usage-breakdown">
+  <div class="section-header-row">
+    <h2>Usage breakdown</h2>
+    <form class="usage-range" hx-get="/dashboard/audit-costs/usage" hx-target="#usage-breakdown"
+          hx-swap="outerHTML" hx-trigger="change">
+      <label>Period
+        <select name="usage_range">
+          {% for key, label in usage_ranges %}
+          <option value="{{ key }}" {% if key == usage_range %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card stat-card--info">
+      <div class="stat-value">{{ usage.total }}</div>
+      <div class="stat-label">Requests</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ usage.upstream }}</div>
+      <div class="stat-label">Served by the source</div>
+    </div>
+    <div class="stat-card stat-card--success">
+      <div class="stat-value">{{ "%.0f"|format(usage.cache_hit_rate * 100) }}%</div>
+      <div class="stat-label">Served from cache</div>
+    </div>
+    <div class="stat-card stat-card--warning">
+      <div class="stat-value">{{ usage.denied }}</div>
+      <div class="stat-label">Denied</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ "%.0f"|format(usage.avg_latency_ms) }}ms</div>
+      <div class="stat-label">Avg latency</div>
+    </div>
+  </div>
+
+  <p class="muted">Counts of governed requests by what happened to them. InterLock does not price requests; where a source reports its own cost, such as Snowflake credits, it is shown on the audit event.</p>
+  <ul class="usage-legend" aria-label="Legend">
+    {% for key, label in usage_outcomes %}
+    <li><span class="usage-swatch usage-seg--{{ key }}" aria-hidden="true"></span>{{ label }}</li>
+    {% endfor %}
+  </ul>
+
+  {% if usage.total %}
+  <h3 class="chart-subheading">By identity</h3>
+  <div class="usage-bars">
+    {% for row in usage_by_identity %}
+    <div class="usage-row">
+      <span class="usage-label">{{ row.identity_id|identity_label(row.identity_name, row.identity_deleted) }}</span>
+      {% with row = row %}{% include "partials/usage_bar.html" %}{% endwith %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <h3 class="chart-subheading">By source</h3>
+  <div class="usage-bars">
+    {% for row in usage_by_source %}
+    <div class="usage-row">
+      <span class="usage-label">{{ row.source_id or 'No source' }}</span>
+      {% with row = row %}{% include "partials/usage_bar.html" %}{% endwith %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <h3 class="chart-subheading">By team</h3>
+  <div class="usage-bars">
+    {% for row in usage_by_team %}
+    <div class="usage-row">
+      <span class="usage-label">{{ row.team or 'No team' }}</span>
+      {% with row = row %}{% include "partials/usage_bar.html" %}{% endwith %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state"><p>No governed requests in this period.</p></div>
+  {% endif %}
+</section>

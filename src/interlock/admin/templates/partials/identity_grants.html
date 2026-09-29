@@ -1,0 +1,54 @@
+<div id="identity-grants">
+  {% if error %}
+  <p class="form-error" role="alert">{{ error }}</p>
+  {% endif %}
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr><th>Source</th><th>Role</th><th class="col-actions">Access</th></tr>
+      </thead>
+      <tbody>
+        {% for grant in grants %}
+        <tr>
+          <td>{{ grant.source_name or grant.source_id }}</td>
+          <td>
+            <a class="badge"
+               href="/dashboard/data-sources/{{ grant.source_id }}/roles/{{ grant.role_id }}/edit"
+               hx-get="/dashboard/data-sources/{{ grant.source_id }}/roles/{{ grant.role_id }}/edit"
+               hx-target="#main-content" hx-push-url="true">{{ grant.role }}</a>
+          </td>
+          <td class="col-actions">
+            <button class="btn btn--danger btn--sm"
+                    hx-post="/dashboard/access-control/identities/{{ ident_id }}/grants/{{ grant.grant_id }}/revoke"
+                    hx-target="#identity-grants" hx-swap="outerHTML"
+                    hx-confirm="Revoke {{ grant.source_id }}:{{ grant.role }}? The agent keeps its API key and loses this source on its next request.">
+              Revoke
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3"><span class="muted">No source roles granted.</span></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if available_roles %}
+  <form class="inline-form"
+        hx-post="/dashboard/access-control/identities/{{ ident_id }}/grants"
+        hx-target="#identity-grants" hx-swap="outerHTML">
+    <label for="source_role">Grant a source role</label>
+    <select id="source_role" name="source_role">
+      {% for role in available_roles %}
+      <option value="{{ role.source_id }}:{{ role.role_id }}">
+        {{ role.source_name or role.source_id }} - {{ role.role_key }}
+      </option>
+      {% endfor %}
+    </select>
+    <button class="btn btn--primary btn--sm" type="submit">Grant</button>
+  </form>
+  {% else %}
+  <p class="muted">This identity already holds every enabled source role.</p>
+  {% endif %}
+</div>

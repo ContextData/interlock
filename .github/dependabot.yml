@@ -1,0 +1,53 @@
+version: 2
+
+updates:
+  # Python dependencies are locked in uv.lock and exported to a hash-pinned
+  # requirements-production.txt. A dependency PR must therefore refresh both,
+  # which `make requirements-production` does; CI fails the PR otherwise.
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "python"]
+    groups:
+      # Patch-level bumps rarely need individual review; batch them.
+      python-patch:
+        update-types: ["patch"]
+      # Optional heavy ML/connector extras move together or not at all.
+      ml-stack:
+        patterns:
+          - "torch"
+          - "sentence-transformers"
+          - "transformers"
+          - "faiss-cpu"
+          - "spacy"
+          - "presidio-*"
+
+  # Actions are SHA-pinned; Dependabot updates the SHA and the version comment.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "ci"]
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "docker"]
+
+  # The documentation site. Versions are exact pins with a lockfile; a bump
+  # must still pass the docs job's licence gate and build.
+  - package-ecosystem: "npm"
+    directory: "/docs-site"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "docs"]

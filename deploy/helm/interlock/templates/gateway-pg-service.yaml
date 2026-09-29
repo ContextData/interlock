@@ -1,0 +1,36 @@
+{{- if .Values.gateway.pgService.enabled -}}
+{{/*
+A Service carrying only the PostgreSQL wire port.
+
+The main gateway Service publishes both the HTTP and the PG ports, so turning
+it into a LoadBalancer to reach PG-wire would also expose HTTP on that address,
+bypassing the Ingress and whatever it terminates or restricts. Splitting the
+wire port into its own Service keeps HTTP behind the Ingress and gives the
+PostgreSQL listener its own load balancer, which is also where cloud-specific
+annotations belong.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "interlock.fullname" . }}-gateway-pg
+  labels:
+    {{- include "interlock.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+  {{- with .Values.gateway.pgService.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.gateway.pgService.type }}
+  {{- with .Values.gateway.pgService.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ . }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.gateway.pgService.port }}
+      targetPort: pg
+      protocol: TCP
+      name: pg
+  selector:
+    {{- include "interlock.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+{{- end }}

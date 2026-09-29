@@ -1,0 +1,262 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}{{ ds.name or ds.source_id }} - Data Source - InterLock{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/data-sources" class="back-link"
+     hx-get="/dashboard/data-sources" hx-target="#main-content">← Data Sources</a>
+  <h1>{{ ds.name or ds.source_id }}</h1>
+</div>
+
+<div class="detail-stack">
+
+  <section class="card">
+    <div class="section-header-row">
+      <h2>Configuration</h2>
+      <div class="row-actions">
+        <a class="btn btn-secondary"
+           href="/dashboard/data-sources/{{ ds.source_id }}/edit"
+           hx-get="/dashboard/data-sources/{{ ds.source_id }}/edit"
+           hx-target="#main-content"
+           hx-push-url="true">Edit</a>
+        <button class="btn btn-secondary"
+                hx-post="/dashboard/data-sources/{{ ds.source_id }}/toggle-enabled"
+                hx-target="#main-content"
+                hx-swap="innerHTML">{% if ds.enabled %}Disable{% else %}Enable{% endif %}</button>
+        <button class="btn btn-secondary"
+                hx-post="/dashboard/data-sources/{{ ds.source_id }}/invalidate-cache"
+                hx-target="#main-content"
+                hx-swap="innerHTML">Invalidate Cache</button>
+        <button class="btn btn-danger"
+                hx-confirm="Delete this source? Existing roles, grants, audit references, and queued work may depend on it."
+                hx-post="/dashboard/data-sources/{{ ds.source_id }}/delete"
+                hx-target="#main-content"
+                hx-swap="innerHTML">Delete</button>
+      </div>
+    </div>
+    <dl class="form-summary fact-table">
+      <dt>Name</dt><dd>{{ ds.name }}</dd>
+      <dt>Source ID</dt><dd><code>{{ ds.source_id }}</code>
+        <button class="btn btn-link js-copy-text" type="button" data-copy-text="{{ ds.source_id }}">Copy</button>
+        <span class="field-help">What agents use to reach this source: the PostgreSQL database name, the <code>/proxy/{{ ds.source_id }}/</code> path, and the MCP <code>source_id</code>.</span></dd>
+      <dt>Type</dt><dd><span class="badge badge-{{ ds.source_type|lower }}">{{ ds.source_type }}</span></dd>
+      <dt>Connector</dt><dd>{{ ds.connector_name }} <code>{{ ds.connector_key }}</code>{% if ds.connector_active is sameas false %} <span class="badge badge-warning" title="This source keeps working; new sources cannot be registered on this connector until it is activated.">connector inactive</span>{% endif %}</dd>
+      <dt>Family</dt><dd>{{ ds.connector_family }} <span class="badge">{{ ds.connector_status }}</span></dd>
+      <dt>Enabled</dt><dd>
+        {% if ds.enabled %}
+        <span class="health-dot health-green" aria-label="enabled"></span> enabled
+        {% else %}
+        <span class="health-dot health-red" aria-label="disabled"></span> disabled
+        {% endif %}
+      </dd>
+      <dt>Cache strategy</dt><dd>{{ ds.cache_strategy }}</dd>
+      <dt>Credential mode</dt><dd><span class="badge">{{ ds.credential_mode }}</span></dd>
+      <dt>Connection</dt><dd><code>{{ ds.connection_summary }}</code></dd>
+      <dt>Created</dt><dd>{{ ds.created_at|fmt_dt }}</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <div class="section-header-row">
+      <h2>Policies applied to this source</h2>
+      <a class="btn btn-link" href="/dashboard/policies"
+         hx-get="/dashboard/policies" hx-target="#main-content" hx-push-url="true">All policies</a>
+    </div>
+    <p class="muted">A source role decides whether an identity may reach this source at all. These organisation policies then run on every request that gets through, top to bottom: the first rule that matches decides, and if none matches the request is denied.</p>
+    {% if policies %}
+    <div class="table-wrapper">
+      <table class="policy-order">
+        <thead>
+          <tr><th class="num">Order</th><th>Rule</th><th>Effect</th><th>What it does</th><th class="num">Matched, 7 days</th></tr>
+        </thead>
+        <tbody>
+          {% for p in policies %}
+          <tr>
+            <td class="num">{{ loop.index }}</td>
+            <td><a href="/dashboard/policies/{{ p.id }}/edit"
+                   hx-get="/dashboard/policies/{{ p.id }}/edit" hx-target="#main-content" hx-push-url="true">{{ p.name }}</a>
+              <div class="muted">priority {{ p.priority }}{% if not p.scoped %} · every source{% endif %}</div></td>
+            <td><span class="badge badge-{{ p.effect }}">{{ p.effect }}</span></td>
+            <td>{{ p.description }}</td>
+            <td class="num">{{ p.hits_7d }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><p>No enabled policy applies to this source, so every request that a source role allows is denied by default. Add an allow policy to let traffic through.</p></div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="section-header-row">
+      <h2>Source Roles</h2>
+      <a class="btn btn-primary"
+         href="/dashboard/data-sources/{{ ds.source_id }}/roles/new"
+         hx-get="/dashboard/data-sources/{{ ds.source_id }}/roles/new"
+         hx-target="#main-content"
+         hx-push-url="true">New Role</a>
+    </div>
+    <p class="muted">Roles define source-local permissions. Explicit deny wins, then allowed permissions are unioned across grants. Organization policies still run after roles allow access.</p>
+    <div id="role-delete-result"></div>
+    {% if source_roles %}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Role</th><th>Key</th><th>Statements</th><th>Grants</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for role in source_roles %}
+          <tr>
+            <td>{{ role.name }}</td>
+            <td><code>{{ role.role_key }}</code></td>
+            <td>{{ role.permission_count }}</td>
+            <td>{{ role.grant_count }}</td>
+            <td>
+              {% if role.enabled %}<span class="badge badge-success">enabled</span>{% else %}<span class="badge badge-error">disabled</span>{% endif %}
+              {% if role.review_required %}<span class="badge badge-warning">review</span>{% endif %}
+            </td>
+            <td>
+              <a class="btn btn-link"
+                 href="/dashboard/data-sources/{{ ds.source_id }}/roles/{{ role.id }}/edit"
+                 hx-get="/dashboard/data-sources/{{ ds.source_id }}/roles/{{ role.id }}/edit"
+                 hx-target="#main-content"
+                 hx-push-url="true">Edit</a>
+              {% if role.active_grant_count %}
+              <button class="btn btn-link" type="button" disabled
+                      title="Granted to {{ role.active_grant_count }} {{ 'identity' if role.active_grant_count == 1 else 'identities' }}. Revoke the grants before deleting.">Delete</button>
+              {% else %}
+              <button class="btn btn-link btn-link-danger" type="button"
+                      hx-post="/dashboard/data-sources/{{ ds.source_id }}/roles/{{ role.id }}/delete"
+                      hx-target="#role-delete-result"
+                      hx-swap="innerHTML"
+                      hx-confirm="Delete role {{ role.role_key }} and its {{ role.permission_count }} statements?{% if role.referencing_policies %} Policies {{ role.referencing_policies|join(', ') }} name this role and will stop matching it.{% endif %} This cannot be undone.">Delete</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <p>No source roles exist yet. Create default templates or add a role manually before assigning identities to this source.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="card" id="catalog-section"
+           hx-get="/dashboard/data-sources/{{ ds.source_id }}/catalog"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+    <h2>Catalog</h2>
+    <p class="muted">Loading the recorded structure...</p>
+  </section>
+
+  <section class="card">
+    <h2>Health</h2>
+    <p class="muted">Probe the upstream and confirm InterLock can still reach it.
+      Click <em>Test</em>; no traffic is generated for the agent.</p>
+    <div id="src-test-result-strip"></div>
+    <button class="btn btn-secondary"
+            hx-post="/dashboard/data-sources/{{ ds.source_id }}/test"
+            hx-target="#src-test-result-strip"
+            hx-swap="innerHTML">Test Connection</button>
+  </section>
+
+  <section class="card">
+    <h2>Credentials</h2>
+    <dl class="form-summary fact-table">
+      {% for key, value in ds.masked_connection_config.items() %}
+      <dt>{{ key }}</dt><dd><code>{{ value }}</code></dd>
+      {% else %}
+      <dt>Mode</dt><dd>No credential fields configured.</dd>
+      {% endfor %}
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Last 24 Hours</h2>
+    <div class="table-wrapper">
+      <table class="metrics-row">
+        <thead>
+          <tr>
+            <th>Requests</th><th>Cache hit</th><th>Avg latency</th>
+            <th>p95 latency</th><th>Denials</th><th>Errors</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ stats.requests_24h }}</td>
+            <td>{{ stats.cache_hit_pct }}%</td>
+            <td>{{ stats.avg_ms }}<small>ms</small></td>
+            <td>{{ stats.p95_ms }}<small>ms</small></td>
+            <td>{{ stats.denials }}</td>
+            <td>{{ stats.errors }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Recent Activity</h2>
+    {% if recent %}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>When</th><th>Identity</th><th>Op</th><th>Tier</th>
+            <th>Latency</th><th>PII</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recent %}
+          <tr>
+            <td>{{ r.created_at|fmt_dt }}</td>
+            <td>{{ r.identity_id|identity_label(r.identity_name, r.identity_deleted) }}</td>
+            <td>{{ r.operation }}</td>
+            <td>{{ r.cache_tier or ('hit' if r.cache_hit else 'miss') }}</td>
+            <td>{{ r.latency_ms|fmt_ms }}</td>
+            <td>{% if r.pii_detected %}<span class="pii-tag">PII</span>{% endif %}</td>
+            <td><span class="badge badge-{{ r.status|default('success')|lower }}">{{ r.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><p>No requests against this source yet.</p></div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Recent Approvals</h2>
+    {% if approvals %}
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>ID</th><th>Identity</th><th>Risk</th><th>Status</th><th>Created</th><th>Expires</th></tr></thead>
+        <tbody>
+          {% for a in approvals %}
+          <tr>
+            <td><a href="/dashboard/write-safety/{{ a.id }}">#{{ a.id }}</a></td>
+            <td>{{ a.identity_id|identity_label(a.identity_name, a.identity_deleted) }}</td>
+            <td><span class="badge badge-{{ a.risk_level }}">{{ a.risk_level }}</span></td>
+            <td><span class="badge badge-{{ a.status }}">{{ a.status }}</span></td>
+            <td>{{ a.created_at|fmt_dt }}</td>
+            <td>{{ a.expires_at|fmt_dt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><p>No approvals for this source yet.</p></div>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+{#- data-theme is stamped server-side from a cookie so an explicit choice
+    applies before first paint. An inline <script> would be blocked by
+    `script-src 'self'`, and without the attribute the page falls back to
+    prefers-color-scheme, which is handled entirely in CSS. -#}
+<html lang="en"{% if theme in ('light', 'dark') %} data-theme="{{ theme }}"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowScriptTags": false, "allowEval": false}'>
+    <link rel="icon" href="/static/assets/logo/favicon-64.png">
+    <title>{% block title %}InterLock Dashboard{% endblock %}</title>
+    <script src="/static/js/htmx.min.js"></script>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <button type="button"
+            class="nav-toggle js-nav-toggle"
+            aria-label="Open navigation"
+            aria-controls="primary-nav"
+            aria-expanded="false">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+            <path d="M2 4h12M2 8h12M2 12h12"/>
+        </svg>
+    </button>
+    <div class="nav-scrim js-nav-scrim" hidden></div>
+
+    <div class="layout">
+        <nav class="sidebar" id="primary-nav" aria-label="Primary">
+            <div class="sidebar-header">
+                {#- Two lockups, one shown per theme: the mark is drawn in
+                    fixed brand colours, and an <img> cannot inherit
+                    currentColor from the page. -#}
+                <img src="/static/assets/logo/context-data-lockup.svg"
+                     alt="context.data"
+                     class="sidebar-logo logo-dark">
+                <img src="/static/assets/logo/context-data-lockup-light.svg"
+                     alt=""
+                     aria-hidden="true"
+                     class="sidebar-logo logo-light">
+                {#- Posted through htmx so the CSRF header is attached; the
+                    admin middleware accepts the header only. js-theme-input is
+                    set from the *effective* theme at click time, so the first
+                    click always flips what the operator can actually see. -#}
+                <form hx-post="/dashboard/theme" hx-swap="none" class="theme-form">
+                    <input type="hidden" name="next" value="{{ request.url.path if request else '/dashboard/overview' }}">
+                    <input type="hidden" name="theme" class="js-theme-input"
+                           value="{{ 'light' if theme == 'dark' else 'dark' }}">
+                    <button type="submit"
+                            class="theme-toggle js-theme-toggle"
+                            aria-label="Switch colour theme"
+                            title="Switch colour theme">
+                        <svg class="icon-light" viewBox="0 0 16 16" width="15" height="15" fill="none"
+                             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+                            <circle cx="8" cy="8" r="3.25"/>
+                            <path d="M8 1v1.5M8 13.5V15M15 8h-1.5M2.5 8H1M12.95 3.05l-1.06 1.06M4.11 11.89l-1.06 1.06M12.95 12.95l-1.06-1.06M4.11 4.11L3.05 3.05"/>
+                        </svg>
+                        <svg class="icon-dark" viewBox="0 0 16 16" width="15" height="15" fill="none"
+                             stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                             stroke-linejoin="round" aria-hidden="true">
+                            <path d="M13.5 9.5A5.6 5.6 0 016.5 2.5a5.75 5.75 0 107 7z"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+            <span class="sidebar-version">v{{ interlock_version }}</span>
+
+            <ul class="nav-links">
+                <li class="nav-section">System</li>
+                <li><a href="/dashboard/overview" class="{% if active_page == 'overview' %}active{% endif %}" {% if active_page == 'overview' %}aria-current="page"{% endif %} hx-get="/dashboard/overview" hx-target="#main-content" hx-push-url="true">Overview</a></li>
+                <li><a href="/dashboard/data-sources" class="{% if active_page == 'data-sources' %}active{% endif %}" {% if active_page == 'data-sources' %}aria-current="page"{% endif %} hx-get="/dashboard/data-sources" hx-target="#main-content" hx-push-url="true">Data Sources</a></li>
+                <li><a href="/dashboard/connectors" class="{% if active_page == 'connectors' %}active{% endif %}" {% if active_page == 'connectors' %}aria-current="page"{% endif %} hx-get="/dashboard/connectors" hx-target="#main-content" hx-push-url="true">Connectors</a></li>
+
+                <li class="nav-section">Access Control</li>
+                <li><a href="/dashboard/access-control/identities" class="{% if active_page == 'identities' or active_page == 'access-control' %}active{% endif %}" {% if active_page == 'identities' or active_page == 'access-control' %}aria-current="page"{% endif %} hx-get="/dashboard/access-control/identities" hx-target="#main-content" hx-push-url="true">Identities</a></li>
+                <li><a href="/dashboard/policies" class="{% if active_page == 'policies' %}active{% endif %}" {% if active_page == 'policies' %}aria-current="page"{% endif %} hx-get="/dashboard/policies" hx-target="#main-content" hx-push-url="true">Policies</a></li>
+
+                <li class="nav-section">Processing</li>
+                <li><a href="/dashboard/ingestion" class="{% if active_page == 'ingestion' %}active{% endif %}" {% if active_page == 'ingestion' %}aria-current="page"{% endif %} hx-get="/dashboard/ingestion" hx-target="#main-content" hx-push-url="true">Ingestion</a></li>
+                <li><a href="/dashboard/workers" class="{% if active_page == 'workers' %}active{% endif %}" {% if active_page == 'workers' %}aria-current="page"{% endif %} hx-get="/dashboard/workers" hx-target="#main-content" hx-push-url="true">Workers</a></li>
+
+                <li class="nav-section">Intelligence</li>
+                <li><a href="/dashboard/discovery" class="{% if active_page in ('discovery', 'categories', 'entities') %}active{% endif %}" {% if active_page in ('discovery', 'categories', 'entities') %}aria-current="page"{% endif %} hx-get="/dashboard/discovery" hx-target="#main-content" hx-push-url="true">Discovery</a></li>
+                <li><a href="/dashboard/catalog" class="{% if active_page == 'catalog' %}active{% endif %}" {% if active_page == 'catalog' %}aria-current="page"{% endif %} hx-get="/dashboard/catalog" hx-target="#main-content" hx-push-url="true">Catalog</a></li>
+
+                <li class="nav-section">Observability</li>
+                <li><a href="/dashboard/audit-costs" class="{% if active_page == 'audit-costs' %}active{% endif %}" {% if active_page == 'audit-costs' %}aria-current="page"{% endif %} hx-get="/dashboard/audit-costs" hx-target="#main-content" hx-push-url="true">Audit &amp; Costs</a></li>
+                <li><a href="/dashboard/write-safety" class="{% if active_page == 'write-safety' %}active{% endif %}" {% if active_page == 'write-safety' %}aria-current="page"{% endif %} hx-get="/dashboard/write-safety" hx-target="#main-content" hx-push-url="true">Write Safety</a></li>
+                <li><a href="/dashboard/proxy" class="{% if active_page == 'proxy' %}active{% endif %}" {% if active_page == 'proxy' %}aria-current="page"{% endif %} hx-get="/dashboard/proxy" hx-target="#main-content" hx-push-url="true">Proxy Monitor</a></li>
+                <li><a href="/dashboard/policy-analytics" class="{% if active_page == 'policy-analytics' %}active{% endif %}" {% if active_page == 'policy-analytics' %}aria-current="page"{% endif %} hx-get="/dashboard/policy-analytics" hx-target="#main-content" hx-push-url="true">Policy Analytics</a></li>
+                <li><a href="/dashboard/alerts" class="{% if active_page == 'alerts' %}active{% endif %}" {% if active_page == 'alerts' %}aria-current="page"{% endif %} hx-get="/dashboard/alerts" hx-target="#main-content" hx-push-url="true">Alerts</a></li>
+            </ul>
+
+            <div class="sidebar-footer">
+                {% if admin_username %}
+                <div class="sidebar-account" title="{{ admin_username }}">
+                    <span class="sidebar-account-avatar" aria-hidden="true">{{ admin_username[0]|upper }}</span>
+                    <span class="sidebar-account-name">{{ admin_username }}</span>
+                </div>
+                <a href="/auth/change-password"
+                   class="sidebar-account-link{% if active_page == 'change-password' %} active{% endif %}"
+                   {% if active_page == 'change-password' %}aria-current="page"{% endif %}>Change password</a>
+                {% endif %}
+                <button type="button"
+                        class="btn btn-secondary sidebar-logout"
+                        hx-post="/auth/logout"
+                        hx-target="body"
+                        hx-swap="outerHTML">Log out</button>
+            </div>
+        </nav>
+
+        <main id="main-content" tabindex="-1">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <div id="admin-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

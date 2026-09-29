@@ -1,0 +1,111 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Discovery - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header disc-page-header">
+    <h1>Discovery</h1>
+    <div class="disc-header-actions">
+        <button class="btn btn-secondary"
+                hx-post="/dashboard/discovery/rescan"
+                hx-target="#disc-rescan-status">
+            Rescan Sources
+        </button>
+    </div>
+</div>
+
+<div class="disc-stats">
+    <div class="disc-stat">
+        <div class="disc-stat-num">{{ stats.assets }}</div>
+        <div class="disc-stat-label">Assets</div>
+    </div>
+    <div class="disc-stat">
+        <div class="disc-stat-num">{{ stats.entities }}</div>
+        <div class="disc-stat-label">Entities</div>
+    </div>
+    <div class="disc-stat">
+        <div class="disc-stat-num">{{ stats.categories }}</div>
+        <div class="disc-stat-label">Categories</div>
+    </div>
+    <div class="disc-stat">
+        <div class="disc-stat-num">{{ stats.sources }}</div>
+        <div class="disc-stat-label">Sources</div>
+    </div>
+</div>
+
+<div id="disc-rescan-status" class="disc-rescan-status">
+    {% if last_run %}
+        {% include "partials/discovery_rescan_status.html" with context %}
+    {% endif %}
+</div>
+
+<div class="disc-unified-search">
+    <input type="text"
+           id="disc-q"
+           name="q"
+           placeholder="Search assets, tables, columns, entities..."
+           autocomplete="off"
+           hx-get="/dashboard/discovery/search"
+           hx-trigger="keyup changed delay:250ms, search"
+           hx-target="#disc-search-results"
+           hx-include="this">
+    <div id="disc-search-results" class="disc-search-results"></div>
+</div>
+
+<form class="filter-bar discovery-filter-bar">
+    <label>Source
+        <select name="source" hx-get="/dashboard/discovery" hx-target="#discovery-content" hx-include=".discovery-filter-bar select, .discovery-filter-bar input, [name='tab']">
+            <option value="">All sources</option>
+            {% for src in sources %}
+            <option value="{{ src }}" {% if filter_source == src %}selected{% endif %}>{{ src }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>Asset type
+        <select name="doc_type" hx-get="/dashboard/discovery" hx-target="#discovery-content" hx-include=".discovery-filter-bar select, .discovery-filter-bar input, [name='tab']">
+            <option value="">All types</option>
+            {% for typ in doc_types %}
+            <option value="{{ typ }}" {% if filter_doc_type == typ %}selected{% endif %}>{{ typ }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>Category
+        <select name="category" hx-get="/dashboard/discovery" hx-target="#discovery-content" hx-include=".discovery-filter-bar select, .discovery-filter-bar input, [name='tab']">
+            <option value="">All categories</option>
+            {% for cat in filter_categories %}
+            <option value="{{ cat }}" {% if filter_category == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>Entity
+        <input name="entity" value="{{ filter_entity }}" placeholder="entity text"
+               hx-get="/dashboard/discovery" hx-trigger="change delay:250ms"
+               hx-target="#discovery-content" hx-include=".discovery-filter-bar select, .discovery-filter-bar input, [name='tab']">
+    </label>
+    <input type="hidden" name="tab" value="{{ active_tab }}">
+</form>
+
+<div class="disc-tabs">
+    <button class="disc-tab {% if active_tab == 'assets' %}active{% endif %}"
+            hx-get="/dashboard/discovery?tab=assets"
+            hx-target="#discovery-content"
+            hx-push-url="/dashboard/discovery?tab=assets">
+        Assets
+    </button>
+    <button class="disc-tab {% if active_tab == 'entities' %}active{% endif %}"
+            hx-get="/dashboard/discovery?tab=entities"
+            hx-target="#discovery-content"
+            hx-push-url="/dashboard/discovery?tab=entities">
+        Entities
+    </button>
+    <button class="disc-tab {% if active_tab == 'categories' %}active{% endif %}"
+            hx-get="/dashboard/discovery?tab=categories"
+            hx-target="#discovery-content"
+            hx-push-url="/dashboard/discovery?tab=categories">
+        Categories
+    </button>
+</div>
+
+<div id="discovery-content">
+    {% include "partials/discovery_tab.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}{% if role_id %}Edit{% else %}New{% endif %} Source Role - InterLock{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/data-sources/{{ source.source_id if source else '' }}" class="back-link"
+     hx-get="/dashboard/data-sources/{{ source.source_id if source else '' }}"
+     hx-target="#main-content">← {{ source.name if source else 'Data Source' }}</a>
+  <h1>{% if role_id %}Edit Source Role{% else %}New Source Role{% endif %}</h1>
+</div>
+
+{% include "partials/source_role_form.html" %}
+{% endblock %}

@@ -1,0 +1,11 @@
+/* Brand accent: the console's lime, used sparingly for links and focus. */
+:root {
+  --sl-color-accent-low: #1f2a07;
+  --sl-color-accent: #6a8f0b;
+  --sl-color-accent-high: #d9f99d;
+}
+:root[data-theme='light'] {
+  --sl-color-accent-low: #ecfccb;
+  --sl-color-accent: #4d7c0f;
+  --sl-color-accent-high: #1a2e05;
+}

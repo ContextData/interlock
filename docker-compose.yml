@@ -1,0 +1,196 @@
+services:
+  gateway:
+    build:
+      context: .
+      args:
+        INTERLOCK_EXTRA: production
+    command: ["interlock.gateway"]
+    # Host ports avoid the most common local collisions: 3000 (Grafana and
+    # friends), 5432 (a system PostgreSQL), 6379 (another project's Redis).
+    # Container-internal ports are unchanged, so inter-service URLs such as
+    # postgres:5432 and redis:6379 keep working. These values are what the
+    # README, DEMO, and agent-connection docs tell users to connect to.
+    # Every port binds to 127.0.0.1: this file is a local quick start with
+    # development credentials, never something to expose on a network.
+    ports:
+      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:5434:5432"
+    environment:
+      INGESTION_MODE: disabled
+      DATABASE_URL: postgresql://onyx:onyx_dev@postgres:5432/onyx
+      REDIS_URL: redis://redis:6379/0
+      INTERLOCK_DATABASE__HOST: postgres
+      INTERLOCK_DATABASE__PASSWORD: onyx_dev
+      INTERLOCK_DATABASE__USER: onyx
+      INTERLOCK_DATABASE__DATABASE: onyx
+      INTERLOCK_REDIS__URL: redis://redis:6379/0
+      INTERLOCK_GATEWAY__UPSTREAM_PG_HOST: postgres
+      INTERLOCK_GATEWAY__UPSTREAM_PG_PORT: "5432"
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - interlock-net
+
+  admin:
+    build:
+      context: .
+      args:
+        INTERLOCK_EXTRA: production
+    command: ["interlock.admin"]
+    ports:
+      - "127.0.0.1:9090:9090"
+    environment:
+      DATABASE_URL: postgresql://onyx:onyx_dev@postgres:5432/onyx
+      REDIS_URL: redis://redis:6379/0
+      INTERLOCK_DATABASE__HOST: postgres
+      INTERLOCK_DATABASE__PASSWORD: onyx_dev
+      INTERLOCK_DATABASE__USER: onyx
+      INTERLOCK_DATABASE__DATABASE: onyx
+      INTERLOCK_REDIS__URL: redis://redis:6379/0
+      INTERLOCK_ADMIN__HOST: 0.0.0.0
+      # A fixed signing key keeps console sessions valid across restarts.
+      # Development only: set your own before exposing the console anywhere.
+      INTERLOCK_ADMIN__SECRET_KEY: ${INTERLOCK_ADMIN__SECRET_KEY:-local-development-only-admin-signing-key}
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9090/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - interlock-net
+
+  worker-1:
+    build:
+      context: .
+      args:
+        INTERLOCK_EXTRA: production-worker
+    command: ["interlock.worker"]
+    environment:
+      WORKER_ID: "1"
+      DATABASE_URL: postgresql://onyx:onyx_dev@postgres:5432/onyx
+      REDIS_URL: redis://redis:6379/0
+      INTERLOCK_DATABASE__HOST: postgres
+      INTERLOCK_DATABASE__PASSWORD: onyx_dev
+      INTERLOCK_DATABASE__USER: onyx
+      INTERLOCK_DATABASE__DATABASE: onyx
+      INTERLOCK_REDIS__URL: redis://redis:6379/0
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks:
+      - interlock-net
+
+  worker-2:
+    build:
+      context: .
+      args:
+        INTERLOCK_EXTRA: production-worker
+    command: ["interlock.worker"]
+    environment:
+      WORKER_ID: "2"
+      DATABASE_URL: postgresql://onyx:onyx_dev@postgres:5432/onyx
+      REDIS_URL: redis://redis:6379/0
+      INTERLOCK_DATABASE__HOST: postgres
+      INTERLOCK_DATABASE__PASSWORD: onyx_dev
+      INTERLOCK_DATABASE__USER: onyx
+      INTERLOCK_DATABASE__DATABASE: onyx
+      INTERLOCK_REDIS__URL: redis://redis:6379/0
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks:
+      - interlock-net
+
+  postgres:
+    image: postgres:16
+    ports:
+      - "127.0.0.1:5433:5432"
+    environment:
+      POSTGRES_USER: onyx
+      POSTGRES_PASSWORD: onyx_dev
+      POSTGRES_DB: onyx
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onyx -d onyx"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - interlock-net
+
+  migration:
+    build:
+      context: .
+      args:
+        INTERLOCK_EXTRA: production
+    command: ["interlock.db.migrate"]
+    environment:
+      DATABASE_URL: postgresql://onyx:onyx_dev@postgres:5432/onyx
+      INTERLOCK_MIGRATIONS_DIR: /app/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - interlock-net
+
+  # A sample database for the quick start: `docker compose --profile quickstart
+  # up`. Not published to the host; the gateway reaches it on the compose network.
+  sample-postgres:
+    image: postgres:16
+    profiles: ["quickstart"]
+    environment:
+      POSTGRES_USER: shop_owner
+      POSTGRES_PASSWORD: shop-owner-dev-only
+      POSTGRES_DB: shop
+    volumes:
+      - ./deploy/quickstart/sample-shop.sql:/docker-entrypoint-initdb.d/01-sample-shop.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shop_owner -d shop"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - interlock-net
+
+  redis:
+    image: redis:7
+    ports:
+      - "127.0.0.1:6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - interlock-net
+
+volumes:
+  pgdata:
+
+networks:
+  interlock-net:
+    driver: bridge

@@ -1,0 +1,54 @@
+{% if workers %}
+<div class="card-grid">
+    {% for w in workers %}
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">{{ w.worker_id }}</span>
+            {% if w.health == "green" %}
+            <span class="health-dot health-green" title="Healthy" aria-label="worker healthy"></span>
+            {% elif w.health == "yellow" %}
+            <span class="health-dot health-yellow" title="Slow heartbeat" aria-label="worker slow heartbeat"></span>
+            {% else %}
+            <span class="health-dot health-red" title="Stale / unreachable" aria-label="worker stale or unreachable"></span>
+            {% endif %}
+        </div>
+        <dl class="card-body">
+            <dt>Status</dt>
+            <dd>{{ w.status | default("Unknown") }}</dd>
+            <dt>Last Heartbeat</dt>
+            <dd>{{ w.last_heartbeat_ago }}</dd>
+            {% if w.current_job %}
+            <dt>Current Job</dt>
+            <dd>{{ w.current_job }}</dd>
+            {% endif %}
+            {% if w.active_jobs is defined %}
+            <dt>Jobs</dt>
+            <dd>{{ w.active_jobs }} active, {{ w.completed_jobs }} done, {{ w.failed_jobs }} failed</dd>
+            {% endif %}
+            {% if w.active_job_ids %}
+            <dt>Active Job IDs</dt>
+            <dd>{% for job_id in w.active_job_ids %}<code>#{{ job_id }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+            {% endif %}
+            {% if w.lease_expires_at %}
+            <dt>Lease Expiry</dt>
+            <dd>{{ w.lease_expires_at|fmt_dt if w.lease_expires_at is not string else w.lease_expires_at }}</dd>
+            {% endif %}
+            {% if w.throughput %}
+            <dt>Throughput</dt>
+            <dd>{{ w.throughput }}</dd>
+            {% endif %}
+            {% if w.source_throttles %}
+            <dt>Source Throttles</dt>
+            <dd><code>{{ w.source_throttles }}</code></dd>
+            {% endif %}
+            {% if w.budget_state %}
+            <dt>OCR/LLM Budget</dt>
+            <dd><code>{{ w.budget_state }}</code></dd>
+            {% endif %}
+        </dl>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state"><p>No workers registered.</p></div>
+{% endif %}

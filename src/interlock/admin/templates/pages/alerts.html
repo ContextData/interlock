@@ -1,0 +1,134 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Alerts - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Alerts</h1>
+  <button class="btn btn-primary"
+          hx-get="/dashboard/alerts/new"
+          hx-target="#new-alert-form-slot"
+          hx-swap="innerHTML">+ New Alert Rule</button>
+</div>
+
+<div id="new-alert-form-slot"></div>
+<div id="alert-eval-result-slot"></div>
+
+<div class="split-section">
+  <h2>Integration Readiness</h2>
+  <p class="muted">Alert evaluation is available in public beta. Delivery is log-only unless a channel below is explicitly configured.</p>
+  <div class="component-grid">
+    {% for c in channels %}
+    <div class="component-item">
+      <span class="health-dot health-{% if c.enabled %}green{% else %}yellow{% endif %}"
+            aria-label="{{ c.name }} {{ 'configured' if c.enabled else 'not configured' }}"></span>
+      <div>
+        <div class="comp-name">{{ c.name }}</div>
+        <div class="comp-detail">{% if c.enabled %}configured{% else %}{{ c.note }} - log-only until configured{% endif %}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="split-section">
+  <h2>Rules</h2>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Condition</th>
+          <th>Scope</th>
+          <th>Window</th>
+          <th>Channel</th>
+          <th>Last evaluated</th>
+          <th>Last fired</th>
+          <th>Enabled</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rules %}
+        <tr data-alert-id="{{ r.id }}">
+          <td>{{ r.name }}</td>
+          <td><code>{{ r.condition_type }} {{ r.comparator }} {{ r.threshold }}</code></td>
+          <td>
+            {% if r.source_id %}<span class="badge">src={{ r.source_id }}</span>{% endif %}
+            {% if r.identity_id %}<span class="badge">{{ r.identity_id|identity_label(r.identity_name, r.identity_deleted) }}</span>{% endif %}
+            {% if not r.source_id and not r.identity_id %}<span class="muted">global</span>{% endif %}
+          </td>
+          <td>{{ r.window_seconds }}s</td>
+          <td>{{ r.notification_channel }}{% if r.notification_target_display %} -&gt; {{ r.notification_target_display }}{% endif %}</td>
+          <td>{{ r.last_evaluated_at|fmt_dt }}</td>
+          <td>{{ r.last_fired_at|fmt_dt }}</td>
+          <td>
+            {% if r.enabled %}
+            <span class="health-dot health-green" aria-label="enabled"></span> enabled
+            {% else %}
+            <span class="health-dot health-red" aria-label="disabled"></span> disabled
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-link"
+                    hx-post="/dashboard/alerts/{{ r.id }}/evaluate"
+                    hx-target="#alert-eval-result-slot"
+                    hx-swap="innerHTML">Evaluate now</button>
+            <button class="btn btn-link"
+                    hx-post="/dashboard/alerts/{{ r.id }}/toggle"
+                    hx-target="#main-content"
+                    hx-swap="innerHTML">{% if r.enabled %}Disable{% else %}Enable{% endif %}</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9"><div class="empty-state"><p>No alert rules configured. Click <strong>+ New Alert Rule</strong>.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="split-section">
+  <h2>Recent Fires</h2>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Rule</th>
+          <th>Observed</th>
+          <th>Message</th>
+          <th>Ack</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in history %}
+        <tr>
+          <td>{{ h.fired_at|fmt_dt }}</td>
+          <td>{{ h.rule_name }}</td>
+          <td>{{ "%.4g"|format(h.observed_value) if h.observed_value is not none else '-' }}</td>
+          <td><code class="muted">{{ h.message }}</code></td>
+          <td>
+            {% if h.acknowledged_at %}
+            <span class="muted">by {{ h.acknowledged_by }} at {{ h.acknowledged_at|fmt_dt }}</span>
+            {% else %}
+            <span class="health-dot health-yellow" aria-label="pending acknowledgement"></span> pending
+            {% endif %}
+          </td>
+          <td>
+            {% if not h.acknowledged_at %}
+            <button class="btn btn-link"
+                    hx-post="/dashboard/alerts/history/{{ h.id }}/ack"
+                    hx-target="#main-content"
+                    hx-swap="innerHTML">Acknowledge</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="empty-state"><p>No alerts have fired.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

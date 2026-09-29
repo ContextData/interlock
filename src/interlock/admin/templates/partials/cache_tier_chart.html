@@ -1,0 +1,9 @@
+<div class="bar-chart">
+    {% for tier in cache_tiers %}
+    <div class="bar-row">
+        <span class="bar-label">{{ tier.name }}</span>
+        <progress class="bar-progress" max="100" value="{{ tier.pct }}" aria-label="{{ tier.name }} cache share"></progress>
+        <span class="bar-value">{{ tier.count }} ({{ tier.pct }}%)</span>
+    </div>
+    {% endfor %}
+</div>

@@ -1,0 +1,6 @@
+{% for c in components %}
+<div class="component-item" data-component="{{ c.name }}" data-status="{{ c.status }}">
+    <span class="health-dot health-{% if c.status == 'ok' %}green{% elif c.status == 'degraded' %}yellow{% elif c.status == 'down' %}red{% else %}gray{% endif %}" aria-hidden="true"></span>
+    <div><div class="comp-name">{{ c.name }}</div><div class="comp-detail"><span class="status-label">{{ c.status }}</span> - {{ c.detail|default('') }}</div></div>
+</div>
+{% endfor %}

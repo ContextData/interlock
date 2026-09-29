@@ -1,0 +1,334 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # -------------------------------------------------------------------
+  # Lint
+  # -------------------------------------------------------------------
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v4
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      - name: Install dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Ruff check
+        run: make lint
+
+      - name: Black check
+        run: uv run black --check src tests tools scripts
+
+  # -------------------------------------------------------------------
+  # Type check
+  # -------------------------------------------------------------------
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v4
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      - name: Install dependencies
+        run: uv sync --locked --extra dev --extra pii --extra ml --extra ingestion --extra otel --extra connectors-tier1 --extra connectors-tier2 --extra connectors-repo
+
+      - name: Mypy
+        run: make type
+
+  # -------------------------------------------------------------------
+  # Audit coverage
+  # -------------------------------------------------------------------
+  audit:
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v4
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      - name: Install dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Verify audit regression coverage
+        run: make audit-cover
+
+  # -------------------------------------------------------------------
+  # Static security
+  # -------------------------------------------------------------------
+  security:
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v4
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      - name: Install dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Secret scan, Bandit, and pip-audit
+        run: make security
+
+  # -------------------------------------------------------------------
+  # Supply chain and image evidence
+  # -------------------------------------------------------------------
+  supply-chain:
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v4
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      - name: Install dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Verify locked production export
+        run: make requirements-production-check
+
+      - name: Generate SBOM, CVE, and license evidence
+        run: make release-evidence
+
+      - name: Upload release evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: interlock-release-evidence
+          path: build/release-evidence/
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build image without push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: interlock-runtime:ci
+          build-args: |
+            PYTHON_BASE_IMAGE=python:3.12-slim
+
+      - name: Trivy image CVE scan
+        # v0.28.0 called `aquasecurity/setup-trivy@v0.2.1` by tag, and upstream
+        # deleted that tag, so the job failed to resolve before running a
+        # single scan - the image was never scanned and the failure looked
+        # like a security finding rather than a broken reference. v0.36.0 pins
+        # setup-trivy by SHA, which is why this cannot recur the same way.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: interlock-runtime:ci
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+  # -------------------------------------------------------------------
+  # License and dependency policy for PR dependency changes
+  # -------------------------------------------------------------------
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v4
+
+      - name: Dependency review license and CVE policy
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+          # LGPL-3.0 is deliberately absent: PyGithub and python-gitlab ship in
+          # the published image so the GitHub and GitLab connectors work, and
+          # denying it here would fail every dependency change. The strongly
+          # reciprocal licenses stay denied - relaxing LGPL was a narrow
+          # decision, not a general one. See NOTICE.
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
+
+  # -------------------------------------------------------------------
+  # Test
+  # -------------------------------------------------------------------
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: onyx
+          POSTGRES_PASSWORD: onyx_dev
+          POSTGRES_DB: onyx
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U onyx"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      INTEGRATION_TEST: "1"
+      TEST_PG_HOST: localhost
+      TEST_PG_PORT: "5432"
+      TEST_PG_USER: onyx
+      TEST_PG_PASSWORD: onyx_dev
+      TEST_PG_DATABASE: onyx
+      TEST_REDIS_URL: redis://localhost:6379
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v4
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      - name: Install dependencies
+        run: uv sync --locked --extra dev --extra pii --extra ml --extra ingestion --extra otel
+
+      - name: Run tests
+        # Latency budgets (@pytest.mark.load) are sub-millisecond microbenchmarks;
+        # under coverage on a shared runner they failed main three times by 5-7%
+        # on a commit that changed no Python. They run via `make load`, and
+        # `make test-unit` and the release preflight already exclude them.
+        run: uv run pytest -m "not load" --cov=interlock --cov-report=term-missing -v
+
+  # -------------------------------------------------------------------
+  # Documentation site: npm licence gate and a full build, whose link
+  # validator fails on any broken internal link. Generated-page freshness is
+  # checked by the test job (tests/unit/test_docs_site.py).
+  # -------------------------------------------------------------------
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v4
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      - run: uv sync --locked --extra dev
+
+      - name: npm licence and source gate
+        run: make docs-licenses
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: docs-site/.nvmrc
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: Build the site
+        working-directory: docs-site
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: interlock-docs-site
+          path: docs-site/dist/
+
+  # -------------------------------------------------------------------
+  # Helm render
+  # -------------------------------------------------------------------
+  helm:
+    runs-on: ubuntu-latest
+    needs: [lint, audit, security]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # v4
+        with:
+          version: v3.15.4
+
+      - name: Render Helm chart
+        run: make helm-render
+
+  # -------------------------------------------------------------------
+  # E2E (compose-backed) - runs on push to main and labeled PRs
+  # -------------------------------------------------------------------
+  e2e:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'e2e')
+    needs: [lint, typecheck, test, audit, security, supply-chain, helm]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v4
+      # The full extras (PyTorch among them) plus four image builds and the
+      # source databases outgrow a standard runner's free disk; the database
+      # containers then fail with ENOSPC. These toolchains are never used here.
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - run: uv sync --locked --extra dev --extra pii --extra ml --extra ingestion --extra otel --extra connectors-tier1 --extra connectors-tier2 --extra connectors-repo
+      - name: Run E2E suite
+        env:
+          INTERLOCK_E2E: '1'
+          ADMIN_URL: http://localhost:9090
+          GATEWAY_URL: http://localhost:3001
+        run: make e2e
+      - name: Show logs on failure
+        if: failure()
+        run: make e2e-logs || true
+      - name: Tear down
+        if: always()
+        run: make e2e-down || true

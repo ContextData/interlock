@@ -1,0 +1,14 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Source Wizard - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/data-sources" class="back-link"
+     hx-get="/dashboard/data-sources" hx-target="#main-content">Data Sources</a>
+  <h1>Source Wizard</h1>
+</div>
+
+<div id="new-source-form-slot">
+  {% include "partials/wizard/step1_type.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,124 @@
+<div class="form-card" id="source-role-form-card">
+  <h3>{% if role_id %}Edit {{ form.name }}{% else %}New Source Role{% endif %}</h3>
+  {% if source %}
+  <p class="muted">Source: <code>{{ source.source_id }}</code> · {{ source.source_type }}</p>
+  {% endif %}
+  {% if error %}
+  <div class="form-error" role="alert">{{ error }}</div>
+  {% endif %}
+
+  {% if source %}
+  <form id="source-role-form">
+    <div class="form-row">
+      <label>Role key
+        <input name="role_key" required pattern="[a-z0-9_:-]+"
+               value="{{ form.role_key }}"
+               placeholder="finance_reader">
+        <span class="field-help">Stable machine name used in audit explanations.</span>
+      </label>
+      <label>Display name
+        <input name="name" required value="{{ form.name }}"
+               placeholder="Finance Reader">
+      </label>
+    </div>
+    <label>Description
+      <textarea name="description" rows="2"
+                placeholder="What this role allows and why it exists.">{{ form.description }}</textarea>
+    </label>
+    <div class="form-row">
+      <label class="checkbox">
+        <input type="checkbox" name="enabled" value="on"
+               {% if form.enabled == 'on' %}checked{% endif %}>
+        Enabled
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" name="review_required" value="on"
+               {% if form.review_required == 'on' %}checked{% endif %}>
+        Mark for review
+      </label>
+    </div>
+
+    <h4 class="form-subheader">Permission statements</h4>
+    <p class="muted">Use explicit deny for guardrails. Otherwise InterLock requires at least one allow that matches every requested action and resource.</p>
+    <div id="permission-statements">
+      {% for perm in (form.permissions or [{'effect': 'allow', 'action': '', 'resource_type': '', 'resource_pattern': '', 'constraints': {}}]) %}
+      {% with uid = loop.index ~ '-' ~ (role_id or 'new'), source_id = source.source_id %}{% include "partials/source_role_statement_row.html" %}{% endwith %}
+      {% endfor %}
+    </div>
+    {% for key, spec in vocab.resource_types.items() %}
+    <datalist id="role-patterns-{{ key|replace('.', '-') }}">
+      {% for example in spec.examples %}<option value="{{ example }}"></option>{% endfor %}
+      {% for value, label in pattern_suggestions.get(key, []) %}<option value="{{ value }}" label="{{ label }}"></option>{% endfor %}
+    </datalist>
+    {% endfor %}
+    {% for key, values in (constraint_suggestions or {}).items() %}
+    <datalist id="constraint-suggest-{{ key }}">
+      {% for value, label in values %}<option value="{{ value }}" label="{{ label }}"></option>{% endfor %}
+    </datalist>
+    {% endfor %}
+    <button type="button" class="btn btn-secondary js-add-permission-row"
+            hx-get="/dashboard/data-sources/{{ source.source_id }}/roles/statement-row"
+            hx-target="#permission-statements" hx-swap="beforeend">Add statement</button>
+    {% with picker_source_id=source.source_id %}{% include "partials/catalog_picker.html" %}{% endwith %}
+    <div id="source-role-lint"
+         hx-post="/dashboard/data-sources/{{ source.source_id }}/roles/lint"
+         hx-include="#source-role-form"
+         hx-trigger="load, change from:#source-role-form delay:400ms"
+         hx-swap="innerHTML"></div>
+
+    <details class="form-section" id="source-role-dry-run-fields">
+      <summary>Dry-run / explain</summary>
+      <div class="form-row" id="dry-run-fields">
+        <label>Identity ID
+          <input name="identity_id" placeholder="1">
+        </label>
+        <label>Protocol
+          {% set dry_protocol = {'database': 'postgresql', 'warehouse': 'snowflake'}.get(vocab.family, vocab.family) %}
+          <select name="protocol">
+            {% for value, label in [('postgresql', 'PostgreSQL/MySQL'), ('snowflake', 'Snowflake'), ('http', 'HTTP'), ('object_storage', 'Object storage'), ('saas', 'SaaS'), ('collaboration', 'Collaboration'), ('repo', 'Repo'), ('search', 'Search'), ('workspace', 'Workspace')] %}
+            <option value="{{ value }}" {% if value == dry_protocol %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Operation / method
+          <input name="operation" placeholder="SELECT, INSERT, DELETE">
+        </label>
+        <label>HTTP method
+          <input name="method" placeholder="GET">
+        </label>
+        <label>Path
+          <input name="path" placeholder="/customers/123">
+        </label>
+        <label>Tables
+          <input name="tables" placeholder="public.customers">
+        </label>
+        <label>Columns
+          <input name="columns" placeholder="email, status">
+        </label>
+      </div>
+      <label>SQL preview
+        <textarea name="sql" rows="3" placeholder="SELECT ID, EMAIL FROM ANALYTICS.PUBLIC.CUSTOMERS"></textarea>
+        <span class="field-help">For Snowflake and SQL sources, SQL preview derives the action and table resources automatically.</span>
+      </label>
+      <button type="button" class="btn btn-secondary"
+              hx-post="/dashboard/data-sources/{{ source.source_id }}/roles/dry-run"
+              hx-include="#source-role-dry-run-fields"
+              hx-target="#source-role-dry-run-result">Evaluate assigned roles</button>
+      <div id="source-role-dry-run-result"></div>
+    </details>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary"
+              hx-post="{% if role_id %}/dashboard/data-sources/{{ source.source_id }}/roles/{{ role_id }}{% else %}/dashboard/data-sources/{{ source.source_id }}/roles{% endif %}"
+              hx-include="#source-role-form"
+              hx-target="#main-content"
+              hx-swap="innerHTML">Save Role</button>
+      <a class="btn" href="/dashboard/data-sources/{{ source.source_id }}"
+         hx-get="/dashboard/data-sources/{{ source.source_id }}"
+         hx-target="#main-content" hx-push-url="true">Cancel</a>
+    </div>
+  </form>
+  {% else %}
+  <div class="empty-state"><p>{{ error or 'Data source not found.' }}</p></div>
+  {% endif %}
+</div>

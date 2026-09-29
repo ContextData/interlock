@@ -1,0 +1,26 @@
+{# Catalog state for the discovery page, and the outcome of POST /dashboard/discovery/rescan #}
+{% if result and result.error %}
+<div class="disc-rescan-error">Rescan failed: {{ result.error }}</div>
+{% elif result %}
+<div class="disc-rescan-success">
+    Queued a catalog scan for {{ result.queued | length }} source{{ '' if result.queued | length == 1 else 's' }}{% if result.queued %}: {{ result.queued | join(', ') }}{% endif %}.
+    {% if result.skipped %}{{ result.skipped | length }} skipped, with no catalog collector for their connector: {{ result.skipped | join(', ') }}.{% endif %}
+    Discovery updates as each scan finishes.
+</div>
+{% endif %}
+{% if last_run %}
+<div class="disc-rescan-summary">
+    <strong>Catalog</strong>:
+    {{ last_run.succeeded }}/{{ last_run.sources_scanned }} sources scanned successfully,
+    {{ last_run.tables }} tables and {{ last_run.columns }} columns recorded
+    {% if last_run.last_finished_at %}; last scan finished at <code>{{ last_run.last_finished_at }}</code>{% endif %}.
+    {% if last_run.pending or last_run.running %}{{ last_run.running }} running, {{ last_run.pending }} waiting.{% endif %}
+    {% if last_run.failures %}
+    <ul class="disc-rescan-errors">
+        {% for source_id, code in last_run.failures %}<li>{{ source_id }}: {{ code }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% elif not result %}
+<div class="disc-rescan-empty muted">No catalog scan has finished yet.</div>
+{% endif %}

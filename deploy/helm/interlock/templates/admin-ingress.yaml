@@ -1,0 +1,55 @@
+{{- if .Values.admin.ingress.enabled -}}
+{{/*
+A separate Ingress for the Admin console.
+
+The chart's main Ingress backends the Gateway only, and the ConfigMap pins
+INTERLOCK_ADMIN__COOKIE_SECURE=true, so the console is unusable over plain
+HTTP: the browser accepts no session cookie and login silently fails. Operators
+therefore need a TLS-terminated route of their own, which this provides rather
+than leaving them to hand-write a manifest the chart does not manage.
+
+Note that this exposes the console to whatever the Ingress admits. Restrict it
+- a source-range annotation, an auth middleware, or a private load balancer -
+rather than publishing an admin surface to the internet.
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "interlock.fullname" . }}-admin
+  labels:
+    {{- include "interlock.labels" . | nindent 4 }}
+    app.kubernetes.io/component: admin
+  {{- with .Values.admin.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.admin.ingress.className }}
+  ingressClassName: {{ .Values.admin.ingress.className }}
+  {{- end }}
+  {{- if .Values.admin.ingress.tls }}
+  tls:
+    {{- range .Values.admin.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.admin.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "interlock.fullname" $ }}-admin
+                port:
+                  name: http
+          {{- end }}
+    {{- end }}
+{{- end }}

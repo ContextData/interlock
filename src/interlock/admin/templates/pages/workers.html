@@ -1,0 +1,24 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Workers - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Worker Status</h1>
+</div>
+
+<div class="agg-stats">
+    <div class="agg-stat agg-stat--total"><div class="val">{{ total_workers }}</div><div class="lbl">Total</div></div>
+    <div class="agg-stat agg-stat--healthy"><div class="val">{{ healthy_count }}</div><div class="lbl">Healthy Workers</div></div>
+    <div class="agg-stat agg-stat--warning"><div class="val">{{ active_jobs }}</div><div class="lbl">Active Jobs</div></div>
+    <div class="agg-stat agg-stat--queued"><div class="val">{{ queue_depth }}</div><div class="lbl">Queue Depth</div></div>
+    <div class="agg-stat agg-stat--stale"><div class="val">{{ stale_count }}</div><div class="lbl">Stale</div></div>
+</div>
+
+<div id="worker-cards-container"
+     hx-get="/dashboard/workers"
+     hx-trigger="every 5s"
+     hx-target="#worker-cards-container"
+     hx-swap="innerHTML">
+    {% include "partials/worker_cards.html" %}
+</div>
+{% endblock %}

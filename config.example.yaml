@@ -1,0 +1,131 @@
+# InterLock development configuration - copy to config.yaml and adjust as needed.
+# Production deployments must provide secrets through environment variables or
+# mounted secret references and must satisfy the strict production validator.
+
+gateway:
+  host: "0.0.0.0"
+  http_port: 8000
+  pg_port: 5433
+  mcp_port: 8001
+  http_workers: 4
+  pg_workers: 2
+  mcp_workers: 2
+  # Browser-origin MCP calls are rejected unless the exact canonical origin is listed.
+  mcp_allowed_origins: []
+
+admin:
+  host: "127.0.0.1"
+  port: 9000
+
+worker:
+  worker_id: "worker-1"
+  concurrency: 8
+  heartbeat_interval: 5.0
+
+database:
+  host: "localhost"
+  port: 5432
+  database: "onyx"
+  user: "onyx"
+  password: ""
+  min_pool: 2
+  max_pool: 10
+
+redis:
+  url: "redis://localhost:6379/0"
+  max_connections: 20
+
+auth:
+  enabled: true
+  session_ttl_seconds: 3600
+  # Required in production. Do not store the real pepper in this file.
+  api_key_pepper: ""
+  allow_legacy_sha256_keys: true
+  oidc:
+    enabled: false
+    issuer_url: "https://identity.example.com"
+    admin_client_id: ""
+    admin_client_secret: ""
+    admin_redirect_uri: "http://localhost:9090/auth/oidc/callback"
+    agent_audience: ""
+    scopes: ["openid", "profile", "email", "groups"]
+    flow_ttl_seconds: 600
+    local_break_glass_enabled: true
+    # Development-only escape hatch for a local test identity provider.
+    # Production validation requires this to remain false.
+    allow_insecure_endpoints: false
+    admin_group_role_map: {}
+
+cache:
+  l1_max_size: 1000
+  l1_ttl_seconds: 60
+  l2_ttl_seconds: 300
+  default_strategy: "lru"
+
+pii:
+  fast_enabled: true
+  deep_enabled: false
+  deep_max_workers: 2
+  free_text_column_patterns:
+    - "description"
+    - "notes"
+    - "comment"
+    - "bio"
+    - "message"
+    - "body"
+    - "content"
+    - "remarks"
+    - "summary"
+    - "text"
+
+audit:
+  enabled: true
+  partition_interval: "monthly"
+
+ingestion:
+  enabled: false
+  max_retries: 3
+  heartbeat_interval_seconds: 10.0
+  job_timeout_seconds: 300.0
+
+notifications:
+  # Disabled by default. Credentials are secret references resolved inside the
+  # process; a literal token or URL here is rejected at startup.
+  enabled: false
+  slack_bot_token_ref: null      # e.g. env://INTERLOCK_SLACK_BOT_TOKEN
+  slack_channel: null            # required with a bot token, e.g. "#approvals"
+  slack_webhook_url_ref: null    # e.g. env://INTERLOCK_SLACK_WEBHOOK_URL
+  admin_base_url: null           # links a message to the approval page
+  slack_webhook_url: null        # deprecated: literal URL
+
+approvals:
+  # How long a pending approval may be acted on. Raise this if you rely on
+  # notifications to reach a reviewer.
+  expiry_seconds: 900
+  expiry_sweep_interval_seconds: 30
+
+catalog:
+  # Each source's structure - schemas, tables and columns for SQL sources -
+  # captured by the worker after every save and refreshed on this interval.
+  # Structure only: no row data is ever read. 0 is not allowed here; switch
+  # scheduled refresh off with scheduled_refresh_enabled instead.
+  enabled: true
+  scan_on_save: true
+  scheduled_refresh_enabled: true
+  refresh_interval_seconds: 86400
+  # Hard caps per scan. A scan that hits one records `truncated` and never
+  # marks what it did not reach as removed.
+  max_tables: 20000
+  max_columns_per_table: 2000
+
+semantic_cache:
+  default_auto_serve_threshold: 0.98
+  default_verify_threshold: 0.92
+  llm_timeout_ms: 500
+
+observability:
+  enabled: true
+  # Leave null for no-op local/dev behavior, or set to an OTLP HTTP endpoint
+  # such as "http://otel-collector:4318" in production.
+  otlp_endpoint: null
+  instrument_asgi: true

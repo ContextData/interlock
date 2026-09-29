@@ -1,0 +1,12 @@
+{# The catalog as a picker for role and policy editors. #}
+{% if picker_source_id %}
+<details class="catalog-picker"
+         hx-get="/dashboard/catalog/children?source_id={{ picker_source_id | urlencode }}&amp;pick=1"
+         hx-trigger="toggle once"
+         hx-target="find .catalog-children"
+         hx-swap="innerHTML">
+  <summary>Pick from the catalog of <code>{{ picker_source_id }}</code></summary>
+  <p class="muted">Click into a resource pattern, then choose <strong>Use</strong> on an item: a schema, table or column, a bucket or folder, a channel, a repository, an index or collection. The pattern is written for the statement's resource type.</p>
+  <div class="catalog-children"><span class="muted">Loading...</span></div>
+</details>
+{% endif %}

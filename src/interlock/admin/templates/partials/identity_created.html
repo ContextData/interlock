@@ -1,0 +1,43 @@
+{# One-time API key reveal. The DB only stores sha256(key) so this is
+   the only chance to copy it. #}
+<div class="form-card" id="identity-created">
+  <h3>Identity created</h3>
+  <p>The API key below is shown <strong>once</strong>. Copy it now - InterLock
+     only stores its hash and cannot recover the raw value.</p>
+
+  <div class="key-reveal">
+    <code>{{ api_key }}</code>
+    <button class="btn btn-secondary js-copy-secret" type="button"
+            data-copy-text="{{ api_key }}"
+            >Copy</button>
+  </div>
+
+  <dl class="form-summary">
+    <dt>Identity</dt><dd>{{ name }}</dd>
+    <dt>Source roles</dt>
+    <dd>
+      {% for grant in source_roles|default([]) %}
+      <span class="badge">{{ grant.source_id }}:{{ grant.role }}</span>
+      {% else %}
+      <span class="muted">No source roles assigned.</span>
+      {% endfor %}
+    </dd>
+    <dt>Compatibility roles</dt><dd>{% for r in roles %}<span class="badge">{{ r }}</span>{% endfor %}</dd>
+  </dl>
+
+  <p>
+    Connect via PG wire:<br>
+    <code>psql 'postgres://{{ api_key }}@localhost:5432/&lt;source_id&gt;'</code>
+  </p>
+  <p>
+    Connect via HTTP / MCP:<br>
+    <code>Authorization: Bearer {{ api_key }}</code>
+  </p>
+
+  <div class="form-actions">
+    <button type="button" class="btn"
+            hx-get="/dashboard/access-control/identities"
+            hx-target="#main-content"
+            hx-swap="innerHTML">Done</button>
+  </div>
+</div>

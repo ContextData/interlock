@@ -1,0 +1,91 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Edit {{ ds.source_id }} - Data Source - InterLock{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/data-sources/{{ ds.source_id }}" class="back-link"
+     hx-get="/dashboard/data-sources/{{ ds.source_id }}" hx-target="#main-content" hx-push-url="true">← {{ ds.source_id }}</a>
+  <h1>Edit Data Source</h1>
+</div>
+
+<div class="form-card">
+  <h3>{{ ds.name }} <code>{{ ds.source_id }}</code></h3>
+  <p class="muted">Only safe metadata, routing fields, and secret references are editable here. Literal secrets are never rendered back into the page; rotate those through a secret ref or the secured API path.</p>
+  {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+
+  <form id="data-source-edit-form">
+    <div class="form-row">
+      <label>Name
+        <input name="name" required value="{{ ds.name }}">
+      </label>
+      <label>Cache strategy
+        <select name="cache_strategy">
+          {% for strategy in ["deterministic_first", "semantic_first", "semantic_only", "deterministic_only", "bypass"] %}
+          <option value="{{ strategy }}" {% if ds.cache_strategy == strategy %}selected{% endif %}>{{ strategy }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" name="enabled" value="on" {% if ds.enabled %}checked{% endif %}>
+        Enabled
+      </label>
+    </div>
+
+    <h4 class="form-subheader">Safe connection fields</h4>
+    {% if ds.editable_connection_fields %}
+      {% for field in ds.editable_connection_fields %}
+      <div class="form-row">
+        <label>{{ field.key }}
+          <input name="config_value" value="{{ field.value }}">
+        </label>
+        <input type="hidden" name="config_key" value="{{ field.key }}">
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="empty-state"><p>No safe connection fields are available to edit for this source.</p></div>
+    {% endif %}
+
+    {% if ds.tls %}
+    <h4 class="form-subheader">Upstream TLS</h4>
+    <div class="form-row">
+      <label>TLS mode
+        <select name="config_value">
+          <option value="" {% if not ds.tls.sslmode %}selected{% endif %}>Not set</option>
+          {% for mode in ds.tls.modes %}
+          <option value="{{ mode }}" {% if ds.tls.sslmode == mode %}selected{% endif %}>{{ mode }}</option>
+          {% endfor %}
+        </select>
+        <span class="field-help">Production accepts only verify-full or verify-ca.</span>
+      </label>
+      <input type="hidden" name="config_key" value="sslmode">
+      <label>CA certificate
+        <input name="config_value" value="{{ ds.tls.ssl_ca }}" placeholder="/run/secrets/source-ca/ca.crt">
+        <span class="field-help">A path the gateway can read, or a secret ref resolving to one.</span>
+      </label>
+      <input type="hidden" name="config_key" value="ssl_ca">
+    </div>
+    {% endif %}
+
+    <h4 class="form-subheader">Masked stored configuration</h4>
+    <dl class="form-summary">
+      {% for key, value in ds.masked_connection_config.items() %}
+      <dt>{{ key }}</dt><dd><code>{{ value }}</code></dd>
+      {% else %}
+      <dt>Config</dt><dd><span class="muted">No stored configuration.</span></dd>
+      {% endfor %}
+    </dl>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/data-sources/{{ ds.source_id }}/edit"
+              hx-include="#data-source-edit-form"
+              hx-target="#main-content"
+              hx-swap="innerHTML">Save Changes</button>
+      <a class="btn btn-secondary" href="/dashboard/data-sources/{{ ds.source_id }}"
+         hx-get="/dashboard/data-sources/{{ ds.source_id }}"
+         hx-target="#main-content"
+         hx-push-url="true">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

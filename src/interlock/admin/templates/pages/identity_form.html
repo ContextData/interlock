@@ -1,0 +1,14 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}New Identity - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/access-control/identities" class="back-link"
+     hx-get="/dashboard/access-control/identities" hx-target="#main-content">Identities</a>
+  <h1>New Identity</h1>
+</div>
+
+<div id="new-identity-form-slot">
+  {% include "partials/identity_form.html" %}
+</div>
+{% endblock %}

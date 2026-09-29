@@ -1,0 +1,124 @@
+{# Policy visual builder. Composes conditions/actions from named
+   fields and falls through to a raw-JSON textarea for advanced rules.
+   On Save, dashboard route translates form fields into the JSONB body
+   the policy_rules table expects. #}
+<div class="form-card" id="new-policy-form">
+  <h3>{% if mode == 'edit' %}Edit Policy{% else %}New Policy{% endif %}</h3>
+  {% if error %}
+  <div class="form-error" role="alert">{{ error }}</div>
+  {% endif %}
+
+  <form id="policy-form">
+    {% if mode == 'edit' %}
+    <input type="hidden" name="policy_id" value="{{ form.policy_id }}">
+    {% endif %}
+
+    <div class="form-row">
+      <label>Name
+        <input name="name" required value="{{ form.name }}"
+               placeholder="block-pii-reads">
+      </label>
+      <label>Priority (higher wins)
+        <input name="priority" type="number" min="0" max="1000"
+               value="{{ form.priority or 0 }}">
+      </label>
+    </div>
+
+    <h4 class="form-subheader">When all of these match:</h4>
+    <div class="form-row">
+      <label>Source ID (optional)
+        <input name="cond_source_id" value="{{ form.cond_source_id }}"
+               placeholder="shop  or leave blank for any">
+      </label>
+      <label>Operation (optional)
+        <select name="cond_operation">
+          <option value="" {% if not form.cond_operation %}selected{% endif %}>any</option>
+          <option value="read" {% if form.cond_operation == 'read' %}selected{% endif %}>read</option>
+          <option value="write" {% if form.cond_operation == 'write' %}selected{% endif %}>write</option>
+          <option value="discovery" {% if form.cond_operation == 'discovery' %}selected{% endif %}>discovery</option>
+        </select>
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Source role keys - any (comma separated)
+        <input name="cond_roles" value="{{ form.cond_roles }}"
+               placeholder="read,analyst,writer">
+      </label>
+      <label>Identity roles - any (optional)
+        <input name="cond_identity_roles" value="{{ form.cond_identity_roles }}"
+               placeholder="platform-admin,contractor">
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Tables - any (comma separated)
+        <input name="cond_tables" value="{{ form.cond_tables }}" data-catalog-pick="table"
+               placeholder="customers,orders">
+        <span class="field-help">A deny matches the table however a query spells it.</span>
+      </label>
+      <label>Columns - any (comma separated, deny rules only)
+        <input name="cond_columns" value="{{ form.cond_columns }}" data-catalog-pick="column"
+               placeholder="customers.ssn,email">
+        <span class="field-help">Matches the columns a query reads, including in filters and joins.</span>
+      </label>
+    </div>
+    <div id="policy-catalog-picker"
+         hx-get="/dashboard/catalog/picker"
+         hx-include="[name='cond_source_id']"
+         hx-trigger="load, change from:[name='cond_source_id']"
+         hx-swap="innerHTML"></div>
+
+    <h4 class="form-subheader">Then apply:</h4>
+    <div class="form-row">
+      <label>Effect
+        <select name="action_effect">
+          <option value="allow" {% if form.action_effect == 'allow' %}selected{% endif %}>allow</option>
+          <option value="deny" {% if form.action_effect == 'deny' %}selected{% endif %}>deny</option>
+        </select>
+      </label>
+      <label>Rate limit per minute (optional)
+        <input name="action_rate_limit" type="number" min="0" max="100000"
+               value="{{ form.action_rate_limit }}"
+               placeholder="leave blank for none">
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Redact columns (comma separated, only when effect=allow; applies to MCP and HTTP, not the PostgreSQL wire)
+        <input name="action_redact_columns" value="{{ form.action_redact_columns }}" data-catalog-pick="column"
+               placeholder="ssn,email,phone">
+      </label>
+    </div>
+
+    <div id="policy-lint"
+         hx-post="/dashboard/policies/lint"
+         hx-include="#policy-form"
+         hx-trigger="load, change from:#policy-form delay:400ms"
+         hx-swap="innerHTML"></div>
+
+    <details class="form-advanced">
+      <summary>Advanced - raw JSON overrides</summary>
+      <p class="muted">If set, these JSON payloads override the field-based
+        builder above. Useful for conditions/actions InterLock supports but the
+        form has not yet surfaced.</p>
+      <div class="form-row">
+        <label>Conditions JSON
+          <textarea name="raw_conditions" rows="3"
+                    placeholder='{"roles": ["writer"], "identity_roles": ["platform-admin"], "operation_types": ["write"]}'>{{ form.raw_conditions }}</textarea>
+        </label>
+        <label>Actions JSON
+          <textarea name="raw_actions" rows="3"
+                    placeholder='{"effect": "allow", "redact_columns": ["ssn"]}'>{{ form.raw_actions }}</textarea>
+        </label>
+      </div>
+    </details>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/policies/{% if mode == 'edit' %}{{ form.policy_id }}/update{% else %}create{% endif %}"
+              hx-include="#policy-form"
+              hx-target="#main-content"
+              hx-swap="innerHTML">Save</button>
+      <button type="button" class="btn js-clear-target"
+              data-clear-target="new-policy-form-slot">Cancel</button>
+    </div>
+  </form>
+</div>

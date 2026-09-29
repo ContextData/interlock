@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://interlock.invalid/schemas/mcp-tools-v1.json",
+  "title": "InterLock V1 MCP tools",
+  "contractVersion": "v1",
+  "tools": [
+    {
+      "name": "interlock_query",
+      "description": "Execute a governed SQL query against a registered data source.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sql": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "source_id",
+          "sql"
+        ],
+        "additionalProperties": true
+      }
+    },
+    {
+      "name": "interlock_list_sources",
+      "description": "List registered data sources visible to the caller.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "interlock_describe_source",
+      "description": "Describe one authorized registered data source.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "source_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "interlock_discover",
+      "description": "Search the governed discovery index within one source scope.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "doc_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "category_path": {
+            "type": "string"
+          },
+          "time_range": {
+            "type": "object"
+          },
+          "audience": {
+            "type": "string"
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "include_related": {
+            "type": "boolean",
+            "default": false
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 10
+          }
+        },
+        "required": [
+          "query",
+          "source_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "interlock_related_documents",
+      "description": "Find related documents within the seed asset's authorized source.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 10
+          }
+        },
+        "required": [
+          "asset_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "interlock_describe_access",
+      "description": "List the actions the caller's source roles allow and deny on each granted source. Policy may further restrict an individual request, so an allowed action is permission to attempt rather than a guarantee.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "description": "Limit the answer to one source. Omit for every granted source."
+          }
+        },
+        "required": []
+      }
+    }
+  ]
+}

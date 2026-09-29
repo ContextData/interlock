@@ -1,0 +1,17 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Data Sources - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Data Sources</h1>
+    <button class="btn btn-primary"
+            hx-get="/dashboard/source-wizard"
+            hx-target="#source-modal-root"
+            hx-swap="innerHTML">+ New Source</button>
+</div>
+
+<div id="source-modal-root"></div>
+
+{# A successful Save replaces #data-sources-table in one HTMX swap. #}
+{% include "partials/data_sources_table.html" %}
+{% endblock %}

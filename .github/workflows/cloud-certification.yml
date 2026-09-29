@@ -1,0 +1,433 @@
+name: Disposable cloud certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Disposable Kubernetes provider
+        required: true
+        type: choice
+        options:
+          - aws
+          - digitalocean
+      release_version:
+        description: SemVer without the leading v
+        required: true
+        type: string
+      helm_chart_digest:
+        description: OCI Helm chart digest (sha256:...)
+        required: true
+        type: string
+      image_digest:
+        description: Runtime image digest (sha256:...)
+        required: true
+        type: string
+      kubernetes_version:
+        description: Explicit provider version (EKS 1.xx or complete DOKS slug)
+        required: true
+        type: string
+      aws_region:
+        description: AWS region used only for the AWS run
+        required: true
+        default: us-east-2
+        type: string
+      digitalocean_region:
+        description: DigitalOcean region used only for the DigitalOcean run
+        required: true
+        default: nyc3
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  packages: read
+
+concurrency:
+  group: cloud-certification-${{ inputs.provider }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  aws:
+    name: Certify on disposable AWS EKS
+    if: inputs.provider == 'aws'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment: cloud-certification
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      TF_STATE_REGION: ${{ vars.TF_STATE_REGION }}
+      INTERLOCK_HELM_VALUES_B64: ${{ secrets.INTERLOCK_HELM_VALUES_B64 }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Configure short-lived AWS credentials
+        uses: aws-actions/configure-aws-credentials@cabfdba3510de1431bac9dba27511d97497fc100 # v5
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: 1.14.5
+          terraform_wrapper: false
+
+      - name: Install Helm
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # v4
+        with:
+          version: v3.19.0
+
+      - name: Prepare immutable release and ephemeral cluster inputs
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          CHART_DIGEST: ${{ inputs.helm_chart_digest }}
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: |
+          set -euo pipefail
+          deploy/scripts/release/validate-release-tag.sh "v${RELEASE_VERSION}" >/dev/null
+          [[ "${CHART_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "${IMAGE_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          runner_ip="$(curl --fail --silent --show-error --ipv4 https://checkip.amazonaws.com | tr -d '[:space:]')"
+          [[ "${runner_ip}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          {
+            echo "TF_VAR_region=${{ inputs.aws_region }}"
+            echo "TF_VAR_cluster_name=interlock-aws-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            echo "TF_VAR_kubernetes_version=${{ inputs.kubernetes_version }}"
+            echo "TF_VAR_control_plane_allowed_cidrs=[\"${runner_ip}/32\"]"
+            echo "TF_VAR_release_version=${RELEASE_VERSION}"
+            echo "TF_VAR_helm_chart_ref=oci://ghcr.io/${owner}/charts/interlock"
+            echo "TF_VAR_helm_chart_digest=${CHART_DIGEST}"
+            echo "TF_VAR_image_repository=ghcr.io/${owner}/interlock-runtime"
+            echo "TF_VAR_image_digest=${IMAGE_DIGEST}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Install Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      - name: Install certification test dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Verify exact release signatures before deployment
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io \
+            --username "${GITHUB_ACTOR}" --password-stdin
+          deploy/scripts/release/verify-oci-release.sh \
+            "${GITHUB_REPOSITORY}" \
+            "${TF_VAR_image_repository}@${TF_VAR_image_digest}" \
+            "${TF_VAR_helm_chart_ref#oci://}@${TF_VAR_helm_chart_digest}"
+
+      - name: Provision disposable EKS cluster
+        run: |
+          set -euo pipefail
+          # Remote state with a per-run key: if this runner is cancelled or
+          # killed between apply and destroy, the state survives and the
+          # orphaned cluster can still be destroyed from a later run.
+          terraform -chdir=deploy/terraform/environments/aws init \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="key=cloud-cert/aws/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tfstate" \
+            -backend-config="region=${TF_STATE_REGION}" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+          terraform -chdir=deploy/terraform/environments/aws validate
+          terraform -chdir=deploy/terraform/environments/aws apply -auto-approve
+
+      - name: Configure kubectl
+        shell: bash
+        run: |
+          set -euo pipefail
+          cluster="$(terraform -chdir=deploy/terraform/environments/aws output -raw cluster_name)"
+          aws eks update-kubeconfig --region "${TF_VAR_region}" --name "${cluster}"
+          kubectl cluster-info
+
+      - name: Bootstrap ephemeral data tier and TLS material
+        shell: bash
+        run: |
+          set -euo pipefail
+          deploy/scripts/certification/bootstrap-cluster-fixtures.sh --namespace interlock
+
+      - name: Install exact signed release
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          umask 077
+          overlay_args=()
+          if [[ -n "${INTERLOCK_HELM_VALUES_B64}" ]]; then
+            values_file="${RUNNER_TEMP}/interlock-values.yaml"
+            printf '%s' "${INTERLOCK_HELM_VALUES_B64}" | base64 --decode > "${values_file}"
+            overlay_args=(--values "${values_file}")
+          fi
+          printf '%s' "${GHCR_TOKEN}" | helm registry login ghcr.io \
+            --username "${GITHUB_ACTOR}" --password-stdin
+          # Pods pull the private image with the job's own token, named by
+          # values.certification.yaml. It expires with the job, as does the cluster.
+          kubectl create namespace interlock --dry-run=client -o yaml | kubectl apply -f -
+          kubectl --namespace interlock create secret docker-registry ghcr-pull \
+            --docker-server=ghcr.io \
+            --docker-username="${GITHUB_ACTOR}" \
+            --docker-password="${GHCR_TOKEN}" \
+            --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+          deploy/scripts/release/deploy-oci-release.sh \
+            --chart-ref "${TF_VAR_helm_chart_ref}" \
+            --chart-digest "${TF_VAR_helm_chart_digest}" \
+            --image-repository "${TF_VAR_image_repository}" \
+            --image-digest "${TF_VAR_image_digest}" \
+            --values deploy/helm/values.certification.yaml \
+            "${overlay_args[@]}"
+
+      - name: Certify the governed core path
+        shell: bash
+        env:
+          # Re-installing the same signed digest is what proves the upgrade
+          # path, so the runner needs the exact artifact coordinates.
+          CERT_CHART_REF: ${{ env.TF_VAR_helm_chart_ref }}
+          CERT_CHART_DIGEST: ${{ env.TF_VAR_helm_chart_digest }}
+          CERT_IMAGE_REPOSITORY: ${{ env.TF_VAR_image_repository }}
+          CERT_IMAGE_DIGEST: ${{ env.TF_VAR_image_digest }}
+          CERT_VALUES_OVERLAY: ${{ runner.temp }}/interlock-values.yaml
+        run: |
+          set -euo pipefail
+          deploy/scripts/certification/run-certification.sh \
+            --namespace interlock \
+            --evidence-dir build/certification
+
+      - name: Upload certification evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: interlock-cloud-certification-${{ inputs.provider }}-${{ github.run_id }}
+          path: build/certification/
+          if-no-files-found: warn
+
+      - name: Capture diagnostics
+        if: failure()
+        run: |
+          kubectl get all --all-namespaces || true
+          kubectl --namespace interlock get events --sort-by=.lastTimestamp || true
+
+      # Volumes the cluster's storage driver provisioned (the audit spool) are
+      # not Terraform resources, so destroying the cluster would leave them
+      # behind and billing. Deleting the namespace releases them first.
+      - name: Release cluster-provisioned storage
+        if: always()
+        continue-on-error: true
+        run: |
+          kubectl delete namespace interlock --wait=true --timeout=10m || true
+          kubectl wait --for=delete pv --all --timeout=10m || true
+
+      - name: Destroy disposable AWS environment
+        if: always()
+        run: terraform -chdir=deploy/terraform/environments/aws destroy -auto-approve
+
+  digitalocean:
+    name: Certify on disposable DigitalOcean DOKS
+    if: inputs.provider == 'digitalocean'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment: cloud-certification
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      TF_STATE_ENDPOINT: ${{ vars.TF_STATE_ENDPOINT }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      INTERLOCK_HELM_VALUES_B64: ${{ secrets.INTERLOCK_HELM_VALUES_B64 }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: 1.14.5
+          terraform_wrapper: false
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # v4
+        with:
+          version: v3.19.0
+
+      - name: Prepare immutable release and ephemeral cluster inputs
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          CHART_DIGEST: ${{ inputs.helm_chart_digest }}
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: |
+          set -euo pipefail
+          deploy/scripts/release/validate-release-tag.sh "v${RELEASE_VERSION}" >/dev/null
+          [[ "${CHART_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "${IMAGE_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          runner_ip="$(curl --fail --silent --show-error --ipv4 https://checkip.amazonaws.com | tr -d '[:space:]')"
+          [[ "${runner_ip}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          {
+            echo "TF_VAR_region=${{ inputs.digitalocean_region }}"
+            echo "TF_VAR_cluster_name=interlock-do-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            echo "TF_VAR_kubernetes_version=${{ inputs.kubernetes_version }}"
+            echo "TF_VAR_control_plane_allowed_cidrs=[\"${runner_ip}/32\"]"
+            echo "TF_VAR_release_version=${RELEASE_VERSION}"
+            echo "TF_VAR_helm_chart_ref=oci://ghcr.io/${owner}/charts/interlock"
+            echo "TF_VAR_helm_chart_digest=${CHART_DIGEST}"
+            echo "TF_VAR_image_repository=ghcr.io/${owner}/interlock-runtime"
+            echo "TF_VAR_image_digest=${IMAGE_DIGEST}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Install Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      - name: Install certification test dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Verify exact release signatures before deployment
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io \
+            --username "${GITHUB_ACTOR}" --password-stdin
+          deploy/scripts/release/verify-oci-release.sh \
+            "${GITHUB_REPOSITORY}" \
+            "${TF_VAR_image_repository}@${TF_VAR_image_digest}" \
+            "${TF_VAR_helm_chart_ref#oci://}@${TF_VAR_helm_chart_digest}"
+
+      - name: Provision disposable DOKS cluster
+        run: |
+          set -euo pipefail
+          # Remote state in DigitalOcean Spaces (S3-compatible). The skip_*
+          # flags are required because Spaces is not AWS: credential, region,
+          # and account-id validation all target AWS endpoints, and the AWS
+          # SDK's default checksum header is rejected by Spaces.
+          terraform -chdir=deploy/terraform/environments/digitalocean init \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="key=cloud-cert/digitalocean/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tfstate" \
+            -backend-config="region=us-east-1" \
+            -backend-config="endpoints={s3=\"${TF_STATE_ENDPOINT}\"}" \
+            -backend-config="skip_credentials_validation=true" \
+            -backend-config="skip_region_validation=true" \
+            -backend-config="skip_metadata_api_check=true" \
+            -backend-config="skip_requesting_account_id=true" \
+            -backend-config="skip_s3_checksum=true"
+          terraform -chdir=deploy/terraform/environments/digitalocean validate
+          terraform -chdir=deploy/terraform/environments/digitalocean apply -auto-approve
+
+      - name: Configure kubectl
+        shell: bash
+        run: |
+          set -euo pipefail
+          cluster="$(terraform -chdir=deploy/terraform/environments/digitalocean output -raw cluster_name)"
+          doctl kubernetes cluster kubeconfig save "${cluster}"
+          kubectl cluster-info
+
+      - name: Bootstrap ephemeral data tier and TLS material
+        shell: bash
+        run: |
+          set -euo pipefail
+          deploy/scripts/certification/bootstrap-cluster-fixtures.sh --namespace interlock
+
+      - name: Install exact signed release
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          umask 077
+          overlay_args=()
+          if [[ -n "${INTERLOCK_HELM_VALUES_B64}" ]]; then
+            values_file="${RUNNER_TEMP}/interlock-values.yaml"
+            printf '%s' "${INTERLOCK_HELM_VALUES_B64}" | base64 --decode > "${values_file}"
+            overlay_args=(--values "${values_file}")
+          fi
+          printf '%s' "${GHCR_TOKEN}" | helm registry login ghcr.io \
+            --username "${GITHUB_ACTOR}" --password-stdin
+          # Pods pull the private image with the job's own token, named by
+          # values.certification.yaml. It expires with the job, as does the cluster.
+          kubectl create namespace interlock --dry-run=client -o yaml | kubectl apply -f -
+          kubectl --namespace interlock create secret docker-registry ghcr-pull \
+            --docker-server=ghcr.io \
+            --docker-username="${GITHUB_ACTOR}" \
+            --docker-password="${GHCR_TOKEN}" \
+            --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+          deploy/scripts/release/deploy-oci-release.sh \
+            --chart-ref "${TF_VAR_helm_chart_ref}" \
+            --chart-digest "${TF_VAR_helm_chart_digest}" \
+            --image-repository "${TF_VAR_image_repository}" \
+            --image-digest "${TF_VAR_image_digest}" \
+            --values deploy/helm/values.certification.yaml \
+            "${overlay_args[@]}"
+
+      - name: Certify the governed core path
+        shell: bash
+        env:
+          # Re-installing the same signed digest is what proves the upgrade
+          # path, so the runner needs the exact artifact coordinates.
+          CERT_CHART_REF: ${{ env.TF_VAR_helm_chart_ref }}
+          CERT_CHART_DIGEST: ${{ env.TF_VAR_helm_chart_digest }}
+          CERT_IMAGE_REPOSITORY: ${{ env.TF_VAR_image_repository }}
+          CERT_IMAGE_DIGEST: ${{ env.TF_VAR_image_digest }}
+          CERT_VALUES_OVERLAY: ${{ runner.temp }}/interlock-values.yaml
+        run: |
+          set -euo pipefail
+          deploy/scripts/certification/run-certification.sh \
+            --namespace interlock \
+            --evidence-dir build/certification
+
+      - name: Upload certification evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: interlock-cloud-certification-${{ inputs.provider }}-${{ github.run_id }}
+          path: build/certification/
+          if-no-files-found: warn
+
+      - name: Capture diagnostics
+        if: failure()
+        run: |
+          kubectl get all --all-namespaces || true
+          kubectl --namespace interlock get events --sort-by=.lastTimestamp || true
+
+      # Volumes the cluster's storage driver provisioned (the audit spool) are
+      # not Terraform resources, so destroying the cluster would leave them
+      # behind and billing. Deleting the namespace releases them first.
+      - name: Release cluster-provisioned storage
+        if: always()
+        continue-on-error: true
+        run: |
+          kubectl delete namespace interlock --wait=true --timeout=10m || true
+          kubectl wait --for=delete pv --all --timeout=10m || true
+
+      - name: Destroy disposable DigitalOcean environment
+        if: always()
+        run: terraform -chdir=deploy/terraform/environments/digitalocean destroy -auto-approve

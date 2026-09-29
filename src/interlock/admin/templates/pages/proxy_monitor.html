@@ -1,0 +1,111 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Proxy Monitor - InterLock Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Proxy Monitor</h1>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card stat-card--info">
+        <div class="stat-value">{{ queries_today }}</div>
+        <div class="stat-label">Requests (24h)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ avg_latency }}ms</div>
+        <div class="stat-label">Avg Latency</div>
+    </div>
+    <div class="stat-card stat-card--success">
+        <div class="stat-value">{{ cache_hit_rate }}%</div>
+        <div class="stat-label">Cache Hit Rate</div>
+    </div>
+    <div class="stat-card{% if pii_count > 0 %} stat-card--error{% endif %}">
+        <div class="stat-value">{{ pii_count }}</div>
+        <div class="stat-label">PII Detections</div>
+    </div>
+</div>
+
+<div class="split-section">
+    <h2>Latency Percentiles (24h)</h2>
+    <div class="percentile-grid">
+        <div class="percentile-item"><div class="pct-val">{{ p50 }}ms</div><div class="pct-label">P50</div></div>
+        <div class="percentile-item"><div class="pct-val">{{ p95 }}ms</div><div class="pct-label">P95</div></div>
+        <div class="percentile-item"><div class="pct-val">{{ p99 }}ms</div><div class="pct-label">P99</div></div>
+    </div>
+</div>
+
+{% if cache_tiers %}
+<div class="split-section">
+    <h2>Cache Tier Distribution (24h)</h2>
+    {% include "partials/cache_tier_chart.html" %}
+</div>
+{% endif %}
+
+{% if fingerprints %}
+<div class="split-section">
+    <h2>Top Request Fingerprints</h2>
+    <div class="table-wrapper">
+        <table class="mini-table">
+            <thead>
+                <tr><th>Fingerprint</th><th>Protocol</th><th>Source</th><th>Count</th><th>Avg Latency</th><th>Hit Rate</th></tr>
+            </thead>
+            <tbody>
+                {% for fp in fingerprints %}
+                <tr>
+                    <td class="detail-text"><a href="/dashboard/audit-costs?source={{ fp.source_id|default('') }}">{{ (fp.sql_fingerprint | default(''))[:32] }}...</a></td>
+                    <td>{{ fp.protocol|default('-') }}</td>
+                    <td>{{ fp.source_id|default('-') }}</td>
+                    <td>{{ fp.cnt }}</td>
+                    <td>{{ fp.avg_lat|fmt_ms }}</td>
+                    <td>{{ fp.hit_rate }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if protocols %}
+<div class="split-section">
+    <h2>Protocol Breakdown</h2>
+    <div class="table-wrapper">
+        <table class="mini-table">
+            <thead><tr><th>Protocol</th><th>Requests</th><th>Avg Latency</th><th>Errors</th></tr></thead>
+            <tbody>
+                {% for row in protocols %}
+                <tr>
+                    <td>{{ row.protocol }}</td>
+                    <td>{{ row.cnt }}</td>
+                    <td>{{ row.avg_lat|fmt_ms }}</td>
+                    <td>{{ row.errors }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if pii_log %}
+<div class="split-section">
+    <h2>PII Detection Log</h2>
+    <div class="table-wrapper">
+        <table class="mini-table">
+            <thead>
+                <tr><th>Timestamp</th><th>Source</th><th>Operation</th><th>PII Types</th></tr>
+            </thead>
+            <tbody>
+                {% for entry in pii_log %}
+                <tr>
+                    <td>{{ entry.created_at|fmt_dt }}</td>
+                    <td>{{ entry.source_id | default('-') }}</td>
+                    <td>{{ entry.operation | default('-') }}</td>
+                    <td>{% for t in (entry.pii_types or []) %}<span class="pii-tag">{{ t }}</span>{% endfor %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,163 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Policies - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <p class="eyebrow">Access Control</p>
+        <h1>Policies</h1>
+    </div>
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="/dashboard/policies/export.yaml">Export YAML</a>
+        <button class="btn btn-secondary js-toggle-hidden"
+                data-toggle-target="policy-import-panel">Import</button>
+        <button class="btn btn-secondary js-toggle-hidden"
+                data-toggle-target="policy-dry-run-panel">Dry Run</button>
+        <a class="btn btn-primary"
+           href="/dashboard/policies/new"
+           hx-get="/dashboard/policies/new"
+           hx-target="#main-content"
+           hx-push-url="true">+ New Policy</a>
+    </div>
+</div>
+
+<div class="split-section">
+    <div class="section-header-row">
+        <div>
+            <h2>Policy Rules</h2>
+            <p class="muted">Policies govern allowed source-role access with organization-wide deny, redaction, rate-limit, classification, and write-risk controls.</p>
+        </div>
+        <a class="btn btn-secondary" href="/dashboard/access-control/identities"
+           hx-get="/dashboard/access-control/identities" hx-target="#main-content" hx-push-url="true">Manage Identities</a>
+    </div>
+
+    <div id="policy-import-panel" class="form-card hidden">
+        <h3>Import Policies</h3>
+        <form id="policy-import-form">
+            <label>JSON or YAML policy payload
+                <textarea name="policy_payload" rows="6" placeholder='{"policies":[{"name":"source-readers","conditions":{"source_ids":["e2e_pg"],"roles":["read"]},"actions":{"effect":"allow"}}]}'></textarea>
+            </label>
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary"
+                        hx-post="/dashboard/policies/import/preview"
+                        hx-include="#policy-import-form"
+                        hx-target="#policy-import-result">Preview Import</button>
+            </div>
+        </form>
+        <div id="policy-import-result"></div>
+    </div>
+
+    <div id="policy-dry-run-panel" class="form-card hidden">
+        <h3>Policy Dry Run</h3>
+        <form id="policy-dry-run-form">
+            <div class="form-row">
+                <label>Identity
+                    <select name="identity_id">
+                        <option value="">Select identity</option>
+                        {% for ident in identities %}
+                        <option value="{{ ident.id }}">{{ ident.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Source
+                    <select name="source_id">
+                        <option value="">Select source</option>
+                        {% for source in data_sources|default([]) %}
+                        <option value="{{ source.source_id }}">{{ source.name }} ({{ source.source_id }})</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Operation
+                    <select name="operation">
+                        <option value="read">read</option>
+                        <option value="write">write</option>
+                        <option value="discovery">discovery</option>
+                    </select>
+                </label>
+                <label>Tables
+                    <input name="tables" placeholder="customers,orders">
+                </label>
+                <label>Columns
+                    <input name="columns" placeholder="email,ssn">
+                </label>
+            </div>
+            <div class="form-row">
+                <label>HTTP method
+                    <select name="method">
+                        <option value="">database/source-role action</option>
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="PATCH">PATCH</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                </label>
+                <label>HTTP path
+                    <input name="path" placeholder="/customers/123">
+                </label>
+                <label>Classification tags
+                    <input name="classification_tags" placeholder="pii,restricted">
+                </label>
+            </div>
+            <label>SQL preview
+                <textarea name="sql" rows="3" placeholder="SELECT ID, EMAIL FROM ANALYTICS.PUBLIC.CUSTOMERS"></textarea>
+                <span class="field-help">For Snowflake and SQL sources, SQL preview derives the source-role action and resources before policy evaluation.</span>
+            </label>
+            <p class="muted">Dry-run uses the selected identity's active source-role grants first, then evaluates policy rules. Policy role conditions refer to source role keys on the selected source.</p>
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary"
+                        hx-post="/dashboard/policies/dry-run"
+                        hx-include="#policy-dry-run-form"
+                        hx-target="#policy-dry-run-result">Evaluate</button>
+            </div>
+        </form>
+        <div id="policy-dry-run-result"></div>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Priority</th>
+                    <th>Conditions</th>
+                    <th>Effect</th>
+                    <th>Enabled</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rule in policy_rules %}
+                <tr>
+                    <td>{{ rule.name }}</td>
+                    <td>{{ rule.priority|default(0) }}</td>
+                    <td>{{ rule.conditions_summary|default('-') }}</td>
+                    {% set _effect = (rule.actions or {}).get('effect') if rule.actions else rule.effect %}
+                    <td data-rule-effect="{{ _effect|default('') }}"><span class="badge badge-{{ (_effect or 'unknown')|lower }}">{{ _effect|default('-') }}</span></td>
+                    <td>
+                        {% if rule.enabled %}
+                        <span class="health-dot health-green" aria-hidden="true"></span> Enabled
+                        {% else %}
+                        <span class="health-dot health-red" aria-hidden="true"></span> Disabled
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a class="btn btn-link"
+                           href="/dashboard/policies/{{ rule.id }}/edit"
+                           hx-get="/dashboard/policies/{{ rule.id }}/edit"
+                           hx-target="#main-content"
+                           hx-push-url="true">Edit</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state"><p>No policy rules configured. Click <strong>+ New Policy</strong> to add one.</p></div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Connectors - InterLock{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Connectors</h1>
+    <p class="muted">The systems new data sources can be registered on. Deactivating a connector hides it when adding a source; sources already using it keep working.</p>
+  </div>
+</div>
+
+{% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+
+<section class="card">
+  <div class="section-header-row"><h2>Active</h2></div>
+  {% if active_connectors %}
+  {% with rows = active_connectors, action_label = "Deactivate", action_value = "" %}{% include "partials/connector_rows.html" %}{% endwith %}
+  {% else %}
+  <div class="empty-state"><p>No connector is active, so no new source can be registered. Activate one below.</p></div>
+  {% endif %}
+</section>
+
+{% if inactive_connectors %}
+<section class="card">
+  <details class="connector-inactive">
+    <summary><h2>Available to activate ({{ inactive_connectors|length }})</h2></summary>
+    <p class="muted">Beta connectors have not been certified against a production system. Activate one when you are ready to register a source on it.</p>
+    {% with rows = inactive_connectors, action_label = "Activate", action_value = "on" %}{% include "partials/connector_rows.html" %}{% endwith %}
+  </details>
+</section>
+{% endif %}
+{% endblock %}

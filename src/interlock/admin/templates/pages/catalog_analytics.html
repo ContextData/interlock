@@ -1,0 +1,72 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% block title %}Access Analytics - InterLock Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard/catalog" class="back-link" hx-get="/dashboard/catalog" hx-target="#main-content">← Catalog</a>
+  <h1>Access Analytics</h1>
+</div>
+
+<div class="detail-stack">
+  <section class="card">
+    <form class="filter-bar" hx-get="/dashboard/catalog/analytics" hx-target="#main-content" hx-push-url="true">
+      <div class="form-row"><label for="analytics-source">Source</label>
+        <select id="analytics-source" name="source">
+          {% for s in sources %}<option value="{{ s }}" {% if s == source %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-row"><label for="analytics-days">Window</label>
+        <select id="analytics-days" name="days">
+          {% for d in (7, 30, 90) %}<option value="{{ d }}" {% if d == days %}selected{% endif %}>last {{ d }} days</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">Show</button>
+    </form>
+    {% if analytics %}
+    <p class="muted">{{ analytics.requests }} governed resource request{{ '' if analytics.requests == 1 else 's' }} on <code>{{ source }}</code> in the last {{ days }} days, read from the audit trail against the catalog.</p>
+    {% else %}
+    <div class="empty-state"><p>No catalogued source yet.</p></div>
+    {% endif %}
+  </section>
+
+  {% if analytics %}
+  <section class="card">
+    <h2>Most accessed tables</h2>
+    {% if analytics.most_accessed %}
+    <div class="table-wrapper"><table>
+      <thead><tr><th>Table</th><th>Allowed requests</th><th>Identities</th></tr></thead>
+      <tbody>{% for t in analytics.most_accessed %}<tr><td><code>{{ t.table }}</code></td><td>{{ t.requests - t.denied }}</td><td>{{ t.identities }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="muted">No table was read in this window.</p>{% endif %}
+  </section>
+
+  <section class="card">
+    <h2>PII columns read</h2>
+    {% if analytics.pii_columns %}
+    <div class="table-wrapper"><table>
+      <thead><tr><th>Column</th><th>Requests</th><th>Classification</th></tr></thead>
+      <tbody>{% for column, count, cls in analytics.pii_columns %}<tr><td><code>{{ column }}</code></td><td>{{ count }}</td><td><span class="badge {{ 'badge-warning' if cls == 'likely' else '' }}">{{ 'likely PII' if cls == 'likely' else cls }}</span></td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="muted">No PII or sensitive column was read in this window.</p>{% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Refused requests by table</h2>
+    {% if analytics.denied %}
+    <div class="table-wrapper"><table>
+      <thead><tr><th>Table</th><th>Refused</th></tr></thead>
+      <tbody>{% for t in analytics.denied %}<tr><td><code>{{ t.table }}</code></td><td>{{ t.denied }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="muted">No request was refused in this window.</p>{% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Catalogued but never accessed</h2>
+    {% if analytics.never_accessed %}
+    <p class="muted">Tables no governed request touched in this window - candidates for narrower roles.</p>
+    <ul class="ranked-list">{% for t in analytics.never_accessed %}<li><code>{{ t }}</code></li>{% endfor %}</ul>
+    {% else %}<p class="muted">Every catalogued table was accessed.</p>{% endif %}
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

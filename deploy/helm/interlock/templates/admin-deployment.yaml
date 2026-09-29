@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "interlock.fullname" . }}-admin
+  labels:
+    {{- include "interlock.labels" . | nindent 4 }}
+    app.kubernetes.io/component: admin
+spec:
+  replicas: {{ .Values.admin.replicas }}
+  selector:
+    matchLabels:
+      {{- include "interlock.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: admin
+  template:
+    metadata:
+      annotations:
+        {{- include "interlock.podAnnotations" . | nindent 8 }}
+      labels:
+        {{- include "interlock.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: admin
+    spec:
+      {{- include "interlock.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: admin
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          image: {{ include "interlock.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "-m", "interlock.admin"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.admin.service.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "interlock.fullname" . }}-config
+            {{- with .Values.admin.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            - name: INTERLOCK_SERVICE_ROLE
+              value: admin
+            - name: INTERLOCK_DATABASE__USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | default (printf "%s-db-credentials" (include "interlock.fullname" .)) }}
+                  key: {{ .Values.database.secretUserKey }}
+            - name: INTERLOCK_DATABASE__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | default (printf "%s-db-credentials" (include "interlock.fullname" .)) }}
+                  key: {{ .Values.database.secretPasswordKey }}
+            - name: INTERLOCK_ADMIN__SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.admin.secret.existingSecret | default (printf "%s-admin-secret" (include "interlock.fullname" .)) }}
+                  key: {{ .Values.admin.secret.secretKey }}
+            - name: INTERLOCK_AUTH__API_KEY_PEPPER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "auth.apiKeyPepperExistingSecret is required" .Values.auth.apiKeyPepperExistingSecret }}
+                  key: {{ .Values.auth.apiKeyPepperSecretKey }}
+            {{- if .Values.admin.bootstrapPasswordExistingSecret }}
+            - name: INTERLOCK_ADMIN__BOOTSTRAP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.admin.bootstrapPasswordExistingSecret }}
+                  key: {{ .Values.admin.bootstrapPasswordSecretKey }}
+            {{- end }}
+            {{- if .Values.auth.oidc.enabled }}
+            - name: INTERLOCK_AUTH__OIDC__ADMIN_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "auth.oidc.adminClientSecretExistingSecret is required when OIDC is enabled" .Values.auth.oidc.adminClientSecretExistingSecret }}
+                  key: {{ .Values.auth.oidc.adminClientSecretKey }}
+            {{- end }}
+            {{- include "interlock.redisEnv" . | nindent 12 }}
+            {{- with .Values.admin.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.admin.probes.livenessPath | quote }}
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.admin.probes.readinessPath | quote }}
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.admin.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: home
+              mountPath: /home/interlock
+            - name: control-db-ca
+              mountPath: /run/secrets/control-db-ca
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: home
+          emptyDir: {}
+        - name: control-db-ca
+          secret:
+            secretName: {{ required "database.caExistingSecret is required" .Values.database.caExistingSecret }}
+            items:
+              - key: {{ .Values.database.caSecretKey }}
+                path: ca.crt
