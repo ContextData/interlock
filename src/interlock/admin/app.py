@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import json
 import logging
 import time
 from collections.abc import AsyncIterator
@@ -98,11 +99,24 @@ def _short_identifier(value: Any, size: int = 18, fallback: str = "-") -> str:
     return f"{text[:keep]}...{text[-keep:]}"
 
 
+def _pretty_json(value: Any, fallback: str = "-") -> str:
+    """Structured audit fields as indented JSON rather than Python's repr."""
+    if value in (None, "", {}, []):
+        return fallback
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return str(value)
+    return json.dumps(value, indent=2, sort_keys=True, default=str)
+
+
 def _install_template_filters(templates: Jinja2Templates) -> None:
     templates.env.filters["fmt_dt"] = _format_datetime
     templates.env.filters["fmt_ms"] = _format_duration_ms
     templates.env.filters["identity_label"] = identity_label
     templates.env.filters["short_id"] = _short_identifier
+    templates.env.filters["pretty_json"] = _pretty_json
     # The shell prints this in the sidebar. It is a global rather than per-route
     # context because base.html renders on every page.
     templates.env.globals["interlock_version"] = release_version()

@@ -201,9 +201,9 @@ async def test_csv_export_includes_header_and_rows(client, pool):
     lines = body.strip().split("\r\n") or body.strip().split("\n")
     # Header + 2 rows.
     assert lines[0].startswith("id,created_at,identity_id,source_id,operation")
-    # The name is appended so positional consumers of the old columns still work.
-    assert lines[0].endswith(",error_message,identity_name")
-    assert any(line.endswith(",analyst-claude") for line in lines[1:])
+    # New columns are appended so positional consumers of the old ones still work.
+    assert lines[0].endswith(",error_message,identity_name,protocol,correlation_id")
+    assert any(",analyst-claude," in line for line in lines[1:])
     assert any("shop" in line for line in lines[1:])
     assert any("analytics" in line for line in lines[1:])
     # PII types come through as comma-joined inside the cell.
@@ -230,3 +230,20 @@ async def test_audit_log_partial_accepts_new_filters(client, pool):
         "&since=2026-01-01T00:00:00Z&until=2026-06-01T00:00:00Z"
     )
     assert resp.status_code == 200
+
+
+def test_filter_protocol_binds() -> None:
+    """The audit concept page promises a protocol filter; this is it."""
+    where, params = _build_audit_filter(protocol="postgresql")
+    assert "protocol = $1" in where
+    assert params == ["postgresql"]
+
+
+@pytest.mark.anyio
+async def test_csv_export_carries_protocol_and_correlation_id(client, pool):
+    pool.fetch_result = [_audit(id=3, protocol="mcp", correlation_id="corr-abc")]
+    resp = await client.get("/dashboard/audit-costs/export.csv?protocol=mcp")
+    assert resp.status_code == 200
+    lines = resp.text.strip().splitlines()
+    assert lines[0].endswith(",protocol,correlation_id")
+    assert lines[1].endswith(",mcp,corr-abc")

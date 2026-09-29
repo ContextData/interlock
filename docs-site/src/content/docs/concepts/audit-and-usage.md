@@ -23,9 +23,27 @@ retried, then spooled to disk and replayed. How strictly this is enforced is
 | `retriable` | the request proceeds; the row is spooled and replayed |
 | `best_effort` | the row is dropped |
 
+Rows are written in batches, so a request can take a few seconds to appear. If
+an export or the page shows nothing yet, refresh.
+
 Read the log under **Audit & Costs**: filter by identity, source, protocol or
-outcome, open any event for its full decision record, or export CSV. Deleted
-identities are still named.
+outcome, open any event for its full decision record, or export CSV. The
+export includes the protocol and the request's correlation ID, the same ID
+the event page shows. Deleted identities are still named.
+
+### What a row's status means
+
+A row records what InterLock did with the request: `success` means the
+gateway answered it, `denied` that a source role or policy refused it, and
+`error` that the source or the gateway failed. It cannot see what the client
+then did with the answer.
+
+### Redaction on a cache hit
+
+A cached answer is stored after redaction, so serving it again masks the same
+values. The PII fields of a cache-hit row describe the redaction that was
+applied when the answer was cached; the event page says so. No scanner runs
+on the hit itself.
 
 ## The admin audit log
 

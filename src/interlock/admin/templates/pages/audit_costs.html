@@ -45,6 +45,14 @@
             {% endfor %}
         </select>
         </label>
+        <label>Protocol
+        <select name="protocol" {{ _hx|safe }}>
+            <option value="">All Protocols</option>
+            {% for pr in protocols|default([]) %}
+            <option value="{{ pr }}" {% if filter_protocol == pr %}selected{% endif %}>{{ pr }}</option>
+            {% endfor %}
+        </select>
+        </label>
         <label>Cache
         <select name="cache_tier" {{ _hx|safe }}>
             <option value="">All Tiers</option>
@@ -74,7 +82,7 @@
                value="{{ filter_until|default('') }}" {{ _hx|safe }}>
         </label>
         <a class="btn btn-secondary"
-           href="/dashboard/audit-costs/export.csv?source={{ filter_source }}&operation={{ filter_operation }}&status={{ filter_status }}&identity_id={{ filter_identity_id|default('') }}&cache_tier={{ filter_cache_tier|default('') }}&pii={{ filter_pii|default('') }}&since={{ filter_since|default('') }}&until={{ filter_until|default('') }}"
+           href="/dashboard/audit-costs/export.csv?source={{ filter_source }}&operation={{ filter_operation }}&status={{ filter_status }}&identity_id={{ filter_identity_id|default('') }}&cache_tier={{ filter_cache_tier|default('') }}&pii={{ filter_pii|default('') }}&since={{ filter_since|default('') }}&until={{ filter_until|default('') }}&protocol={{ filter_protocol|default('') }}"
            download>Export CSV</a>
     </form>
 

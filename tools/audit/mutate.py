@@ -887,6 +887,25 @@ MUTATIONS: tuple[Mutation, ...] = (
         tests=("tests/unit/test_p0_b_mcp_pipeline.py",),
         scope="unit",
     ),
+    Mutation(
+        name="pg-cache-hit-audit-drops-redaction",
+        control="Audit: a PostgreSQL cache hit records the redaction it was cached with",
+        path="src/interlock/gateway/pg_proxy.py",
+        old="            cached_pii, cached_pii_types, _ = redaction_of(cached_metadata)",
+        new="            cached_pii, cached_pii_types = False, []  # MUTATION: redaction dropped",
+        tests=("tests/unit/test_cached_answer_provenance.py",),
+        scope="unit",
+    ),
+    Mutation(
+        name="mcp-cache-hit-audit-drops-redaction",
+        control="Audit: an MCP cache hit records the redaction it was cached with",
+        path="src/interlock/gateway/mcp_adapter.py",
+        old="cached_pii, cached_pii_types, cached_stats = redaction_of(result.metadata)",
+        new="cached_pii, cached_pii_types, cached_stats = False, [], {}  # MUTATION",
+        tests=("tests/unit/test_cached_answer_provenance.py",),
+        scope="unit",
+        note="Found by the rc.13 independent evaluation: redacted cache hits audited as no PII.",
+    ),
 )
 
 BY_NAME = {m.name: m for m in MUTATIONS}

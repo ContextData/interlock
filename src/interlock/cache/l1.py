@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from typing import Any
 
 from cachetools import TTLCache
 
@@ -19,7 +20,11 @@ class L1Cache:
     """
 
     def __init__(self, max_size: int = 10000, ttl_seconds: int = 60) -> None:
-        self._cache: TTLCache[str, bytes] = TTLCache(maxsize=max_size, ttl=ttl_seconds)
+        # Each entry keeps the metadata it was stored with, as L2 does, so a hit
+        # in either tier can say how the cached answer was produced.
+        self._cache: TTLCache[str, tuple[bytes, dict[str, Any]]] = TTLCache(
+            maxsize=max_size, ttl=ttl_seconds
+        )
         self._lock = threading.Lock()
         self._hits = 0
         self._misses = 0
@@ -29,16 +34,16 @@ class L1Cache:
     async def get(self, key: str) -> CacheResult:
         with self._lock:
             try:
-                data = self._cache[key]
+                data, metadata = self._cache[key]
                 self._hits += 1
-                return CacheResult(hit=True, data=data, tier="l1")
+                return CacheResult(hit=True, data=data, tier="l1", metadata=dict(metadata))
             except KeyError:
                 self._misses += 1
                 return CacheResult(hit=False)
 
-    async def put(self, key: str, data: bytes) -> None:
+    async def put(self, key: str, data: bytes, metadata: dict[str, Any] | None = None) -> None:
         with self._lock:
-            self._cache[key] = data
+            self._cache[key] = (data, dict(metadata or {}))
 
     async def invalidate(self, key: str) -> None:
         with self._lock:

@@ -25,10 +25,10 @@
   <section class="card">
     <h2>Governance</h2>
     <dl class="form-summary fact-table">
-      <dt>Policy</dt><dd>{{ event.policy_decision or '-' }}</dd>
+      <dt>Policy</dt><dd>{% if event.policy_decision %}<pre class="json-block">{{ event.policy_decision|pretty_json }}</pre>{% else %}-{% endif %}</dd>
       <dt>Cache</dt><dd>{% if event.cache_hit %}hit{% else %}miss{% endif %} {{ event.cache_tier or '' }}</dd>
       <dt>Approval</dt><dd>{{ event.approval_status or '-' }} {% if event.approval_id %}<a href="/dashboard/write-safety/{{ event.approval_id }}">#{{ event.approval_id }}</a>{% endif %}</dd>
-      <dt>PII</dt><dd>{% if event.pii_detected %}<span class="pii-tag">PII</span>{% else %}-{% endif %}</dd>
+      <dt>PII</dt><dd>{% if event.pii_detected %}<span class="pii-tag">PII</span>{% if event.pii_types %} {{ event.pii_types|join(', ') }}{% endif %}{% if event.cache_hit %} <span class="muted">(redacted when the answer was cached)</span>{% endif %}{% else %}-{% endif %}</dd>
       <dt>Latency</dt><dd>{{ event.latency_ms|fmt_ms }}</dd>
       <dt>Upstream cost</dt><dd>
         {% if event.cost_metadata is mapping and event.cost_metadata %}
@@ -52,7 +52,7 @@
       <dt>Route</dt><dd>{{ event.route or '-' }}</dd>
       <dt>Upstream target</dt><dd>{{ event.upstream_target or '-' }}</dd>
       <dt>Error</dt><dd>{{ event.error_message or '-' }}</dd>
-      <dt>Request metadata</dt><dd><pre class="json-block">{{ event.request_metadata or event.metadata or {} }}</pre></dd>
+      <dt>Request metadata</dt><dd><pre class="json-block">{{ (event.request_metadata or event.metadata)|pretty_json('{}') }}</pre></dd>
     </dl>
   </section>
 </div>

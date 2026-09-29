@@ -28,6 +28,7 @@ from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
 from interlock import release_version
+from interlock.cache.provenance import redaction_of, with_redaction
 from interlock.connections.connectors import get_adapter
 from interlock.core.normalizer import (
     DEFAULT_DIALECT,
@@ -966,6 +967,9 @@ class MCPAdapter:
                     result = CacheResult(hit=False)
                 if result.hit and result.data is not None:
                     cache_tier = result.tier
+                    # The cached JSON was redacted when stored; record that
+                    # redaction, since no scanner runs on a hit.
+                    cached_pii, cached_pii_types, cached_stats = redaction_of(result.metadata)
                     audit = getattr(state, "audit_logger", None) if state else None
                     if audit is not None:
                         await self._safe_audit(
@@ -983,6 +987,9 @@ class MCPAdapter:
                             cache_hit=True,
                             cache_tier=cache_tier,
                             latency_ms=(time.monotonic() - t0) * 1000,
+                            pii_detected=cached_pii,
+                            pii_types=cached_pii_types,
+                            redaction_stats=cached_stats,
                         )
                     return JSONResponse(
                         _text_content(result.data.decode("utf-8")),
@@ -1108,7 +1115,12 @@ class MCPAdapter:
                 await cache_strategy.put(
                     fingerprint,
                     payload.encode("utf-8"),
-                    {"source_id": source_id, "protocol": "mcp", "tables": tables},
+                    with_redaction(
+                        {"source_id": source_id, "protocol": "mcp", "tables": tables},
+                        pii_detected=pii_detected,
+                        pii_types=pii_types,
+                        redaction_stats=redaction_stats,
+                    ),
                     intent_text=None,
                 )
                 invalidator = getattr(state, "cache_invalidator", None) if state else None

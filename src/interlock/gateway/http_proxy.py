@@ -28,6 +28,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
+from interlock.cache.provenance import redaction_of, with_redaction
 from interlock.connections.source_config import config_bool
 from interlock.errors import CacheBarrierUnavailableError
 from interlock.gateway.pipeline import (
@@ -428,7 +429,12 @@ class HTTPProxy:
                     cache_tier=cached[1],
                     latency_ms=(time.monotonic() - started) * 1000,
                     status="success",
-                    metadata={"protocol": "http", "path": path},
+                    # The cached body was redacted when stored; carry that record.
+                    metadata={
+                        "protocol": "http",
+                        "path": path,
+                        "redaction_stats": redaction_of(cached[2])[2] or None,
+                    },
                     decision=decision,
                 )
                 return Response(content=cached[0], status_code=200)
@@ -708,12 +714,17 @@ class HTTPProxy:
                 request,
                 cache_key,
                 response_body,
-                {
-                    "source_id": source_id,
-                    "protocol": "http",
-                    "path": path,
-                    "content_type": content_type,
-                },
+                with_redaction(
+                    {
+                        "source_id": source_id,
+                        "protocol": "http",
+                        "path": path,
+                        "content_type": content_type,
+                    },
+                    pii_detected=bool(policy_redaction_stats),
+                    pii_types=[],
+                    redaction_stats=policy_redaction_stats,
+                ),
             )
 
         if operation == "write" and upstream_response.status_code < 400:
@@ -849,13 +860,13 @@ class HTTPProxy:
 
     async def _cache_get(
         self, request: Request, cache_key: str, source_id: str
-    ) -> tuple[bytes, str | None] | None:
+    ) -> tuple[bytes, str | None, dict[str, Any]] | None:
         strategy = self._strategy_for(request, source_id)
         if strategy is not None:
             try:
                 result = await strategy.get(cache_key)
                 if result.hit and result.data is not None:
-                    return result.data, result.tier
+                    return result.data, result.tier, result.metadata
                 # A miss is an answer. Falling through to L2 here would serve
                 # a source configured to `bypass` from the shared cache.
                 return None
@@ -865,7 +876,7 @@ class HTTPProxy:
         if l2 is not None:
             result = await l2.get(cache_key)
             if result.hit and result.data is not None:
-                return result.data, result.tier
+                return result.data, result.tier, result.metadata
         return None
 
     async def _cache_put(
