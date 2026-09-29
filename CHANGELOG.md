@@ -6,7 +6,7 @@ earlier history, pull requests and reviews remain private. The release
 candidates below were built and published from there, and this file is their
 record. Entries are grouped by the release that first shipped them.
 
-## Unreleased
+## 1.0.0-rc.13 - 2026-09-28
 
 ### Security
 
