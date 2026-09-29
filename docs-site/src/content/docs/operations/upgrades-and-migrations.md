@@ -2,7 +2,7 @@
 title: Upgrades and migrations
 description: Upgrade InterLock safely, and how database migrations are applied.
 sidebar:
-  order: 6
+  order: 8
 ---
 
 Each release lists its changes in `CHANGELOG.md`, with breaking changes marked.

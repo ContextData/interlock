@@ -28,3 +28,6 @@ Put local overrides in `docker-compose.override.yml` (see
 `docker-compose.override.yml.example`); Compose merges it automatically and it
 is ignored by git. For anything shared by a team, prefer
 [Kubernetes with Helm](/operations/deploy-with-helm/).
+
+To run this stack on a DigitalOcean Droplet for an evaluation, see
+[Deploy on a DigitalOcean Droplet](/operations/deploy-on-a-digitalocean-droplet/).

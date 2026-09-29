@@ -2,7 +2,7 @@
 title: Security hardening
 description: Steps beyond the enforced defaults that reduce what a compromise could reach.
 sidebar:
-  order: 5
+  order: 7
 ---
 
 - **Least-privileged upstream logins.** Each source's login should hold only the

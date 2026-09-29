@@ -10,6 +10,12 @@ record. Entries are grouped by the release that first shipped them.
 
 ### Documentation
 
+- Two DigitalOcean deployment guides: an evaluation on one Droplet with Docker
+  Compose, reached through an SSH tunnel, and a production deployment on DOKS
+  with Managed PostgreSQL and Valkey, Traefik and Let's Encrypt. Each was
+  followed from an empty account to a governed, redacted query and torn down.
+  The DOKS guide sizes PostgreSQL by connections: six pods with the default
+  pool exhaust the 1 GB plan, so it uses the 2 GB plan and a pool of 4.
 - The documentation site is published at https://interlock.contextdata.dev by
   DigitalOcean App Platform, from the spec in `.do/docs-app.yaml`, and is rebuilt
   from `main` on every push. Canonical URLs and the sitemap use that address;
