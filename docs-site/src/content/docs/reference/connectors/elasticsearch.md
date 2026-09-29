@@ -12,10 +12,12 @@ Elasticsearch-compatible search connector using the OpenSearch REST contract.
 |---|---|
 | Key | `elasticsearch` |
 | Source type | `search` |
-| Status | native |
+| Implementation | native |
 | Active by default | no |
-| Default cache strategy | `semantic_first` |
+| Default cache strategy | `semantic_first`; semantic serving is disabled, so only exact repeats are served |
 | Capabilities | supports_discovery, supports_field_permissions, supports_ingestion, supports_query |
+
+*Implementation* is how complete the adapter is. It is not a release status: what the project supports and has certified is on [Feature status](/reference/feature-status/) and in the [connector support matrix](/reference/connector-support-matrix/), and nothing is past public beta yet.
 
 :::caution
 No test stack registers a source on this connector, so its source roles, policy, redaction and audit are not exercised by any test. The adapter works; its governance is unproven.

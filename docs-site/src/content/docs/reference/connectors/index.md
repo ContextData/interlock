@@ -12,7 +12,7 @@ A source is registered on a connector. `planned` connectors have no working adap
 
 What each status means, and what has been certified, is in the [connector support matrix](/reference/connector-support-matrix/).
 
-| Connector | Key | Status | Active by default | Note |
+| Connector | Key | Implementation | Active by default | Note |
 |---|---|---|---|---|
 | [Atlassian Confluence / Jira](/reference/connectors/atlassian/) | `atlassian` | planned | no |   |
 | [Google BigQuery](/reference/connectors/bigquery/) | `bigquery` | planned | no |   |

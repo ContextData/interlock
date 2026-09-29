@@ -8,26 +8,51 @@ sidebar:
 import Screenshot from '../../../components/Screenshot.astro';
 
 This runs InterLock and a small sample shop database with Docker Compose, then
-walks one agent from nothing to a governed, redacted, audited query. It takes
-about ten minutes. You need Docker with Compose, `curl`, and optionally `psql`.
+walks one agent from nothing to a governed, redacted, audited query. Everything
+after the first build happens in the admin console and one terminal.
+
+You need:
+
+- Docker with Compose 2.24 or later (`docker compose version`), running.
+- `git` and `curl`.
+
+You do not need `psql` (a copy inside the stack is used below), and you do not
+need an API key for any model provider: the optional Anthropic and Mistral keys
+only enable document summaries and OCR during ingestion.
 
 ## 1. Start it
 
-From a clone of the repository:
-
 ```bash
+git clone https://github.com/ContextData/interlock
+cd interlock
 docker compose --profile quickstart up -d --wait
 ```
 
-This starts the gateway, the admin console, two workers, PostgreSQL and Redis
-for InterLock itself, and `sample-postgres`, a database named `shop` with
-`customers` and `orders` tables. Every port binds to `127.0.0.1` only:
+The first run builds the images, which takes a few minutes. It starts the
+gateway, the admin console, two workers, PostgreSQL and Redis for InterLock
+itself, and `sample-postgres`, a database named `shop` with `customers` and
+`orders` tables. Every port binds to `127.0.0.1` only:
 
 | Service | Address |
 |---|---|
 | Admin console | `http://127.0.0.1:9090` |
 | Gateway, HTTP and MCP | `http://127.0.0.1:3001` |
 | Gateway, PostgreSQL wire | `127.0.0.1:5434` |
+
+If one of those ports is already in use, create `docker-compose.override.yml`
+next to `docker-compose.yml` with other host ports, run the same `up` command
+again, and use your ports wherever this guide says `9090`, `3001` or `5434`:
+
+```yaml
+services:
+  admin:
+    ports: !override
+      - "127.0.0.1:9190:9090"
+  gateway:
+    ports: !override
+      - "127.0.0.1:3101:3000"
+      - "127.0.0.1:5534:5432"
+```
 
 ## 2. Sign in and set a password
 
@@ -37,75 +62,90 @@ opens nothing else until you set one.
 
 ## 3. Register the sample database
 
-The sample database lives on the Compose network, which is a private address,
-and a source on a private address has to allow that explicitly. The console
-form has no such option, so this step uses the admin API. Put the password you
-just chose in `ADMIN_PASSWORD`:
+Open **Data Sources** and choose **+ New Source**. The wizard has five steps:
 
-```bash
-ADMIN=http://127.0.0.1:9090
-curl -sS -c cookies.txt -X POST "$ADMIN/auth/login" \
-  --data-urlencode username=admin --data-urlencode "password=$ADMIN_PASSWORD"
-CSRF="$(curl -sS -b cookies.txt "$ADMIN/auth/csrf" | python3 -c 'import json,sys; print(json.load(sys.stdin)["csrf"])')"
+1. **Display name** `Sample shop`, **Connector** PostgreSQL. Leave **Create
+   default source role templates** ticked. Choose **Next**.
+2. Connection details:
+   - **Host** `sample-postgres`, **Port** `5432`, **Database** `shop`.
+   - **User** `shop_reader`, **Password** `shop-reader-dev-only`.
+   - **TLS mode** `disable`: the sample database has no TLS. Production
+     refuses anything but `verify-full` or `verify-ca`.
+   - Tick **Allow a private network address**. `sample-postgres` is a Compose
+     service on a private address, and InterLock refuses private addresses
+     unless a source opts in.
 
-curl -sS -b cookies.txt -X POST "$ADMIN/api/data-sources" \
-  -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
-  -d '{"name": "Sample shop", "source_type": "postgresql", "connector_key": "postgresql",
-       "connection_config": {"host": "sample-postgres", "port": 5432, "database": "shop",
-         "user": "shop_reader", "password": "shop-reader-dev-only",
-         "allow_private_egress": true}}'
-```
+   Choose **Test Connection**, then **Next**.
+3. The schema preview lists `customers` and `orders`. Choose **Next**.
+4. Keep the cache settings. Choose **Next**.
+5. Review and choose **Save Source**.
 
 The source is created as `sample_shop`: the ID is generated from the name, and
-agents use it to name the source. Back in the console, **Data Sources** now
-lists it; open it and use **Test Connection** to confirm InterLock can reach it.
+agents use it to name the source.
 
 <Screenshot name="source-detail" alt="The Sample shop source page, showing its ID, connector and the policy that applies to it." />
 
 :::note
-The inline password is for this local sample only. Real sources reference
-their secrets, for example `"password_ref": "env://SHOP_PASSWORD"`; see
-[Register a source](/guides/manage-sources/register-a-source/).
+The password is typed inline for this local sample only. Real sources
+reference their secrets, for example `"password_ref": "env://SHOP_PASSWORD"`;
+see [Register a source](/guides/manage-sources/register-a-source/).
 :::
 
-## 4. Give it a role
+## 4. Look at the roles it created
 
-A source role lists what an agent granted it may do. On the **Sample shop**
-page, under **Source Roles**, choose **New Role**:
+A source role lists what an agent granted it may do on this source. The
+wizard created five from the PostgreSQL templates, listed under **Source
+Roles** on the **Sample shop** page:
 
-- **Role key** `reader`, **Name** `Reader`.
-- One statement: effect **allow**, action **db.table.select**, resource type
-  **db.table**, pattern `public.*`.
+| Role | Allows |
+|---|---|
+| **Read** (`read`) | list schemas, describe tables, read rows in any table, search discovery |
+| **Analyst** (`analyst`) | the same as Read, for analysis agents |
+| **Write** (`write`) | Read, plus inserting and updating rows |
+| **Owner** (`owner`) | everything |
+| **Blocked** (`blocked`) | nothing: an explicit deny |
 
-Save it.
+The agent in this guide gets **Read**. It is what an agent needs to explore
+and query a SQL source: `interlock_describe_source` needs `db.table.describe`
+and `interlock_query` needs `db.table.select` for a read. The
+[MCP tools reference](/reference/mcp-tools/) lists the action each tool needs.
+To narrow a role to certain tables or columns, open it and choose **Edit**.
 
 ## 5. Allow reads by policy
 
 Policies are checked after roles, in priority order (higher first); the first
 rule that matches decides, and a request no rule matches is denied. Open
-**Policies**, choose **New Policy**, and create:
+**Policies**, choose **+ New Policy**, and create:
 
 - **Name** `allow-sample-shop-reads`, **Priority** `10`.
 - **Source ID** `sample_shop`, **Operation** `read`.
 - **Effect** `allow`.
 
+Choose **Save**.
+
 ## 6. Create an agent and its key
 
-Open **Identities**, choose **New Identity**:
+Open **Identities**, choose **+ New Identity**:
 
 - **Name** `quickstart-agent`, **Agent type** `claude_code`.
-- Under **Source access**, add **Sample shop** with the **Reader** role.
-- Leave **Auto-generate API key** ticked and save.
+- Under **Source access**, choose **Sample shop** and the **Read** role.
+- Leave **Auto-generate API key** ticked and choose **Save**.
 
-The key is shown once. Copy it into `API_KEY`.
+The key is shown once. Copy it into a shell variable:
+
+```bash
+API_KEY=paste-the-key-here
+```
 
 ## 7. Send a governed query
 
-With `psql`, the database name picks the source and the API key is the
-password:
+The same statement over both protocols. First the PostgreSQL wire protocol,
+using the `psql` inside the stack's own PostgreSQL container: the database name
+picks the source and the API key is the password.
 
 ```bash
-PGPASSWORD="$API_KEY" psql "host=127.0.0.1 port=5434 user=agent dbname=sample_shop sslmode=disable" \
+docker compose exec -e PGPASSWORD="$API_KEY" postgres \
+  psql "host=gateway port=5432 user=agent dbname=sample_shop sslmode=disable" \
   -c "SELECT name, email, plan FROM customers ORDER BY id LIMIT 3"
 ```
 
@@ -115,33 +155,46 @@ PGPASSWORD="$API_KEY" psql "host=127.0.0.1 port=5434 user=agent dbname=sample_sh
  Ada Park    | [REDACTED:EMAIL] | team
  Ben Okafor  | [REDACTED:EMAIL] | free
  Chloe Varga | [REDACTED:EMAIL] | enterprise
+(3 rows)
 ```
 
-The email addresses left the database and were redacted on the way out. The
-same query over MCP:
+The email addresses left the database and were redacted on the way out. If
+you have `psql` on your machine, the same query works from there with
+`host=127.0.0.1 port=5434`.
+
+Now over MCP:
 
 ```bash
 curl -sS http://127.0.0.1:3001/mcp \
   -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' -H 'MCP-Protocol-Version: 2025-11-25' \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "interlock_query",
-       "arguments": {"source_id": "sample_shop", "sql": "SELECT name, email FROM customers LIMIT 3"}}}'
+       "arguments": {"source_id": "sample_shop", "sql": "SELECT name, email, plan FROM customers ORDER BY id LIMIT 3"}}}'
 ```
 
-Now try a write the role does not allow:
+The result's text is the same three rows as JSON, with the same
+`[REDACTED:EMAIL]` values.
+
+Now a write the **Read** role does not allow, over MCP:
 
 ```bash
-PGPASSWORD="$API_KEY" psql "host=127.0.0.1 port=5434 user=agent dbname=sample_shop sslmode=disable" \
-  -c "DELETE FROM orders WHERE id = 1"
+curl -sS http://127.0.0.1:3001/mcp \
+  -H "Authorization: Bearer $API_KEY" -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' -H 'MCP-Protocol-Version: 2025-11-25' \
+  -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "interlock_query",
+       "arguments": {"source_id": "sample_shop", "sql": "DELETE FROM orders WHERE id = 1"}}}'
 ```
 
-It is refused with `Source role denied`, and nothing reaches the database.
+The result has `"isError": true` and the text `Source role denied: ...`.
+Nothing reached the database.
 
 ## 8. See what happened
 
-Open **Audit & Costs**. Each query is a row: the identity, the source, the
+Open **Audit & Costs**. Each request is a row: the identity, the source, the
 protocol, whether it was allowed, and whether PII was redacted. The refused
-delete is there too, marked denied.
+delete is there too, marked denied. Rows are written in batches, so a request
+can take a few seconds to appear; refresh if it is not there yet. Filter by
+**Protocol** to compare the PostgreSQL and MCP requests.
 
 <Screenshot name="audit" alt="Audit and Costs: requests counted by outcome, with one denied, and the audit log below." />
 

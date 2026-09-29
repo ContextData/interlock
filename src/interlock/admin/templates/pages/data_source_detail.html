@@ -1,5 +1,5 @@
 {% if not content_only %}{% extends "base.html" %}{% endif %}
-{% block title %}{{ ds.name or ds.source_id }} - Data Source - InterLock{% endblock %}
+{% if content_only %}<title>{% endif %}{% block title %}{{ ds.name or ds.source_id }} - Data Source - InterLock{% endblock %}{% if content_only %}</title>{% endif %}
 
 {% block content %}
 <div class="page-header">
@@ -41,7 +41,8 @@
         <span class="field-help">What agents use to reach this source: the PostgreSQL database name, the <code>/proxy/{{ ds.source_id }}/</code> path, and the MCP <code>source_id</code>.</span></dd>
       <dt>Type</dt><dd><span class="badge badge-{{ ds.source_type|lower }}">{{ ds.source_type }}</span></dd>
       <dt>Connector</dt><dd>{{ ds.connector_name }} <code>{{ ds.connector_key }}</code>{% if ds.connector_active is sameas false %} <span class="badge badge-warning" title="This source keeps working; new sources cannot be registered on this connector until it is activated.">connector inactive</span>{% endif %}</dd>
-      <dt>Family</dt><dd>{{ ds.connector_family }} <span class="badge">{{ ds.connector_status }}</span></dd>
+      <dt>Family</dt><dd>{{ ds.connector_family }}</dd>
+      <dt>Implementation</dt><dd><span class="badge" title="How complete the connector's adapter is. What the project supports and has certified is on the feature status page.">{{ ds.connector_status }}</span></dd>
       <dt>Enabled</dt><dd>
         {% if ds.enabled %}
         <span class="health-dot health-green" aria-label="enabled"></span> enabled

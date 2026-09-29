@@ -12,10 +12,12 @@ SQL Server connector using pyodbc and sqlglot TSQL parsing.
 |---|---|
 | Key | `mssql` |
 | Source type | `database` |
-| Status | planned |
+| Implementation | planned |
 | Active by default | no |
 | Default cache strategy | `deterministic_first` |
 | Capabilities | supports_discovery, supports_field_permissions, supports_ingestion, supports_query |
+
+*Implementation* is how complete the adapter is. It is not a release status: what the project supports and has certified is on [Feature status](/reference/feature-status/) and in the [connector support matrix](/reference/connector-support-matrix/), and nothing is past public beta yet.
 
 ## Connection configuration
 

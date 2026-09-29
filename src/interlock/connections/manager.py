@@ -14,7 +14,12 @@ from typing import Any
 import asyncpg
 
 from interlock.connections.circuit_breaker import CircuitBreakerRegistry
-from interlock.connections.connectors import get_adapter, get_connector
+from interlock.connections.connectors import (
+    get_adapter,
+    get_connector,
+    http_probe_error,
+    http_probe_url,
+)
 from interlock.connections.source_config import (
     VERIFYING_TLS_MODES,
     config_bool,
@@ -379,8 +384,9 @@ class ConnectionManager:
                     )
                 import httpx
 
+                probe_url = http_probe_url(cfg)
                 validate_http_egress_url(
-                    str(base_url),
+                    probe_url,
                     allow_private=config_bool(cfg.get("allow_private_egress")),
                 )
                 async with httpx.AsyncClient(
@@ -391,13 +397,17 @@ class ConnectionManager:
                         allow_private=config_bool(cfg.get("allow_private_egress"))
                     ),
                 ) as client:
-                    resp = await client.get(base_url)
+                    resp = await client.get(probe_url)
                 latency = (time.monotonic() - start) * 1000
                 return HealthStatus(
                     source_id="<unsaved>",
                     healthy=resp.status_code < 400,
                     latency_ms=latency,
-                    error=None if resp.status_code < 400 else f"HTTP {resp.status_code}",
+                    error=(
+                        None
+                        if resp.status_code < 400
+                        else http_probe_error(resp.status_code, probe_url, cfg)
+                    ),
                     checked_at=datetime.now(UTC),
                 )
 

@@ -176,9 +176,9 @@ def test_mvp_known_limitations_tracks_deferred_and_blocked_gates() -> None:
     assert "Certified live:" in body
     assert "Not certified live:" in body
     assert "Proven nowhere" in body
-    assert "Helm CLI is missing" in body
-    assert "390px" in body
     assert "Unsupported writes must fail closed" in body
+    # Contributor tooling notes live with the tests, not among product limits.
+    assert "Helm CLI is missing" in (DOCS / "project" / "testing.md").read_text()
 
 
 def test_release_readiness_tracks_cloud_deployment_gate() -> None:

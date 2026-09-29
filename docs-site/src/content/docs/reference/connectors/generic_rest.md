@@ -12,10 +12,12 @@ Generic governed REST proxy.
 |---|---|
 | Key | `generic_rest` |
 | Source type | `http` |
-| Status | production |
+| Implementation | production |
 | Active by default | yes |
-| Default cache strategy | `semantic_first` |
+| Default cache strategy | `semantic_first`; semantic serving is disabled, so only exact repeats are served |
 | Capabilities | supports_proxy, supports_write |
+
+*Implementation* is how complete the adapter is. It is not a release status: what the project supports and has certified is on [Feature status](/reference/feature-status/) and in the [connector support matrix](/reference/connector-support-matrix/), and nothing is past public beta yet.
 
 ## Connection configuration
 
@@ -26,7 +28,11 @@ Secret fields should be given as a reference, `<field>_ref`, such as `env://NAME
 | `base_url` | no |
 | `auth_header` | no |
 | `token_ref` | no |
+| `probe_path` | no |
 | `token` | yes; prefer `token_ref` |
+
+**Test Connection** requests `base_url`, or `probe_path` on it when set. Many APIs answer 404 at their root while their routes work; point `probe_path` at a route that answers, such as `/health`. It must be a path on `base_url`, never another host.
+
 
 ## Default role templates
 

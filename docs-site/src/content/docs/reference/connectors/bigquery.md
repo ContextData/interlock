@@ -12,10 +12,12 @@ BigQuery connector using google-cloud-bigquery and sqlglot.
 |---|---|
 | Key | `bigquery` |
 | Source type | `warehouse` |
-| Status | planned |
+| Implementation | planned |
 | Active by default | no |
-| Default cache strategy | `semantic_first` |
+| Default cache strategy | `semantic_first`; semantic serving is disabled, so only exact repeats are served |
 | Capabilities | supports_cost_metadata, supports_discovery, supports_field_permissions, supports_ingestion, supports_query |
+
+*Implementation* is how complete the adapter is. It is not a release status: what the project supports and has certified is on [Feature status](/reference/feature-status/) and in the [connector support matrix](/reference/connector-support-matrix/), and nothing is past public beta yet.
 
 ## Connection configuration
 

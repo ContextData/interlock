@@ -354,6 +354,18 @@ def _statement_from_row(row: Any) -> PermissionStatement:
     )
 
 
+# The source-role action an MCP tool is checked against, by its internal name.
+# `interlock_query` is not here: its action comes from the SQL it runs
+# (`db.table.select`, `db.table.insert`, ...). `interlock_list_sources` and
+# `interlock_describe_access` report only what the caller is granted and need
+# no action of their own. The MCP tools reference page is generated from this.
+MCP_TOOL_ACTIONS: dict[str, str] = {
+    "agentgate_describe_source": "db.table.describe",
+    "agentgate_discover": "discovery.search",
+    "agentgate_related_documents": "discovery.asset.read",
+}
+
+
 def _action_for(
     *,
     protocol: str,
@@ -371,12 +383,10 @@ def _action_for(
             or operation
             or ""
         ).strip()
-        if tool in {"agentgate_discover", "discovery"}:
-            return "discovery.search"
-        if tool in {"agentgate_related_documents", "related_documents"}:
-            return "discovery.asset.read"
-        if tool == "agentgate_describe_source":
-            return "db.table.describe"
+        if tool in {"discovery", "related_documents"}:
+            tool = f"agentgate_{tool}"
+        if tool in MCP_TOOL_ACTIONS:
+            return MCP_TOOL_ACTIONS[tool]
 
     if protocol == "http":
         return f"http.{(method or 'GET').lower()}"

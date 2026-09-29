@@ -191,7 +191,9 @@ async def test_generic_http_probe_treats_auth_rate_limit_and_server_errors_as_un
     result = await adapter.probe({"base_url": "https://api.example.test"})
 
     assert result.healthy is False
-    assert result.error == f"HTTP {status_code}"
+    # The message names what was probed, so a 404 at an API root reads as
+    # "this route", not "this source is unreachable".
+    assert (result.error or "").startswith(f"HTTP {status_code} from /")
 
 
 def test_connector_key_compatibility_mapping() -> None:

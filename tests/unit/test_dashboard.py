@@ -892,3 +892,27 @@ async def test_alert_create_htmx_returns_redirect_contract(client, mock_pool):
     assert resp.status_code == 200
     assert resp.headers["HX-Redirect"] == "/dashboard/alerts"
     assert resp.text == ""
+
+
+@pytest.mark.anyio
+async def test_sidebar_navigation_updates_the_browser_title(client, mock_pool):
+    """Sidebar links swap only the page content.
+
+    The rc.13 evaluation saw the tab stay on "Overview" while the new page's
+    title appeared as text in the page. A <title> element in the swapped
+    content is what htmx uses to update the tab, and browsers do not display it.
+    """
+    mock_pool.fetch.return_value = []
+    resp = await client.get(
+        "/dashboard/data-sources", headers={"HX-Request": "true", "HX-Target": "main-content"}
+    )
+    assert resp.status_code == 200
+    assert "<title>Data Sources - InterLock Dashboard</title>" in resp.text
+    assert 'class="sidebar"' not in resp.text
+
+
+@pytest.mark.anyio
+async def test_a_full_page_load_has_exactly_one_title(client, mock_pool):
+    mock_pool.fetch.return_value = []
+    resp = await client.get("/dashboard/data-sources")
+    assert resp.text.count("<title>") == 1

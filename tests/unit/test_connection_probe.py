@@ -128,3 +128,81 @@ async def test_probe_timeout_returns_typed_error() -> None:
         timeout_seconds=0.5,
     )
     assert result.healthy is False
+
+
+def _public_dns(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "interlock.security.egress.socket.getaddrinfo",
+        lambda *_args, **_kwargs: [(None, None, None, None, ("93.184.216.34", 443))],
+    )
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_a_404_from_the_base_url_says_what_was_probed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The rc.13 evaluation's mock API answered 404 at / while its routes worked.
+
+    "HTTP 404" alone read as "the source is unreachable".
+    """
+    _public_dns(monkeypatch)
+    respx.get("https://api.example.com").mock(return_value=Response(404))
+    result = await ConnectionManager.probe_unsaved("http", {"base_url": "https://api.example.com"})
+    assert result.healthy is False
+    assert "HTTP 404 from /" in (result.error or "")
+    assert "probe_path" in (result.error or "")
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_probe_path_names_the_route_the_test_requests(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _public_dns(monkeypatch)
+    route = respx.get("https://api.example.com/v1/health").mock(return_value=Response(200))
+    result = await ConnectionManager.probe_unsaved(
+        "http", {"base_url": "https://api.example.com/v1/", "probe_path": "/health"}
+    )
+    assert route.called
+    assert result.healthy is True
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_probe_path_errors_name_the_route(monkeypatch: pytest.MonkeyPatch) -> None:
+    _public_dns(monkeypatch)
+    respx.get("https://api.example.com/health").mock(return_value=Response(500))
+    result = await ConnectionManager.probe_unsaved(
+        "http", {"base_url": "https://api.example.com", "probe_path": "health"}
+    )
+    assert result.error == "HTTP 500 from /health"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("probe_path", ["https://elsewhere.example/health", "//elsewhere/x"])
+async def test_probe_path_cannot_point_at_another_host(
+    probe_path: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _public_dns(monkeypatch)
+    result = await ConnectionManager.probe_unsaved(
+        "http", {"base_url": "https://api.example.com", "probe_path": probe_path}
+    )
+    assert result.healthy is False
+    assert "probe_path must be a path on base_url" in (result.error or "")
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_a_registered_http_source_uses_the_same_probe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from interlock.connections.connectors import get_adapter
+
+    _public_dns(monkeypatch)
+    route = respx.get("https://api.example.com/status").mock(return_value=Response(200))
+    status = await get_adapter("http", {}).probe(
+        {"base_url": "https://api.example.com", "probe_path": "/status"}
+    )
+    assert route.called
+    assert status.healthy is True

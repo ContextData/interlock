@@ -12,10 +12,12 @@ DigitalOcean Spaces connector using the S3-compatible object API.
 |---|---|
 | Key | `digitalocean_spaces` |
 | Source type | `object_storage` |
-| Status | native |
+| Implementation | native |
 | Active by default | no |
-| Default cache strategy | `semantic_first` |
+| Default cache strategy | `semantic_first`; semantic serving is disabled, so only exact repeats are served |
 | Capabilities | supports_discovery, supports_incremental_sync, supports_ingestion, supports_write |
+
+*Implementation* is how complete the adapter is. It is not a release status: what the project supports and has certified is on [Feature status](/reference/feature-status/) and in the [connector support matrix](/reference/connector-support-matrix/), and nothing is past public beta yet.
 
 ## Connection configuration
 
