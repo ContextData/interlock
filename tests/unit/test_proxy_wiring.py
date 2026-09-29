@@ -309,6 +309,7 @@ class TestCacheStrategyWiring:
         from interlock.gateway.pipeline import GatewayDecision
 
         expected_key = compute_cache_key(
+            protocol="postgresql",
             source_id=proxy.normalizer_source_id,
             normalized_sql="SELECT $1",
             parameters=nq.parameters,

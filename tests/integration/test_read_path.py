@@ -131,6 +131,7 @@ def _scoped_pg_read_cache_key(sql: str, source_id: str = "test") -> str:
     return compute_cache_key(
         source_id,
         nq.normalized_sql or "",
+        protocol="postgresql",
         parameters=nq.parameters,
         policy_scope_hash=_decision_scope_hash(
             GatewayDecision(allowed=True, redaction_required=True)

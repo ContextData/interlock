@@ -328,8 +328,12 @@ async def test_approved_sql_write_advances_before_execution_and_reuses_generatio
 
 
 def test_deterministic_read_keys_include_source_generation() -> None:
-    sql_key_1 = compute_cache_key("src1", "SELECT * FROM users", source_generation=1)
-    sql_key_2 = compute_cache_key("src1", "SELECT * FROM users", source_generation=2)
+    sql_key_1 = compute_cache_key(
+        "src1", "SELECT * FROM users", source_generation=1, protocol="postgresql"
+    )
+    sql_key_2 = compute_cache_key(
+        "src1", "SELECT * FROM users", source_generation=2, protocol="postgresql"
+    )
     http_key_1 = _http_cache_key(
         source_id="api1",
         method="GET",

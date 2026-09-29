@@ -88,8 +88,8 @@ def test_p0_c_cache_keys_scoped_by_identity(admin_url: str) -> None:
     e2e value is in proving the helper is the one used in production."""
     from interlock.core.normalizer import compute_cache_key
 
-    a = compute_cache_key("src", "SELECT 1", identity_role="r1")
-    b = compute_cache_key("src", "SELECT 1", identity_role="r2")
+    a = compute_cache_key("src", "SELECT 1", identity_role="r1", protocol="postgresql")
+    b = compute_cache_key("src", "SELECT 1", identity_role="r2", protocol="postgresql")
     assert a != b
 
 

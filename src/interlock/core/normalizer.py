@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any
+from typing import Any, Literal, get_args
 
 import sqlglot
 from sqlglot import exp
@@ -142,10 +142,20 @@ def _make_fingerprint(
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+CacheProtocol = Literal["postgresql", "mcp"]
+"""The wire format a cached entry is stored in.
+
+PostgreSQL caches raw wire-protocol bytes and writes them straight to the
+socket; MCP caches the JSON it returns to the agent. The two are not
+interchangeable, so the protocol is part of every key.
+"""
+
+
 def compute_cache_key(
     source_id: str,
     normalized_sql: str,
     *,
+    protocol: CacheProtocol,
     parameters: list[Any] | tuple[Any, ...] | dict[str, Any] | None = None,
     identity_role: str | None = None,
     mapped_pg_role: str | None = None,
@@ -164,17 +174,26 @@ def compute_cache_key(
     `_decision_scope_hash` folds the source-role decision into its payload and
     the call sites pass that digest as `policy_scope_hash`.
 
-    Removing it changes the key format, since the payload is positional and
-    separator-delimited, so the version tag moves to v5. That tag exists for
-    exactly this; three earlier format changes used it. Stranding is bounded:
-    L2 is Redis with a 300s TTL, and a changed key is a miss rather than a
-    wrong hit.
+    Removing it changed the key format, since the payload is positional and
+    separator-delimited, so the version tag moved to v5. That tag exists for
+    exactly this. Stranding is bounded: L2 is Redis with a 300s TTL, and a
+    changed key is a miss rather than a wrong hit.
+
+    v6 adds `protocol`, which is required. Before it, identical SQL from the
+    same identity over MCP and over PostgreSQL shared one entry, and whichever
+    protocol read second was handed the other's format: `psql` received MCP's
+    JSON as wire bytes and lost synchronization, and an MCP agent could
+    receive PostgreSQL wire bytes as its result. Found by an independent
+    evaluation of rc.13.
     """
 
+    if protocol not in get_args(CacheProtocol):
+        raise ValueError(f"unknown cache protocol: {protocol!r}")
     sep = "\x1f"
     payload = sep.join(
         (
-            "v5",
+            "v6",
+            protocol,
             source_id or "",
             normalized_sql or "",
             _stable_hash(parameters),

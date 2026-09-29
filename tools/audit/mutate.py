@@ -859,6 +859,34 @@ MUTATIONS: tuple[Mutation, ...] = (
         scope="e2e",
         containers=("interlock-e2e-gateway-1",),
     ),
+    Mutation(
+        name="cache-key-ignores-protocol",
+        control="Cache: MCP and PostgreSQL never share an entry",
+        path="src/interlock/core/normalizer.py",
+        old='            "v6",\n            protocol,\n',
+        new='            "v6",\n            "",  # MUTATION: protocol dropped from the key\n',
+        tests=("tests/unit/test_cache_key_format.py",),
+        scope="unit",
+        note="Found by the rc.13 independent evaluation: psql received MCP's JSON.",
+    ),
+    Mutation(
+        name="pg-serves-foreign-cache-entry",
+        control="Cache: only PostgreSQL wire format is written to a PostgreSQL client",
+        path="src/interlock/gateway/pg_proxy.py",
+        old="            if cached_bytes is not None and not is_simple_query_response(cached_bytes):",
+        new="            if False:  # MUTATION: cached bytes written without a format check",
+        tests=("tests/unit/test_pg_proxy.py",),
+        scope="unit",
+    ),
+    Mutation(
+        name="mcp-serves-foreign-cache-entry",
+        control="Cache: only JSON is returned to an MCP agent",
+        path="src/interlock/gateway/mcp_adapter.py",
+        old="                if result.hit and result.data is not None and not _is_json_payload(result.data):",
+        new="                if False:  # MUTATION: cached bytes returned without a format check",
+        tests=("tests/unit/test_p0_b_mcp_pipeline.py",),
+        scope="unit",
+    ),
 )
 
 BY_NAME = {m.name: m for m in MUTATIONS}

@@ -49,7 +49,7 @@ from interlock.gateway.pipeline import (
     current_cache_source_generation,
 )
 from interlock.metadata.registry import MetadataRegistry
-from interlock.models import IdentityContext
+from interlock.models import CacheResult, IdentityContext
 
 logger = logging.getLogger(__name__)
 
@@ -878,6 +878,7 @@ class MCPAdapter:
             )
         if nq is not None and not is_multi_statement:
             fingerprint = compute_cache_key(
+                protocol="mcp",
                 source_id=source_id,
                 normalized_sql=nq.normalized_sql or sql,
                 parameters=getattr(nq, "parameters", None),
@@ -956,6 +957,13 @@ class MCPAdapter:
         if op_type == "read" and fingerprint is not None and cache_strategy is not None:
             try:
                 result = await cache_strategy.get(fingerprint, intent_text=None)
+                if result.hit and result.data is not None and not _is_json_payload(result.data):
+                    # The key separates protocols; this keeps a future collision
+                    # a cache miss rather than bytes an agent cannot read.
+                    logger.warning(
+                        "Ignoring a cached entry that is not an MCP result source=%s", source_id
+                    )
+                    result = CacheResult(hit=False)
                 if result.hit and result.data is not None:
                     cache_tier = result.tier
                     audit = getattr(state, "audit_logger", None) if state else None
@@ -1868,6 +1876,15 @@ class MCPAdapter:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _is_json_payload(data: bytes) -> bool:
+    """True when a cached entry is the JSON text an MCP result is built from."""
+    try:
+        json.loads(data)
+    except (UnicodeDecodeError, ValueError):
+        return False
+    return True
 
 
 def _text_content(text: str) -> dict[str, Any]:

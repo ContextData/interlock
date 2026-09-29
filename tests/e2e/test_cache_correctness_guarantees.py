@@ -35,6 +35,7 @@ pytestmark = [pytest.mark.e2e]
 def _key(**overrides: Any) -> str:
     """A realistic key, with one dimension varied per test."""
     base: dict[str, Any] = {
+        "protocol": "postgresql",
         "source_id": "audit_src",
         "normalized_sql": "SELECT * FROM customers",
         "identity_role": "reader",

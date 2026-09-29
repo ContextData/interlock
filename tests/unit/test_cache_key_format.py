@@ -22,6 +22,7 @@ import pytest
 from interlock.core.normalizer import compute_cache_key
 
 BASE = {
+    "protocol": "postgresql",
     "source_id": "src",
     "normalized_sql": "SELECT * FROM t",
 }
@@ -46,11 +47,11 @@ def test_the_payload_carries_the_current_version_tag() -> None:
     """
     source = inspect.getsource(compute_cache_key)
 
-    assert '"v5"' in source, (
-        "the cache key version tag is no longer v5. If the payload shape changed, "
+    assert '"v6"' in source, (
+        "the cache key version tag is no longer v6. If the payload shape changed, "
         "bump it and update this test in the same commit; if it did not, restore it."
     )
-    assert '"v4"' not in source
+    assert '"v5"' not in source
 
 
 @pytest.mark.parametrize(
@@ -101,3 +102,24 @@ def test_absent_and_empty_are_the_same_by_design() -> None:
     another passes None would otherwise silently miss the other's entries.
     """
     assert compute_cache_key(**BASE, tenant_id=None) == compute_cache_key(**BASE, tenant_id="")
+
+
+def test_the_protocol_separates_keys() -> None:
+    """PostgreSQL caches wire bytes and MCP caches JSON; one must never read the other's.
+
+    Found by an independent evaluation of rc.13: identical SQL over MCP and then
+    `psql` handed `psql` MCP's JSON, and it lost synchronization.
+    """
+    postgresql = compute_cache_key(**{**BASE, "protocol": "postgresql"})
+    mcp = compute_cache_key(**{**BASE, "protocol": "mcp"})
+
+    assert postgresql != mcp
+
+
+def test_the_protocol_is_required_and_checked() -> None:
+    """A caller cannot forget the protocol, or pass one the cache does not know."""
+    without = {key: value for key, value in BASE.items() if key != "protocol"}
+    with pytest.raises(TypeError):
+        compute_cache_key(**without)  # type: ignore[call-arg]
+    with pytest.raises(ValueError, match="unknown cache protocol"):
+        compute_cache_key(**{**BASE, "protocol": "http"})  # type: ignore[arg-type]

@@ -8,6 +8,17 @@ record. Entries are grouped by the release that first shipped them.
 
 ## Unreleased
 
+### Fixed
+
+- The same SQL from the same agent over MCP and then over the PostgreSQL wire
+  protocol shared one cache entry, so the second read got the first's format:
+  `psql` received MCP's JSON and failed with `lost synchronization with
+  server`, and an MCP agent could receive PostgreSQL wire bytes as its result.
+  The cache key now includes the protocol (key format v6, so existing entries
+  become misses), and each protocol checks a cached entry's format before
+  serving it. Reported by an independent evaluation of rc.13; covered by
+  end-to-end tests that compare the rows `psql` and MCP decode, in both orders.
+
 ### Documentation
 
 - Two DigitalOcean deployment guides: an evaluation on one Droplet with Docker
