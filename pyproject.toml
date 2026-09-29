@@ -168,7 +168,7 @@ Homepage = "https://github.com/ContextData/interlock"
 Repository = "https://github.com/ContextData/interlock"
 Issues = "https://github.com/ContextData/interlock/issues"
 Changelog = "https://github.com/ContextData/interlock/blob/main/CHANGELOG.md"
-Documentation = "https://github.com/ContextData/interlock/tree/main/docs-site/src/content/docs"
+Documentation = "https://interlock.contextdata.io"
 
 [project.scripts]
 interlock-gateway = "interlock.gateway.__main__:main"
