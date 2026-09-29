@@ -9,6 +9,8 @@ through it.
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import secrets
 from typing import Any
 
@@ -78,4 +80,7 @@ async def test_a_deleted_identity_is_still_named_in_the_audit_views(
         f"/dashboard/audit-costs/export.csv?identity_id={identity_id}"
     )
     assert export.status_code == 200
-    assert any(line.endswith(f",{name}") for line in export.text.splitlines()[1:])
+    # Read by header: columns are appended over time (protocol and
+    # correlation_id came after identity_name).
+    rows = list(csv.DictReader(io.StringIO(export.text)))
+    assert any(row["identity_name"] == name for row in rows)

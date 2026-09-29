@@ -18,6 +18,17 @@ record. Entries are grouped by the release that first shipped them.
   become misses), and each protocol checks a cached entry's format before
   serving it. Reported by an independent evaluation of rc.13; covered by
   end-to-end tests that compare the rows `psql` and MCP decode, in both orders.
+- A redacted answer served from cache was audited with `pii_detected` false,
+  because no scanner ran on the hit. The redaction applied when the answer was
+  cached now travels with the entry in both cache tiers, and PostgreSQL, MCP
+  and HTTP cache hits record it; the event page marks it as redaction from
+  when the answer was cached.
+- The audit event page showed an empty correlation ID, which lives in the
+  request metadata, and printed policy decisions and metadata as Python
+  dictionaries; both now render properly. The CSV export gains `protocol` and
+  `correlation_id` columns (appended, so existing columns keep their
+  positions), and **Audit & Costs** gains the protocol filter the docs
+  described.
 
 ### Documentation
 

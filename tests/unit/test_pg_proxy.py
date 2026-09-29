@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from interlock.cache.provenance import with_redaction
 from interlock.core.write_classifier import WriteClassifier
 from interlock.errors import AuditUnavailableError, IdentityNotFoundError
 from interlock.gateway.pg_messages import (
@@ -1018,7 +1019,7 @@ class TestPGProxyCacheHit:
         audit.log = AsyncMock(side_effect=AuditUnavailableError("spool unavailable"))
         proxy = PGProxy(listen_port=0, upstream_port=0, audit_logger=audit)
         cached_response = _pack_command_complete() + _pack_ready_for_query()
-        proxy._cache_get = AsyncMock(return_value=(cached_response, "l1"))  # type: ignore[method-assign]
+        proxy._cache_get = AsyncMock(return_value=(cached_response, "l1", {}))  # type: ignore[method-assign]
         upstream_reader = _make_reader(b"")
         upstream_writer, upstream_buf = _make_writer()
         client_writer, client_buf = _make_writer()
@@ -1069,7 +1070,7 @@ class TestCachedEntriesFromAnotherProtocol:
     async def test_an_mcp_entry_is_a_miss_and_the_query_goes_upstream(self) -> None:
         proxy = PGProxy(listen_port=0, upstream_port=0)
         proxy._cache_get = AsyncMock(  # type: ignore[method-assign]
-            return_value=(b'[{"id": 1, "name": "Ada"}]', "l2")
+            return_value=(b'[{"id": 1, "name": "Ada"}]', "l2", {})
         )
         upstream_response = _pack_command_complete("SELECT 1") + _pack_ready_for_query()
         upstream_reader = _make_reader(upstream_response)
@@ -1146,8 +1147,14 @@ class TestPGProxyCacheMiss:
             tables=["customers"],
         )
 
-        l1.put.assert_awaited_once_with("fingerprint-1", b"response")
-        l2.put.assert_awaited_once_with("fingerprint-1", b"response")
+        # The entry carries the redaction applied to it, so a hit can audit it.
+        stored = with_redaction(
+            {"source_id": "src1", "protocol": "pg", "tables": ["customers"]},
+            pii_detected=False,
+            pii_types=[],
+        )
+        l1.put.assert_awaited_once_with("fingerprint-1", b"response", stored)
+        l2.put.assert_awaited_once_with("fingerprint-1", b"response", metadata=stored)
         invalidator.record_dependency.assert_awaited_once_with(
             "fingerprint-1",
             source_id="src1",

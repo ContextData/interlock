@@ -721,6 +721,46 @@ async def test_audit_event_detail_does_not_render_raw_tokens(client, mock_pool):
 
 
 @pytest.mark.anyio
+async def test_audit_event_detail_shows_correlation_and_readable_policy(client, mock_pool):
+    """audit_log has no correlation column; the ID lives in the request metadata.
+
+    The rc.13 evaluation found the Correlation field empty while the metadata
+    held the ID, and the policy decision printed as a Python dict.
+    """
+    mock_pool.fetchrow.return_value = FakeRecord(
+        {
+            "id": 8,
+            "created_at": "2026-09-29T12:00:00",
+            "source_id": "sample_shop",
+            "identity_id": 1,
+            "identity_name": "quickstart-agent",
+            "protocol": "mcp",
+            "operation": "read",
+            "status": "success",
+            "policy_decision": json.dumps(
+                {"rule_id": "allow-sample-shop-reads", "effect": "allow"}
+            ),
+            "cache_hit": True,
+            "cache_tier": "l1",
+            "pii_detected": True,
+            "pii_types": ["EMAIL"],
+            "latency_ms": 2,
+            "cost_metadata": {},
+            "request_metadata": json.dumps({"correlation_id": "corr-from-metadata"}),
+            "metadata": {},
+        }
+    )
+
+    resp = await client.get("/dashboard/audit-costs/events/8")
+
+    assert resp.status_code == 200
+    assert "corr-from-metadata" in resp.text
+    assert "&#34;rule_id&#34;: &#34;allow-sample-shop-reads&#34;" in resp.text
+    assert "{&#39;rule_id&#39;" not in resp.text, "policy still rendered as a Python dict"
+    assert "redacted when the answer was cached" in resp.text
+
+
+@pytest.mark.anyio
 async def test_audit_log_partial(client, mock_pool):
     mock_pool.fetchval.return_value = 0
     mock_pool.fetch.return_value = []

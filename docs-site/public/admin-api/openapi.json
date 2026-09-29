@@ -4564,6 +4564,16 @@
           },
           {
             "in": "query",
+            "name": "protocol",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Protocol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "page",
             "required": false,
             "schema": {
@@ -4740,6 +4750,16 @@
           },
           {
             "in": "query",
+            "name": "protocol",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Protocol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -4857,6 +4877,16 @@
             "schema": {
               "default": "",
               "title": "Until",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "protocol",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Protocol",
               "type": "string"
             }
           },

@@ -199,7 +199,7 @@ class DeterministicFirstStrategy:
             if result.hit:
                 # Promote to L1
                 if self._l1 is not None and result.data is not None:
-                    await self._l1.put(cache_key, result.data)
+                    await self._l1.put(cache_key, result.data, result.metadata)
                 return result
 
         # Semantic
@@ -227,7 +227,7 @@ class DeterministicFirstStrategy:
         intent_text: str | None = None,
     ) -> None:
         if self._l1 is not None:
-            await self._l1.put(cache_key, data)
+            await self._l1.put(cache_key, data, metadata)
         if self._l2 is not None:
             await self._l2.put(cache_key, data, metadata=metadata)
         await _semantic_put(
@@ -326,7 +326,7 @@ class SemanticFirstStrategy:
             intent_text,
         )
         if self._l1 is not None:
-            await self._l1.put(cache_key, data)
+            await self._l1.put(cache_key, data, metadata)
         if self._l2 is not None:
             await self._l2.put(cache_key, data, metadata=metadata)
 
@@ -435,7 +435,7 @@ class DeterministicOnlyStrategy:
             result = await self._l2.get(cache_key)
             if result.hit:
                 if self._l1 is not None and result.data is not None:
-                    await self._l1.put(cache_key, result.data)
+                    await self._l1.put(cache_key, result.data, result.metadata)
                 return result
 
         return CacheResult(hit=False)
@@ -449,7 +449,7 @@ class DeterministicOnlyStrategy:
         intent_text: str | None = None,
     ) -> None:
         if self._l1 is not None:
-            await self._l1.put(cache_key, data)
+            await self._l1.put(cache_key, data, metadata)
         if self._l2 is not None:
             await self._l2.put(cache_key, data, metadata=metadata)
 

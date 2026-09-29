@@ -93,7 +93,7 @@ class TestDeterministicFirstStrategy:
         assert result.hit is True
         assert result.tier == "l2"
         # Verify L1 promotion
-        mock_l1.put.assert_awaited_once_with("key1", b"l2data")
+        mock_l1.put.assert_awaited_once_with("key1", b"l2data", {"x": 1})
 
     @pytest.mark.asyncio
     async def test_l1_l2_miss_semantic_high_confidence(
@@ -320,7 +320,7 @@ class TestPutAndInvalidate:
             intent_text="select users",
         )
 
-        mock_l1.put.assert_awaited_once_with("key1", b"data")
+        mock_l1.put.assert_awaited_once_with("key1", b"data", {"source": "test"})
         mock_l2.put.assert_awaited_once_with("key1", b"data", metadata={"source": "test"})
         mock_semantic.upsert.assert_awaited_once()
 

@@ -3068,6 +3068,7 @@ async def audit_costs_page(
     pii: str = "",
     since: str = "",
     until: str = "",
+    protocol: str = "",
     page: int = 1,
     usage_range: str = DEFAULT_USAGE_RANGE,
 ) -> HTMLResponse:
@@ -3105,6 +3106,7 @@ async def audit_costs_page(
         pii=pii,
         since=since,
         until=until,
+        protocol=protocol,
     )
 
     # Cache tier dropdown values (driven by the data, plus 'miss' sentinel).
@@ -3114,6 +3116,11 @@ async def audit_costs_page(
     )
     cache_tiers = [r["cache_tier"] for r in tier_rows] + ["miss"]
 
+    protocol_rows = await pool.fetch(
+        "SELECT DISTINCT protocol FROM audit_log WHERE protocol IS NOT NULL ORDER BY protocol"
+    )
+    protocols = [r["protocol"] for r in protocol_rows]
+
     ctx = {
         "active_page": "audit-costs",
         **usage_ctx,
@@ -3121,6 +3128,8 @@ async def audit_costs_page(
         "operations": operations,
         "statuses": statuses,
         "cache_tiers": cache_tiers,
+        "protocols": protocols,
+        "filter_protocol": protocol,
         "filter_source": source,
         "filter_operation": operation,
         "filter_status": status,
@@ -3182,6 +3191,7 @@ async def audit_log_partial(
     pii: str = "",
     since: str = "",
     until: str = "",
+    protocol: str = "",
     page: int = 1,
 ) -> HTMLResponse:
     """HTMX partial for filtered audit log."""
@@ -3197,6 +3207,7 @@ async def audit_log_partial(
         pii=pii,
         since=since,
         until=until,
+        protocol=protocol,
     )
     ctx["filter_source"] = source
     ctx["filter_operation"] = operation
@@ -3206,6 +3217,7 @@ async def audit_log_partial(
     ctx["filter_pii"] = pii
     ctx["filter_since"] = since
     ctx["filter_until"] = until
+    ctx["filter_protocol"] = protocol
     return _render(request, "partials/audit_log_table.html", ctx)
 
 
@@ -3243,6 +3255,12 @@ async def audit_event_detail(audit_id: int, request: Request) -> HTMLResponse:
                 event[key] = json.loads(value)
             except (TypeError, ValueError):
                 pass
+    # audit_log has no correlation column; the ID travels in the request
+    # metadata, which is where the page has to read it from.
+    for key in ("request_metadata", "metadata"):
+        recorded = event.get(key)
+        if not event.get("correlation_id") and isinstance(recorded, dict):
+            event["correlation_id"] = recorded.get("correlation_id")
     if not _admin_has_role(request, "owner"):
         for key in ("request_metadata", "metadata"):
             event[key] = _redact_admin_metadata(event.get(key))
@@ -3266,6 +3284,7 @@ async def audit_log_csv_export(
     pii: str = "",
     since: str = "",
     until: str = "",
+    protocol: str = "",
     limit: int = 100_000,
 ) -> StreamingResponse:
     """Stream the filtered audit log as CSV.
@@ -3288,6 +3307,7 @@ async def audit_log_csv_export(
         pii=pii,
         since=since,
         until=until,
+        protocol=protocol,
     )
     next_idx = len(params) + 1
     # The name column is appended rather than placed beside identity_id so
@@ -3296,7 +3316,8 @@ async def audit_log_csv_export(
         f"SELECT e.*, COALESCE(i.name, it.name) AS identity_name FROM ("
         f"SELECT id, created_at, identity_id, source_id, operation, "
         f"       sql_fingerprint, cache_hit, cache_tier, latency_ms, "
-        f"       pii_detected, pii_types, risk_level, status, error_message "
+        f"       pii_detected, pii_types, risk_level, status, error_message, "
+        f"       protocol, request_metadata->>'correlation_id' AS correlation_id "
         f"FROM audit_log{where} "
         f"ORDER BY created_at DESC LIMIT ${next_idx}) e "
         f"{identity_joins('e.identity_id')} "
@@ -3319,6 +3340,8 @@ async def audit_log_csv_export(
         "status",
         "error_message",
         "identity_name",
+        "protocol",
+        "correlation_id",
     ]
 
     async def _generate() -> Any:
@@ -3371,6 +3394,7 @@ def _build_audit_filter(
     pii: str = "",
     since: str = "",
     until: str = "",
+    protocol: str = "",
 ) -> tuple[str, list[Any]]:
     """Build a parameterised WHERE clause for the audit_log table.
 
@@ -3410,6 +3434,10 @@ def _build_audit_filter(
             conditions.append(f"cache_tier = ${idx}")
             params.append(cache_tier)
             idx += 1
+    if protocol:
+        conditions.append(f"protocol = ${idx}")
+        params.append(protocol)
+        idx += 1
     if pii == "yes":
         conditions.append("pii_detected = TRUE")
     elif pii == "no":
@@ -3443,7 +3471,7 @@ async def _fetch_audit_log(
         **{
             k: v
             for k, v in filters.items()
-            if k in {"identity_id", "cache_tier", "pii", "since", "until"}
+            if k in {"identity_id", "cache_tier", "pii", "since", "until", "protocol"}
         },
     )
     next_idx = len(params) + 1

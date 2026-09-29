@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
+from interlock.cache.provenance import redaction_of, with_redaction
 from interlock.connections.source_config import (
     resolve_config_value,
     upstream_tls_refusal,
@@ -1572,6 +1573,7 @@ class PGProxy:
         # --- Cache lookup ---
         cached_bytes: bytes | None = None
         cache_tier: str | None = None
+        cached_metadata: dict[str, Any] = {}
 
         if op_type == "read" and fingerprint is not None:
             source_strategy = self._strategy_for(source_id)
@@ -1585,25 +1587,31 @@ class PGProxy:
                     if result.hit and result.data is not None:
                         cached_bytes = result.data
                         cache_tier = result.tier
+                        cached_metadata = result.metadata
                 except Exception:
                     logger.debug("Cache strategy get failed", exc_info=True)
             if cached_bytes is None:
-                cached_bytes, cache_tier = await self._cache_get(fingerprint)
+                cached_bytes, cache_tier, cached_metadata = await self._cache_get(fingerprint)
             if cached_bytes is not None and not is_simple_query_response(cached_bytes):
                 logger.warning(
                     "Ignoring a cached entry that is not a PostgreSQL response source=%s",
                     source_id,
                 )
-                cached_bytes, cache_tier = None, None
+                cached_bytes, cache_tier, cached_metadata = None, None, {}
 
         if cached_bytes is not None:
             latency_ms = (time.monotonic() - t0) * 1000
+            # The cached bytes were redacted when stored; record that redaction
+            # rather than "no PII" because no scanner ran on this hit.
+            cached_pii, cached_pii_types, _ = redaction_of(cached_metadata)
             await self._emit_audit(
                 sql=sql,
                 fingerprint=fingerprint,
                 cache_hit=True,
                 cache_tier=cache_tier,
                 latency_ms=latency_ms,
+                pii_detected=cached_pii,
+                pii_types=cached_pii_types,
                 source_id=source_id,
                 identity=identity,
                 operation=op_type,
@@ -1672,7 +1680,11 @@ class PGProxy:
                     await source_strategy.put(
                         fingerprint,
                         response_bytes,
-                        {"source_id": source_id, "protocol": "pg", "tables": tables},
+                        with_redaction(
+                            {"source_id": source_id, "protocol": "pg", "tables": tables},
+                            pii_detected=pii_detected,
+                            pii_types=pii_types,
+                        ),
                         intent_text=intent_text,
                         intent_embedding=intent_embedding,
                     )
@@ -1692,6 +1704,8 @@ class PGProxy:
                     response_bytes,
                     source_id=source_id,
                     tables=tables,
+                    pii_detected=pii_detected,
+                    pii_types=pii_types,
                 )
 
         # Only expose the successful result after the strict audit contract and
@@ -2089,22 +2103,22 @@ class PGProxy:
     # Cache helpers
     # ------------------------------------------------------------------
 
-    async def _cache_get(self, fingerprint: str) -> tuple[bytes | None, str | None]:
-        """Look up fingerprint in L1, then L2. Returns (data, tier)."""
+    async def _cache_get(self, fingerprint: str) -> tuple[bytes | None, str | None, dict[str, Any]]:
+        """Look up fingerprint in L1, then L2. Returns (data, tier, metadata)."""
         if self._l1 is not None:
             result = await self._l1.get(fingerprint)
             if result.hit and result.data is not None:
-                return result.data, "l1"
+                return result.data, "l1", result.metadata
 
         if self._l2 is not None:
             result = await self._l2.get(fingerprint)
             if result.hit and result.data is not None:
                 # Promote to L1
                 if self._l1 is not None:
-                    await self._l1.put(fingerprint, result.data)
-                return result.data, "l2"
+                    await self._l1.put(fingerprint, result.data, result.metadata)
+                return result.data, "l2", result.metadata
 
-        return None, None
+        return None, None, {}
 
     async def _cache_put(
         self,
@@ -2113,12 +2127,19 @@ class PGProxy:
         *,
         source_id: str | None = None,
         tables: list[str] | None = None,
+        pii_detected: bool = False,
+        pii_types: list[str] | None = None,
     ) -> None:
-        """Store response bytes in L1 and L2."""
+        """Store response bytes in L1 and L2, with the redaction applied to them."""
+        metadata = with_redaction(
+            {"source_id": source_id, "protocol": "pg", "tables": tables or []},
+            pii_detected=pii_detected,
+            pii_types=pii_types,
+        )
         if self._l1 is not None:
-            await self._l1.put(fingerprint, data)
+            await self._l1.put(fingerprint, data, metadata)
         if self._l2 is not None:
-            await self._l2.put(fingerprint, data)
+            await self._l2.put(fingerprint, data, metadata=metadata)
         if self._cache_invalidator is not None and source_id:
             await self._cache_invalidator.record_dependency(
                 fingerprint,
