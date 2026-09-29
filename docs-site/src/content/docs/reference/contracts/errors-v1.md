@@ -38,7 +38,8 @@ Human-readable message text and punctuation are not stable.
 | Body/result limit | `413` | invalid request/tool error | `54000` | Reduce request/result |
 | Unknown source/resource | `404` | handshake: `isError` result, `status: not_found`; modern: `-32602` with the reason | `3D000` (unknown database) / `42501` | Correct source or grant |
 | Source unavailable (circuit open, disabled, upstream TLS refused) | `503` on `/mcp/tools/call` | handshake: `isError` result, `status: unavailable`, with the reason; modern: `-32603` with the reason | FATAL `08004` with the reason | Operator action; back off while a circuit is open |
-| Upstream failure | `502` | `-32603` or sanitized tool failure | upstream/proxy SQLSTATE; FATAL `08006` when the connection cannot be opened, detail logged only | Retry only if operation is idempotent |
+| Query rejected by the source (SQLSTATE `42`, `22`, `23`, `0A`, or the MySQL equivalents) | `422` on `/mcp/tools/call` with `query_error: {category, code, message, correlation_id}` | handshake: `isError` result, `status: query_error`, with the code and the database's primary message; modern: `-32602` with the same text | the upstream SQLSTATE and message | Correct the statement |
+| Upstream failure | `502` | `-32603` or sanitized tool failure, with the audit event's correlation ID | upstream/proxy SQLSTATE; FATAL `08006` when the connection cannot be opened, detail logged only | Retry only if operation is idempotent |
 | Mandatory dependency unavailable | `503` | `-32603` or tool `503` | `08004`/connection close | Backoff; check readiness |
 | Audit unavailable in strict mode | `503` | tool `503` | operation rejected | Do not bypass audit |
 | Cache barrier unavailable for write | `503` | tool `503` | operation rejected | Retry after Redis recovery |

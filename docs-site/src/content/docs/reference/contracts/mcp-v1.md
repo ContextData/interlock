@@ -112,9 +112,21 @@ report them:
   `not_found` and the reason: the source's circuit is open, it is disabled, its
   upstream TLS was refused, or no source has that id. In the modern dialect
   these are JSON-RPC errors carrying the same reason (`-32603` for `503`,
-  `-32602` for `404`). Any other execution failure stays an opaque
-  `tool execution failed`, because a raw upstream exception can carry
-  addresses the error contract forbids returning.
+  `-32602` for `404`).
+- **Query error** (`422`) in the handshake dialect - `isError: true`, with
+  `structuredContent.status` of `query_error` and text
+  `Query error <code>: <message> (correlation ID <id>)`, when the database
+  rejected the statement itself: SQLSTATE classes `42` (syntax, unknown table
+  or column, permissions), `22` (bad data), `23` (integrity) and `0A`
+  (unsupported), and the matching MySQL codes. Only the database's primary
+  message is returned, never a DETAIL or HINT, which can quote row values or
+  name columns the agent is not granted. In the modern dialect this is
+  `-32602` with the same text. The legacy route returns `422` with
+  `query_error: {category, code, message, correlation_id}`.
+- **Any other execution failure** stays an opaque `tool execution failed`,
+  because a raw upstream exception can carry addresses the error contract
+  forbids returning. It carries the correlation ID of its audit event, so an
+  administrator can find the full reason.
 
 ## Tool Result Envelope
 
