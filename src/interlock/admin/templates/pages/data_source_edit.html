@@ -29,6 +29,12 @@
         <input type="checkbox" name="enabled" value="on" {% if ds.enabled %}checked{% endif %}>
         Enabled
       </label>
+      <input type="hidden" name="allow_private_egress_field" value="1">
+      <label class="checkbox">
+        <input type="checkbox" name="allow_private_egress" value="on" {% if ds.allow_private_egress %}checked{% endif %}>
+        Allow a private network address
+      </label>
+      <span class="field-help">Allow a source on a private network, such as a Docker Compose service or a VPC address. InterLock refuses private addresses unless a source opts in; every use is logged.</span>
     </div>
 
     <h4 class="form-subheader">Safe connection fields</h4>

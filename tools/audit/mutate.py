@@ -925,6 +925,20 @@ MUTATIONS: tuple[Mutation, ...] = (
         tests=("tests/unit/test_mcp_adapter.py",),
         scope="unit",
     ),
+    Mutation(
+        name="console-drops-private-egress",
+        control="Console: a source can opt into a private network, as through the API",
+        path="src/interlock/admin/routes/dashboard.py",
+        old='    return {"allow_private_egress": True} if value in {"on", "true", "1", "yes"} else {}',
+        new="    return {}  # MUTATION: the console cannot opt in",
+        tests=(
+            "tests/unit/test_source_onboarding_routes.py",
+            "tests/unit/test_source_wizard.py",
+            "tests/unit/test_detail_pages.py",
+        ),
+        scope="unit",
+        note="Found by the rc.13 independent evaluation (F3).",
+    ),
 )
 
 BY_NAME = {m.name: m for m in MUTATIONS}

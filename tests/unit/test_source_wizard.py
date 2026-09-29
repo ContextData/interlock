@@ -619,3 +619,25 @@ async def test_review_step_shows_the_id_that_will_be_generated(client):
     assert resp.status_code == 200
     assert "<code>hr_mysql</code>" in resp.text
     assert 'name="source_id"' not in resp.text
+
+
+@pytest.mark.anyio
+async def test_the_wizard_can_opt_a_source_into_a_private_network(client, pool):
+    pool.fetchval_result = None
+    resp = await client.post(
+        "/dashboard/source-wizard/save",
+        data={
+            "name": "Sample shop",
+            "source_type": "postgresql",
+            "host": "sample-postgres",
+            "port": "5432",
+            "database": "shop",
+            "sslmode": "disable",
+            "cache_strategy": "deterministic_first",
+            "allow_private_egress": "on",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    inserts = [c for c in pool._calls if "INSERT INTO data_sources" in c[1][0]]
+    assert inserts[-1][1][4]["allow_private_egress"] is True

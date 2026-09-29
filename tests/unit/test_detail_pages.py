@@ -571,3 +571,38 @@ async def test_source_detail_lists_only_policies_that_apply_in_evaluation_order(
     assert 'badge-deny">deny' in row[: row.index("</tr>")]
     assert "Custom conditions" not in body
     assert '<td class="num">5</td>' in body
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(("ticked", "expected"), [(True, True), (False, None)])
+async def test_the_edit_page_turns_private_network_access_on_and_off(
+    client, pool, ticked, expected
+):
+    """An unticked box sends nothing, so the page marks the field as present."""
+    pool.fetchrow_result = _row(
+        source_id="shop",
+        name="Shop DB",
+        source_type="postgresql",
+        connection_config={"host": "postgres", "port": 5432, "allow_private_egress": True},
+        cache_strategy="deterministic_first",
+        enabled=True,
+        metadata={},
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    updates: list[tuple] = []
+    original = pool.fetchrow
+
+    async def capture(*args, **kwargs):
+        if "UPDATE data_sources" in str(args[0]):
+            updates.append(args)
+        return await original(*args, **kwargs)
+
+    pool.fetchrow = capture
+    data = {"name": "Shop DB", "cache_strategy": "bypass", "enabled": "on"}
+    data["allow_private_egress_field"] = "1"
+    if ticked:
+        data["allow_private_egress"] = "on"
+    resp = await client.post("/dashboard/data-sources/shop/edit", data=data, follow_redirects=False)
+
+    assert resp.status_code == 303
+    assert updates[-1][3].get("allow_private_egress") is expected

@@ -36,6 +36,11 @@ record. Entries are grouped by the release that first shipped them.
   handshake clients and `-32602` with the text for modern ones. Connection and
   server errors stay opaque. Both carry a correlation ID that matches the
   audit event.
+- The console could not register a source on a private network, such as the
+  quick start's sample database, because only the API could set
+  `allow_private_egress`. The new-source form, the wizard and the edit page now
+  have an **Allow a private network address** option, with the same rules as
+  the API.
 
 ### Documentation
 

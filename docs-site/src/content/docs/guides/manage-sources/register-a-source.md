@@ -42,9 +42,11 @@ to the API is covered in the [setup walkthrough](/get-started/setup-walkthrough/
 
 - **Secrets as references.** Use `password_ref`, `token_ref` and so on, never
   literals, in anything but a local test.
-- **Private addresses.** A host on a private network is refused unless the
-  configuration sets `"allow_private_egress": true`. Only the API can set it
-  today.
+- **Private addresses.** A host on a private network, such as a Docker
+  Compose service or a VPC address, is refused unless the source opts in: tick
+  **Allow a private network address** in the console (new source, wizard or
+  edit page), or set `"allow_private_egress": true` through the API. Every use
+  is logged.
 - **Verified TLS in production** for PostgreSQL; see
   [Upstream TLS](/guides/manage-sources/upstream-tls/).
 - **A least-privileged login.** The upstream login is the real limit on what

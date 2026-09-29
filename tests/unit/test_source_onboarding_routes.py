@@ -1083,3 +1083,43 @@ async def test_create_source_role_refuses_an_action_from_another_connector(
     )
     assert "&#39;storage.object.read&#39; is not an action on this connector" in resp.text
     assert not [c for c in pool._calls if "INSERT INTO source_role" in str(c[1][0])]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("ticked", [True, False])
+async def test_the_console_can_opt_a_source_into_a_private_network(
+    client: AsyncClient, pool: FakePool, ticked: bool
+) -> None:
+    """The quick start's sample database is a Compose service: a private address.
+
+    The API accepted `allow_private_egress` but no console form could set it, so
+    the rc.13 quick start had to leave the console for curl and a CSRF token.
+    """
+    data = {
+        "name": "Sample shop",
+        "source_type": "postgresql",
+        "cache_strategy": "deterministic_first",
+        "host": "sample-postgres",
+        "port": "5432",
+        "database": "shop",
+        "sslmode": "disable",
+        "create_default_roles": "on",
+    }
+    if ticked:
+        data["allow_private_egress"] = "on"
+    resp = await client.post("/dashboard/data-sources/create", data=data)
+
+    assert resp.status_code == 200
+    inserted = [c for c in pool._calls if "INSERT INTO data_sources" in c[1][0]]
+    cfg = inserted[-1][1][4]
+    if ticked:
+        assert cfg["allow_private_egress"] is True
+    else:
+        assert "allow_private_egress" not in cfg
+
+
+@pytest.mark.anyio
+async def test_the_new_source_form_offers_the_private_network_option(client: AsyncClient) -> None:
+    resp = await client.get("/dashboard/data-sources/new")
+    assert 'name="allow_private_egress"' in resp.text
+    assert "Allow a private network address" in resp.text

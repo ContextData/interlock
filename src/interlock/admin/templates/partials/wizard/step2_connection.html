@@ -153,6 +153,15 @@
     </div>
     {% endif %}
 
+    <div class="form-row">
+      <label class="checkbox">
+        <input type="checkbox" name="allow_private_egress" value="on"
+               {% if state.allow_private_egress %}checked{% endif %}>
+        Allow a private network address
+      </label>
+      <span class="field-help">Allow a source on a private network, such as a Docker Compose service or a VPC address. InterLock refuses private addresses unless a source opts in; every use is logged.</span>
+    </div>
+
     <div id="wizard-test-result"></div>
 
     <div class="form-actions">

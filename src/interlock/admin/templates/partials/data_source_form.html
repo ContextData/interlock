@@ -59,6 +59,16 @@
       </label>
     </div>
 
+    <div class="form-section">
+      <h4 class="form-subheader">Network</h4>
+      <label class="checkbox">
+        <input type="checkbox" name="allow_private_egress" value="on"
+               {% if form.allow_private_egress %}checked{% endif %}>
+        Allow a private network address
+      </label>
+      <span class="field-help">Allow a source on a private network, such as a Docker Compose service or a VPC address. InterLock refuses private addresses unless a source opts in; every use is logged.</span>
+    </div>
+
     <div class="type-block" data-family="database" data-connector="postgresql,mysql,mariadb,mssql"
          {% if form.source_type not in ['postgresql', 'mysql', 'database'] %}hidden{% endif %}>
       <div class="form-row">
