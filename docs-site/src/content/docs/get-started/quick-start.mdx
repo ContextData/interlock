@@ -75,13 +75,16 @@ Open **Data Sources** and choose **+ New Source**. The wizard has five steps:
      service on a private address, and InterLock refuses private addresses
      unless a source opts in.
 
-   Choose **Test Connection**, then **Next**.
-3. The schema preview lists `customers` and `orders`. Choose **Next**.
+   Choose **Test Connection**; it reports `Connected in` a few milliseconds.
+   Then choose **Next**.
+3. The schema preview reports `Found 2 table(s) in shop` and pre-ticks the
+   columns that look like personal data, which records them as PII in the
+   source catalog. Choose **Next**.
 4. Keep the cache settings. Choose **Next**.
 5. Review and choose **Save Source**.
 
-The source is created as `sample_shop`: the ID is generated from the name, and
-agents use it to name the source.
+The console opens the new source's page. It was created as `sample_shop`: the
+ID is generated from the name, and agents use it to name the source.
 
 <Screenshot name="source-detail" alt="The Sample shop source page, showing its ID, connector and the policy that applies to it." />
 
