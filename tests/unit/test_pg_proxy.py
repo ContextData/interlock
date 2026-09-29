@@ -987,6 +987,7 @@ class TestPGProxyCacheHit:
         nq = normalize_sql("SELECT 1", "default")
         assert not isinstance(nq, list)
         key = compute_cache_key(
+            protocol="postgresql",
             source_id="default",
             normalized_sql=nq.normalized_sql or "",
             parameters=nq.parameters,
@@ -1034,6 +1035,56 @@ class TestPGProxyCacheHit:
         assert client_buf == bytearray()
 
 
+class TestCachedEntriesFromAnotherProtocol:
+    """A cached entry that is not PostgreSQL wire format is never written to a client.
+
+    An independent evaluation of rc.13 found MCP's JSON under the key a
+    `psql` read used; the proxy wrote it to the socket and `psql` lost
+    synchronization. The key now separates protocols, and this check makes any
+    future collision a cache miss instead of a broken connection.
+    """
+
+    def test_a_complete_response_is_recognised(self) -> None:
+        from interlock.gateway.pg_proxy import is_simple_query_response
+
+        assert is_simple_query_response(_pack_command_complete() + _pack_ready_for_query())
+
+    @pytest.mark.parametrize(
+        "data",
+        [
+            b"",
+            b'[{"id": 1, "name": "Ada"}]',
+            b"not a response at all",
+            _pack_command_complete(),  # no ReadyForQuery at the end
+            (_pack_command_complete() + _pack_ready_for_query())[:-1],  # truncated
+        ],
+        ids=["empty", "mcp-json", "text", "no-ready-for-query", "truncated"],
+    )
+    def test_anything_else_is_refused(self, data: bytes) -> None:
+        from interlock.gateway.pg_proxy import is_simple_query_response
+
+        assert not is_simple_query_response(data)
+
+    @pytest.mark.asyncio
+    async def test_an_mcp_entry_is_a_miss_and_the_query_goes_upstream(self) -> None:
+        proxy = PGProxy(listen_port=0, upstream_port=0)
+        proxy._cache_get = AsyncMock(  # type: ignore[method-assign]
+            return_value=(b'[{"id": 1, "name": "Ada"}]', "l2")
+        )
+        upstream_response = _pack_command_complete("SELECT 1") + _pack_ready_for_query()
+        upstream_reader = _make_reader(upstream_response)
+        upstream_writer, upstream_buf = _make_writer()
+        client_writer, client_buf = _make_writer()
+
+        await proxy._handle_simple_query(
+            b"SELECT 1\x00", client_writer, upstream_reader, upstream_writer
+        )
+
+        assert len(upstream_buf) > 0, "the foreign entry was served instead of going upstream"
+        assert b"[{" not in bytes(client_buf)
+        assert bytes(client_buf) == upstream_response
+
+
 class TestPGProxyCacheMiss:
     """Test cache miss forwards to upstream and stores in cache."""
 
@@ -1068,6 +1119,7 @@ class TestPGProxyCacheMiss:
         nq = normalize_sql("SELECT 42", "default")
         assert not isinstance(nq, list)
         key = compute_cache_key(
+            protocol="postgresql",
             source_id="default",
             normalized_sql=nq.normalized_sql or "",
             parameters=nq.parameters,

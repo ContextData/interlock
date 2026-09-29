@@ -13,8 +13,15 @@ two tiers: a small in-process cache in each gateway, and a shared Redis cache.
 A cached answer is only reused for the same question asked with the same
 authority. The key includes the source, the normalised statement or path, the
 identity, its mapped database role and team, the version of its grants, the
-governance decisions that shaped the answer, and the source's write
-generation. A change to any of these is a miss, never a wrong hit.
+governance decisions that shaped the answer, the source's write generation,
+and the protocol that asked. A change to any of these is a miss, never a wrong
+hit.
+
+The protocol matters because each one caches its own format: the PostgreSQL
+wire protocol caches the bytes it sends to the client, and MCP caches the JSON
+it returns to the agent. The same statement over both is two entries. Each
+also checks that a cached entry is in its own format before serving it, so an
+entry it cannot read is treated as a miss.
 
 ## Strategies
 

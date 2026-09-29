@@ -100,6 +100,37 @@ DEFAULT_CANCEL_CONNECTION_RESERVE = 16
 COPY_FRONTEND_MESSAGE_TYPES = {"c", "d", "f"}
 
 
+# Backend messages a simple-query response may contain: RowDescription,
+# DataRow, CommandComplete, EmptyQueryResponse, ErrorResponse, NoticeResponse,
+# ParameterStatus, NotificationResponse and the closing ReadyForQuery.
+_SIMPLE_QUERY_RESPONSE_TYPES = frozenset(b"TDCIENSAZ")
+
+
+def is_simple_query_response(data: bytes) -> bool:
+    """True when `data` is a complete simple-query response in wire format.
+
+    A cached entry is written straight to the client's socket, so anything
+    else would desynchronise the client. The cache key already separates
+    protocols; this is the second line, so a future key collision degrades to
+    a cache miss instead of a broken connection.
+    """
+    offset = 0
+    last_type = 0
+    size = len(data)
+    while offset < size:
+        if size - offset < 5:
+            return False
+        msg_type = data[offset]
+        length = int.from_bytes(data[offset + 1 : offset + 5], "big")
+        if msg_type not in _SIMPLE_QUERY_RESPONSE_TYPES or length < 4:
+            return False
+        offset += 1 + length
+        if offset > size:
+            return False
+        last_type = msg_type
+    return size > 0 and last_type == ord("Z")
+
+
 @dataclass
 class ExtendedExecutionContext:
     """Governance metadata for one extended-protocol Execute."""
@@ -1195,6 +1226,7 @@ class PGProxy:
         operation: str | None = None
         if isinstance(normalized, NormalizedQuery):
             fingerprint = compute_cache_key(
+                protocol="postgresql",
                 source_id=source_id,
                 normalized_sql=normalized.normalized_sql or "",
                 parameters=normalized.parameters,
@@ -1452,6 +1484,7 @@ class PGProxy:
             from interlock.core.normalizer import compute_cache_key
 
             fingerprint = compute_cache_key(
+                protocol="postgresql",
                 source_id=source_id,
                 normalized_sql=normalized.normalized_sql or "",
                 parameters=normalized.parameters,
@@ -1516,6 +1549,7 @@ class PGProxy:
 
         if isinstance(normalized, NormalizedQuery) and not is_multi_statement:
             fingerprint = compute_cache_key(
+                protocol="postgresql",
                 source_id=source_id,
                 normalized_sql=normalized.normalized_sql or "",
                 parameters=normalized.parameters,
@@ -1555,6 +1589,12 @@ class PGProxy:
                     logger.debug("Cache strategy get failed", exc_info=True)
             if cached_bytes is None:
                 cached_bytes, cache_tier = await self._cache_get(fingerprint)
+            if cached_bytes is not None and not is_simple_query_response(cached_bytes):
+                logger.warning(
+                    "Ignoring a cached entry that is not a PostgreSQL response source=%s",
+                    source_id,
+                )
+                cached_bytes, cache_tier = None, None
 
         if cached_bytes is not None:
             latency_ms = (time.monotonic() - t0) * 1000

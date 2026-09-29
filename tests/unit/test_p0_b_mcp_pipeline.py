@@ -16,6 +16,7 @@ and audit logger.
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -364,3 +365,39 @@ async def test_p0_b_blocked_write_returns_403() -> None:
 
     assert resp.status_code == 403
     pool.fetch.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_a_postgresql_wire_entry_is_a_miss_not_an_mcp_result() -> None:
+    """The reverse of the rc.13 evaluator's finding.
+
+    PostgreSQL caches raw wire bytes. If one ever sat under an MCP key, the
+    adapter used to decode it as text and hand it to the agent as the result.
+    It must be treated as a miss and answered from the source.
+    """
+    wire = b"C\x00\x00\x00\rSELECT 1\x00Z\x00\x00\x00\x05I"
+    cache_strategy = AsyncMock()
+    cache_result = MagicMock()
+    cache_result.hit = True
+    cache_result.data = wire
+    cache_result.tier = "l2"
+    cache_strategy.get.return_value = cache_result
+
+    state = SimpleNamespace(
+        cache_strategy=cache_strategy,
+        audit_logger=AsyncMock(),
+        write_classifier=None,
+        approval_queue=None,
+        pii_scanner=None,
+        policy_engine=None,
+    )
+    pool = AsyncMock()
+    pool.fetch.return_value = [{"x": 1}]
+    request = _make_request_with_state(state)
+
+    adapter = MCPAdapter(pg_pool=pool)
+    resp = await adapter._execute_query(request, {"source_id": "test-source", "sql": "SELECT 1"})
+
+    assert resp.status_code == 200
+    pool.fetch.assert_awaited()
+    assert json.loads(json.loads(resp.body)["content"][0]["text"]) == [{"x": 1}]
