@@ -1,9 +1,55 @@
 ---
-title: Evaluate with the seeded stack
-description: Run the full local stack with seeded sources, identities and policies, and walk through it.
+title: Evaluate InterLock
+description: Two local tracks - run the quick start from empty and check it with make smoke-eval, or explore the fully seeded demo stack.
 sidebar:
   order: 90
 ---
+
+There are two ways to evaluate InterLock locally, and they answer different
+questions:
+
+| Track | Answers | Start |
+|---|---|---|
+| Start from empty | Can a new operator get from nothing to a governed, audited query? | The [quick start](/get-started/quick-start/), then `make smoke-eval` |
+| Explore the seeded demo | What does a fully configured system look like? | `make e2e-up` and `make e2e-seed`, below |
+
+## Start from empty
+
+Follow the [quick start](/get-started/quick-start/) by hand first: it is the
+path a new operator takes, and every step happens in the console.
+
+`make smoke-eval` then runs the same journey as a script, against its own
+Compose project (`interlock-smoke`, on ports 19090, 13001 and 15434, so it
+does not collide with a stack you already have). It needs Docker and Python 3,
+and nothing else: no model keys and no external accounts.
+
+```bash
+make smoke-eval
+```
+
+It signs in as `admin` / `admin` and changes the password, registers the
+sample database through the wizard, allows reads by policy, creates an agent
+with the `read` role, and then checks what the quick start promises:
+
+- The same `SELECT` over PostgreSQL and MCP returns the same rows, with the
+  email addresses redacted, whichever protocol asks first and whether or not
+  the answer came from cache.
+- A `DELETE` is refused over both protocols, and the `orders` table still has
+  its 5 rows.
+- The audit log has every request, with its protocol and outcome, and records
+  the redaction on the cached answers too.
+
+Each check prints `PASS` or `FAIL`, the result is written to
+`build/smoke-eval/result.json`, and the command exits non-zero if any check
+failed. The stack is deleted afterwards; add `--keep` to leave it running
+(`python3 tools/smoke_eval.py --keep`). CI runs it on `main` and on labelled
+pull requests.
+
+A passing run shows that the documented first-run path works. It is not a
+security, performance or release test: those are the suites on the
+[testing](/project/testing/) page.
+
+## Explore the seeded demo
 
 The seeded stack is what the project's own tests run against: every service,
 plus local stand-ins for PostgreSQL, MySQL, an HTTP API, S3-compatible storage,
@@ -34,7 +80,7 @@ real deployment; the [setup walkthrough](/get-started/setup-walkthrough/) is
 that model.
 :::
 
-## Walk through it
+### Walk through it
 
 1. **Overview**: health of the gateway, admin and workers.
 2. **Data Sources**: the seeded sources. Open one and use **Test Connection**.
@@ -47,7 +93,7 @@ that model.
    decisions, cache and redaction.
 8. **Write Safety**: queued writes and their outcomes.
 
-## Run the tests
+### Run the tests
 
 ```bash
 make test-e2e        # the end-to-end suite against the running stack
@@ -56,7 +102,7 @@ make final-boss-local  # the full local release gate; no live credentials
 make e2e-down        # stop and delete the volumes
 ```
 
-## If something is off
+### If something is off
 
 | Problem | Fix |
 |---|---|

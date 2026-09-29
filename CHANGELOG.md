@@ -8,6 +8,15 @@ record. Entries are grouped by the release that first shipped them.
 
 ## Unreleased
 
+### Added
+
+- `make smoke-eval` runs the quick start as an acceptance test: from an empty
+  Compose project it signs in with the default password and changes it,
+  registers the sample database through the wizard, grants an agent the `read`
+  role, and checks the redacted rows over both protocols, a refused `DELETE`
+  and the audit record. CI runs it beside the end-to-end suite. The evaluation
+  guide now has two tracks: start from empty, or explore the seeded demo.
+
 ### Fixed
 
 - The same SQL from the same agent over MCP and then over the PostgreSQL wire

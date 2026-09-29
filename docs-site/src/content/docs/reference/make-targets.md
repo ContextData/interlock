@@ -28,6 +28,7 @@ Run `make help` for the same list.
 | `make e2e-logs` | print E2E stack logs |
 | `make e2e` | clean start + seed + full E2E suite + teardown |
 | `make load` | load tests (compose-backed) |
+| `make smoke-eval` | quick start as an acceptance test on a fresh stack (Docker) |
 | `make secret-scan` | scan tracked files for known sensitive live artifacts |
 | `make docs-generate` | regenerate the docs site's reference pages from the code |
 | `make docs-check` | fail if a generated docs page is stale |
