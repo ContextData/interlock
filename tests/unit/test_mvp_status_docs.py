@@ -713,3 +713,13 @@ def test_runtime_image_applies_debian_security_updates_at_build() -> None:
     upgrade = runtime_stage.index("apt-get upgrade -y")
     assert runtime_stage.index("apt-get update") < upgrade
     assert upgrade < runtime_stage.index("rm -rf /var/lib/apt/lists/*")
+
+
+def test_the_packaged_version_has_a_changelog_section() -> None:
+    """The release workflow publishes this section as the release notes and
+    fails when it is missing, so a version bump must add it."""
+    from interlock import release_version
+
+    changelog = (ROOT / "CHANGELOG.md").read_text()
+    assert f"\n## {release_version()} - " in changelog
+    assert "\n## Unreleased\n" not in changelog.split(f"\n## {release_version()} - ", 1)[1]

@@ -310,9 +310,21 @@ jobs:
           if [[ "${VERSION}" == *-* ]]; then
             prerelease=(--prerelease)
           fi
+          # The notes are this version's CHANGELOG section. Generated notes
+          # would list pull requests, and a release must say what changed even
+          # where there are none to list.
+          awk -v heading="## ${VERSION} - " '
+            index($0, heading) == 1 { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > build/release-notes.md
+          if ! grep -q '[^[:space:]]' build/release-notes.md; then
+            echo "CHANGELOG.md has no section for ${VERSION}" >&2
+            exit 1
+          fi
           gh release create "${GITHUB_REF_NAME}" \
             --verify-tag \
-            --generate-notes \
+            --notes-file build/release-notes.md \
             --title "InterLock ${VERSION}" \
             "${prerelease[@]}" \
             build/release-manifest.json \
