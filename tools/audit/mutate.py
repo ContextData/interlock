@@ -906,6 +906,25 @@ MUTATIONS: tuple[Mutation, ...] = (
         scope="unit",
         note="Found by the rc.13 independent evaluation: redacted cache hits audited as no PII.",
     ),
+    Mutation(
+        name="mcp-query-error-opaque",
+        control="Errors: an agent learns why the database rejected its query",
+        path="src/interlock/gateway/mcp_adapter.py",
+        old="    query_error = _query_error(exc)\n",
+        new="    query_error = None  # MUTATION: every failure is opaque again\n",
+        tests=("tests/unit/test_mcp_adapter.py",),
+        scope="unit",
+        note="Found by the rc.13 independent evaluation (F5).",
+    ),
+    Mutation(
+        name="mcp-query-error-leaks-connection-errors",
+        control="Errors: connection failures stay opaque; they can carry addresses",
+        path="src/interlock/gateway/mcp_adapter.py",
+        old='_QUERY_ERROR_SQLSTATE_CLASSES = frozenset({"42", "22", "23", "0A"})',
+        new='_QUERY_ERROR_SQLSTATE_CLASSES = frozenset({"42", "22", "23", "0A", "08"})',
+        tests=("tests/unit/test_mcp_adapter.py",),
+        scope="unit",
+    ),
 )
 
 BY_NAME = {m.name: m for m in MUTATIONS}

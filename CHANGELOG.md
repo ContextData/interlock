@@ -29,6 +29,13 @@ record. Entries are grouped by the release that first shipped them.
   `correlation_id` columns (appended, so existing columns keep their
   positions), and **Audit & Costs** gains the protocol filter the docs
   described.
+- An MCP query the database rejected, such as one naming a column that does
+  not exist, returned only `tool execution failed`. Query errors (SQLSTATE
+  classes 42, 22, 23 and 0A, and the MySQL equivalents) now return their code
+  and the database's primary message, as a readable `isError` result for
+  handshake clients and `-32602` with the text for modern ones. Connection and
+  server errors stay opaque. Both carry a correlation ID that matches the
+  audit event.
 
 ### Documentation
 

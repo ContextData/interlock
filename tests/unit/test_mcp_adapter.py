@@ -1408,6 +1408,160 @@ class TestSourceUnavailableIsReadable:
         assert issubclass(DataSourceNotFoundError, ValueError)
 
 
+class TestQueryErrorsAreReadable:
+    """A statement the database rejects comes back with the database's reason.
+
+    The rc.13 independent evaluation wrote a join on a column that did not
+    exist and was told only "tool execution failed", while the audit event
+    said `column o.total does not exist`. Query-shape errors now return their
+    SQLSTATE and message, with a correlation ID matching the audit row.
+    Connection and server errors stay opaque.
+    """
+
+    @staticmethod
+    @contextmanager
+    def _client_for(query_error: Exception):
+        adapter = MCPAdapter(pg_pool=_mock_pool())
+        app = _make_app(adapter)
+        identity = _identity_with_source_roles([])
+        auth = MagicMock()
+        auth.authenticate = AsyncMock(return_value=identity)
+        app.state.auth_manager = auth
+        source_pool = MagicMock()
+        source_pool.fetch = AsyncMock(side_effect=query_error)
+        conn_manager = MagicMock()
+        conn_manager.get_pool = AsyncMock(return_value=source_pool)
+        app.state.conn_manager = conn_manager
+        pipeline = MagicMock()
+        pipeline.preflight = AsyncMock(
+            return_value=GatewayDecision(allowed=True, identity=identity)
+        )
+        pipeline.audit = AsyncMock()
+        app.state.audit_logger = AsyncMock()
+        adapter._safe_audit = AsyncMock()  # type: ignore[method-assign]
+        with patch.object(mcp_adapter.GatewayPipeline, "from_state", return_value=pipeline):
+            yield TestClient(app), adapter
+
+    @staticmethod
+    def _undefined_column() -> Exception:
+        import asyncpg
+
+        return asyncpg.exceptions.UndefinedColumnError("column o.total does not exist")
+
+    def test_the_handshake_dialect_gets_a_readable_query_error(self) -> None:
+        with self._client_for(self._undefined_column()) as (client, adapter):
+            resp = client.post(
+                "/mcp",
+                headers={**_handshake_headers(), "Authorization": "Bearer k"},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 9,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "interlock_query",
+                        "arguments": {"source_id": "src1", "sql": "SELECT o.total FROM orders o"},
+                    },
+                },
+            )
+
+        assert resp.status_code == 200
+        result = resp.json()["result"]
+        assert result["isError"] is True
+        text = result["content"][0]["text"]
+        assert "42703" in text and "column o.total does not exist" in text
+        assert result["structuredContent"]["status"] == "query_error"
+        # The same correlation ID is in the answer and in the audit row.
+        audited = adapter._safe_audit.await_args.kwargs["correlation_id"]
+        assert audited and audited in text
+
+    def test_the_modern_dialect_reports_the_query_error_in_its_jsonrpc_error(self) -> None:
+        with self._client_for(self._undefined_column()) as (client, _):
+            resp = client.post(
+                "/mcp",
+                headers={
+                    **_streamable_headers("tools/call", name="interlock_query"),
+                    "Authorization": "Bearer k",
+                },
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 10,
+                    "method": "tools/call",
+                    "params": _streamable_params(
+                        name="interlock_query", arguments=_source_args("interlock_query")
+                    ),
+                },
+            )
+
+        body = resp.json()["error"]
+        assert body["code"] == -32602
+        assert "column o.total does not exist" in body["message"]
+
+    def test_the_legacy_route_returns_a_structured_query_error(self) -> None:
+        with self._client_for(self._undefined_column()) as (client, _):
+            resp = client.post(
+                "/mcp/tools/call",
+                headers={"Authorization": "Bearer k", "X-Correlation-ID": "corr-eval-24"},
+                json={"name": "interlock_query", "arguments": _source_args("interlock_query")},
+            )
+
+        assert resp.status_code == 422
+        detail = resp.json()["query_error"]
+        assert detail == {
+            "category": "query_error",
+            "code": "42703",
+            "message": "column o.total does not exist",
+            "correlation_id": "corr-eval-24",
+        }
+
+    def test_a_wrapped_mysql_error_is_classified(self) -> None:
+        class OperationalError(Exception):
+            pass
+
+        try:
+            try:
+                raise OperationalError(1054, "Unknown column 'o.total' in 'field list'")
+            except OperationalError as inner:
+                raise RuntimeError("MySQL query failed") from inner
+        except RuntimeError as wrapped:
+            error = wrapped
+        with self._client_for(error) as (client, _):
+            resp = client.post(
+                "/mcp/tools/call",
+                headers={"Authorization": "Bearer k"},
+                json={"name": "interlock_query", "arguments": _source_args("interlock_query")},
+            )
+
+        assert resp.status_code == 422
+        assert resp.json()["query_error"]["code"] == "MySQL 1054"
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            OSError("connect call failed ('10.0.0.5', 5432)"),
+            pytest.param("connection-failure", id="sqlstate-08"),
+            pytest.param("mysql-2003", id="mysql-cannot-connect"),
+        ],
+    )
+    def test_connection_and_server_errors_stay_opaque(self, error: Any) -> None:
+        import asyncpg
+
+        if error == "connection-failure":
+            error = asyncpg.exceptions.ConnectionFailureError("could not reach 10.0.0.5:5432")
+        elif error == "mysql-2003":
+            error = Exception(2003, "Can't connect to MySQL server on '10.0.0.5'")
+        with self._client_for(error) as (client, _):
+            resp = client.post(
+                "/mcp/tools/call",
+                headers={"Authorization": "Bearer k"},
+                json={"name": "interlock_query", "arguments": _source_args("interlock_query")},
+            )
+
+        assert resp.status_code == 400
+        assert "10.0.0.5" not in resp.text
+        assert "tool execution failed" in resp.text
+        assert "query_error" not in resp.json()
+
+
 def _source_args(tool: str) -> dict[str, Any]:
     if tool == "interlock_query":
         return {"source_id": "src1", "sql": "SELECT 1"}

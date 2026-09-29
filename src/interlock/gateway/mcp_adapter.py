@@ -51,6 +51,7 @@ from interlock.gateway.pipeline import (
 )
 from interlock.metadata.registry import MetadataRegistry
 from interlock.models import CacheResult, IdentityContext
+from interlock.observability.health import correlation_id_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -1039,6 +1040,9 @@ class MCPAdapter:
                 )
         except Exception as exc:
             logger.warning("MCP query error: %s", exc)
+            # Chosen here so the agent's answer and the audit row carry the same
+            # ID; an inbound X-Correlation-ID is honoured.
+            correlation_id = correlation_id_from_request(request)
             audit = getattr(state, "audit_logger", None) if state else None
             if audit is not None:
                 await self._safe_audit(
@@ -1052,8 +1056,9 @@ class MCPAdapter:
                     latency_ms=(time.monotonic() - t0) * 1000,
                     status="error",
                     error_message=str(exc),
+                    correlation_id=correlation_id,
                 )
-            return _tool_failure_response(exc)
+            return _tool_failure_response(exc, correlation_id)
 
         # 6. Response processing (PII redact) ----------------------------
         # Shared with every other content-returning tool. This loop used to
@@ -1284,6 +1289,11 @@ class MCPAdapter:
                     "row_count": fields.get("row_count"),
                     "tool_name": fields.get("path"),
                     "redaction_stats": fields.get("redaction_stats") or None,
+                    **(
+                        {"correlation_id": fields["correlation_id"]}
+                        if fields.get("correlation_id")
+                        else {}
+                    ),
                 },
             ),
             decision=decision,
@@ -1914,24 +1924,82 @@ _GOVERNANCE_REFUSAL_STATUSES = {401: "unauthenticated", 403: "denied", 429: "rat
 # using one. Reported the same way and for the same reason: the agent needs the
 # why, and a JSON-RPC error buries it.
 _SOURCE_REFUSAL_STATUSES = {404: "not_found", 503: "unavailable"}
-_HANDSHAKE_TOOL_ERROR_STATUSES = {**_GOVERNANCE_REFUSAL_STATUSES, **_SOURCE_REFUSAL_STATUSES}
+# A statement the database rejected: the agent wrote it and can fix it.
+_QUERY_ERROR_STATUSES = {422: "query_error"}
+_HANDSHAKE_TOOL_ERROR_STATUSES = {
+    **_GOVERNANCE_REFUSAL_STATUSES,
+    **_SOURCE_REFUSAL_STATUSES,
+    **_QUERY_ERROR_STATUSES,
+}
 
 
-def _tool_failure_response(exc: Exception) -> JSONResponse:
+# SQLSTATE classes whose message describes the agent's own statement: syntax
+# errors and unknown tables or columns and access rules (42), bad data values
+# (22), integrity violations (23) and unsupported features (0A). Connection,
+# authentication and server classes (08, 28, 53, 57, 58) stay opaque: their
+# messages can carry hosts and addresses the error contract forbids returning.
+_QUERY_ERROR_SQLSTATE_CLASSES = frozenset({"42", "22", "23", "0A"})
+# The MySQL equivalents: unknown column, syntax, unknown table, access denied to
+# a table or column, ambiguous column, duplicate key, bad values.
+_QUERY_ERROR_MYSQL_CODES = frozenset({1052, 1054, 1062, 1064, 1142, 1143, 1146, 1292, 1366})
+_QUERY_ERROR_MESSAGE_LIMIT = 500
+
+
+def _query_error(exc: BaseException) -> tuple[str, str] | None:
+    """(code, message) when `exc` is a database's complaint about the query itself.
+
+    Only the primary message is used. A PostgreSQL DETAIL can quote row
+    values and a HINT can name columns the agent is not granted, so neither is
+    returned. The cause chain is followed because connector adapters wrap the
+    driver's exception.
+    """
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        sqlstate = getattr(current, "sqlstate", None)
+        if isinstance(sqlstate, str) and sqlstate[:2] in _QUERY_ERROR_SQLSTATE_CLASSES:
+            message = getattr(current, "message", None) or str(current).splitlines()[0]
+            return sqlstate, str(message)[:_QUERY_ERROR_MESSAGE_LIMIT]
+        args: tuple[Any, ...] = tuple(getattr(current, "args", ()) or ())
+        if len(args) >= 2 and isinstance(args[0], int) and args[0] in _QUERY_ERROR_MYSQL_CODES:
+            return f"MySQL {args[0]}", str(args[1])[:_QUERY_ERROR_MESSAGE_LIMIT]
+        current = current.__cause__ or current.__context__
+    return None
+
+
+def _tool_failure_response(exc: Exception, correlation_id: str | None = None) -> JSONResponse:
     """What an agent is told when a tool handler's origin work fails.
 
     An unknown or unavailable source says so: `ConnectionManager.get_pool`
     refuses with fixed text naming only the source - circuit open, disabled,
-    upstream TLS refused, unknown id. Every other failure stays opaque, because
-    a raw upstream exception can carry addresses the error contract forbids
-    returning. The two used to share the opaque answer, so an agent saw
-    "tool execution failed" while the reason sat in the gateway log.
+    upstream TLS refused, unknown id. A query the database rejected says why,
+    with its SQLSTATE, so the agent can correct it; the rc.13 independent
+    evaluation found an agent told only "tool execution failed" for a column
+    that did not exist, while the reason sat in the audit log. Every other
+    failure stays opaque, because a raw upstream exception can carry addresses
+    the error contract forbids returning. Both carry the correlation ID an
+    admin can find the full audit event by.
     """
     if isinstance(exc, DataSourceNotFoundError):
         return JSONResponse(_text_content(str(exc)), status_code=404)
     if isinstance(exc, DataSourceUnavailableError):
         return JSONResponse(_text_content(str(exc)), status_code=503)
-    return JSONResponse(_text_content("Error: tool execution failed"), status_code=400)
+    reference = f" (correlation ID {correlation_id})" if correlation_id else ""
+    query_error = _query_error(exc)
+    if query_error is not None:
+        code, message = query_error
+        body = _text_content(f"Query error {code}: {message}{reference}")
+        body["query_error"] = {
+            "category": "query_error",
+            "code": code,
+            "message": message,
+            "correlation_id": correlation_id,
+        }
+        return JSONResponse(body, status_code=422)
+    body = _text_content(f"Error: tool execution failed{reference}")
+    body["correlation_id"] = correlation_id
+    return JSONResponse(body, status_code=400)
 
 
 def _queued_write_result(payload: dict[str, Any]) -> dict[str, Any]:
