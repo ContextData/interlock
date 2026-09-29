@@ -44,7 +44,7 @@ a sample database from registration to a governed, redacted, audited query.
 
 ## Documentation
 
-The documentation is published at **https://interlock.contextdata.io**, built
+The documentation is published at **https://interlock.contextdata.dev**, built
 from [`docs-site/`](docs-site) (`make docs-build` to build it locally). Start
 with:
 

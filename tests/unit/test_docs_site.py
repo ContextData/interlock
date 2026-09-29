@@ -76,7 +76,9 @@ def test_pages_cite_no_private_identifiers(path) -> None:  # type: ignore[no-unt
     text = path.read_text(encoding="utf-8")
     for pattern in (
         r"/Users/",
-        r"contextdata\.dev",
+        # The site itself is published at interlock.contextdata.dev; anything else
+        # under contextdata.dev, including hosts below interlock., is private.
+        r"[\w-]+\.interlock\.contextdata\.dev|(?<!interlock\.)contextdata\.dev",
         r"actualize-server",
         r"test-mysql",
         r"claims-test1",

@@ -18,14 +18,14 @@ broken internal link. For a live preview, run `npm run dev` inside `docs-site/`.
 
 ## Where it is published
 
-The site is served at `https://interlock.contextdata.io` by DigitalOcean App
+The site is served at `https://interlock.contextdata.dev` by DigitalOcean App
 Platform, as a static site defined in `.do/docs-app.yaml`. App Platform builds
 `docs-site/` from `main` on every push (`npm ci`, then `npm run build`) and
 serves `dist/`; a build that fails, including on a broken internal link, is not
 deployed and the previous version keeps serving. To change the hosting, edit the
 spec and apply it with `doctl apps update <app-id> --spec .do/docs-app.yaml`.
 
-Canonical URLs and the sitemap use `https://interlock.contextdata.io`. To build
+Canonical URLs and the sitemap use `https://interlock.contextdata.dev`. To build
 the site for another address, such as a fork or a preview, set `DOCS_SITE_URL`
 at build time.
 

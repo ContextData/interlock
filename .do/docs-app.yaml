@@ -1,5 +1,5 @@
 # DigitalOcean App Platform spec for the documentation site at
-# https://interlock.contextdata.io. Create or update it with:
+# https://interlock.contextdata.dev. Create or update it with:
 #
 #   doctl apps create --spec .do/docs-app.yaml
 #   doctl apps update <app-id> --spec .do/docs-app.yaml
@@ -8,12 +8,12 @@
 # output. The site is plain static files: no server, no secrets, no runtime.
 name: interlock-docs
 region: nyc
-# contextdata.io is served by Cloudflare, not DigitalOcean DNS, so there is no
-# `zone`: the record is a CNAME in Cloudflare to this app's default ingress,
-# unproxied (DNS only) so App Platform can issue and renew the certificate.
+# contextdata.dev is a DigitalOcean DNS zone, so App Platform creates the
+# record and issues and renews the certificate itself.
 domains:
-  - domain: interlock.contextdata.io
+  - domain: interlock.contextdata.dev
     type: PRIMARY
+    zone: contextdata.dev
 static_sites:
   - name: docs
     github:
@@ -27,5 +27,5 @@ static_sites:
     error_document: 404.html
     envs:
       - key: DOCS_SITE_URL
-        value: https://interlock.contextdata.io
+        value: https://interlock.contextdata.dev
         scope: BUILD_TIME

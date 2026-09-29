@@ -10,7 +10,7 @@ record. Entries are grouped by the release that first shipped them.
 
 ### Documentation
 
-- The documentation site is published at https://interlock.contextdata.io by
+- The documentation site is published at https://interlock.contextdata.dev by
   DigitalOcean App Platform, from the spec in `.do/docs-app.yaml`, and is rebuilt
   from `main` on every push. Canonical URLs and the sitemap use that address;
   `DOCS_SITE_URL` builds for another.
