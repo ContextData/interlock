@@ -7,8 +7,12 @@ import starlightLinksValidator from 'starlight-links-validator';
 
 const sidebar = JSON.parse(readFileSync(new URL('./sidebar.json', import.meta.url), 'utf8'));
 
+// The public address, used for canonical URLs and the sitemap. A fork or a
+// preview can build for another address with DOCS_SITE_URL.
+const site = process.env.DOCS_SITE_URL || 'https://interlock.contextdata.dev';
+
 export default defineConfig({
-  site: 'https://interlock.invalid',
+  site,
   telemetry: false,
   integrations: [
     starlight({

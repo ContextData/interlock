@@ -1,0 +1,31 @@
+# DigitalOcean App Platform spec for the documentation site at
+# https://interlock.contextdata.dev. Create or update it with:
+#
+#   doctl apps create --spec .do/docs-app.yaml
+#   doctl apps update <app-id> --spec .do/docs-app.yaml
+#
+# App Platform builds docs-site/ from main on every push and serves the static
+# output. The site is plain static files: no server, no secrets, no runtime.
+name: interlock-docs
+region: nyc
+# contextdata.dev is a DigitalOcean DNS zone, so App Platform creates the
+# record and issues and renews the certificate itself.
+domains:
+  - domain: interlock.contextdata.dev
+    type: PRIMARY
+    zone: contextdata.dev
+static_sites:
+  - name: docs
+    github:
+      repo: ContextData/interlock
+      branch: main
+      deploy_on_push: true
+    source_dir: docs-site
+    environment_slug: node-js
+    build_command: npm ci --no-audit --no-fund && npm run build
+    output_dir: dist
+    error_document: 404.html
+    envs:
+      - key: DOCS_SITE_URL
+        value: https://interlock.contextdata.dev
+        scope: BUILD_TIME

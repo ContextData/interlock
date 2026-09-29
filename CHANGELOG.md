@@ -10,6 +10,10 @@ record. Entries are grouped by the release that first shipped them.
 
 ### Documentation
 
+- The documentation site is published at https://interlock.contextdata.dev by
+  DigitalOcean App Platform, from the spec in `.do/docs-app.yaml`, and is rebuilt
+  from `main` on every push. Canonical URLs and the sitemap use that address;
+  `DOCS_SITE_URL` builds for another.
 - The DigitalOcean (DOKS) deployment and live certification gate is closed:
   `v1.0.0-rc.13` was deployed from its signed digests to a disposable cluster,
   certified (35/35 governed-core end-to-end tests, readiness across an upgrade)

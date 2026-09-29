@@ -76,7 +76,9 @@ def test_pages_cite_no_private_identifiers(path) -> None:  # type: ignore[no-unt
     text = path.read_text(encoding="utf-8")
     for pattern in (
         r"/Users/",
-        r"contextdata\.dev",
+        # The site itself is published at interlock.contextdata.dev; anything else
+        # under contextdata.dev, including hosts below interlock., is private.
+        r"[\w-]+\.interlock\.contextdata\.dev|(?<!interlock\.)contextdata\.dev",
         r"actualize-server",
         r"test-mysql",
         r"claims-test1",
@@ -146,3 +148,26 @@ def test_the_npm_lockfile_has_a_version_for_every_package() -> None:
     lock = json.loads((SITE / "package-lock.json").read_text())
     stubs = [path for path, meta in lock["packages"].items() if path and "version" not in meta]
     assert not stubs, f"lockfile entries without a version: {stubs}"
+
+
+def test_the_app_platform_spec_builds_what_the_site_defines() -> None:
+    """The hosting spec must build the site the way CI does and serve its output."""
+    spec = yaml.safe_load((ROOT / ".do" / "docs-app.yaml").read_text())
+    [site] = spec["static_sites"]
+    package = json.loads((SITE / "package.json").read_text())
+    assert site["source_dir"] == "docs-site"
+    assert site["github"] == {
+        "repo": "ContextData/interlock",
+        "branch": "main",
+        "deploy_on_push": True,
+    }
+    assert "npm ci" in site["build_command"] and "npm run build" in site["build_command"]
+    assert "build" in package["scripts"]
+    assert site["output_dir"] == "dist"
+    assert site["error_document"] == "404.html"
+    assert package["engines"]["node"].startswith((SITE / ".nvmrc").read_text().strip())
+    # Canonical URLs and the served domain must agree.
+    domain = spec["domains"][0]["domain"]
+    site_url = {env["key"]: env["value"] for env in site["envs"]}["DOCS_SITE_URL"]
+    assert site_url == f"https://{domain}"
+    assert f"'https://{domain}'" in (SITE / "astro.config.mjs").read_text()
