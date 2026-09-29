@@ -8,10 +8,12 @@
 # output. The site is plain static files: no server, no secrets, no runtime.
 name: interlock-docs
 region: nyc
+# contextdata.io is served by Cloudflare, not DigitalOcean DNS, so there is no
+# `zone`: the record is a CNAME in Cloudflare to this app's default ingress,
+# unproxied (DNS only) so App Platform can issue and renew the certificate.
 domains:
   - domain: interlock.contextdata.io
     type: PRIMARY
-    zone: contextdata.io
 static_sites:
   - name: docs
     github:
