@@ -68,20 +68,27 @@ def test_release_readiness_doc_has_required_sections() -> None:
 
 
 def test_release_readiness_records_open_gates_as_blocking() -> None:
-    """An open gate must stay visible and must block publication.
+    """The cloud gate is either open, or closed with its evidence cited.
 
-    This is the guard that keeps the launch posture honest: if someone marks
-    the cloud/live certification gate Done without evidence, or drops the rule
-    that an open gate blocks release, this test fails.
+    This is the guard that keeps the launch posture honest: marking the gate
+    Done without naming the run, the date, the released version and both
+    signed digests fails here, as does dropping the rule that an open gate
+    blocks release.
     """
     body = RELEASE_READINESS.read_text()
-
-    assert "**Open**" in body
-    assert re.search(
-        r"^\| \*\*Open\*\* \| Automated DigitalOcean \(DOKS\) deployment and live certification \|",
+    row = re.search(
+        r"^\| (\*\*Open\*\*|Done) \| Automated DigitalOcean \(DOKS\) deployment and live "
+        r"certification \|(.*)$",
         body,
         flags=re.MULTILINE,
     )
+    assert row, "the DOKS gate row is missing"
+    status, evidence = row.group(1), row.group(2)
+    if status == "Done":
+        assert re.search(r"\b20\d\d-\d\d-\d\d\b", evidence), "no certification date"
+        assert re.search(r"`v1\.0\.0-rc\.\d+`", evidence), "no certified version"
+        assert len(re.findall(r"sha256:[0-9a-f]{64}", evidence)) >= 2, "image and chart digests"
+        assert re.search(r"actions/runs/\d+", evidence), "no workflow run cited"
     assert "Do not publish a public release" in body
     assert "while any gate above is open" in body
 

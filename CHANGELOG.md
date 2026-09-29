@@ -6,6 +6,16 @@ earlier history, pull requests and reviews remain private. The release
 candidates below were built and published from there, and this file is their
 record. Entries are grouped by the release that first shipped them.
 
+## Unreleased
+
+### Documentation
+
+- The DigitalOcean (DOKS) deployment and live certification gate is closed:
+  `v1.0.0-rc.13` was deployed from its signed digests to a disposable cluster,
+  certified (35/35 governed-core end-to-end tests, readiness across an upgrade)
+  and torn down by the automated workflow. The release process page cites the
+  run, the date and both digests.
+
 ## 1.0.0-rc.13 - 2026-09-28
 
 ### Security
