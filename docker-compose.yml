@@ -89,8 +89,11 @@ services:
       INTERLOCK_DATABASE__USER: onyx
       INTERLOCK_DATABASE__DATABASE: onyx
       INTERLOCK_REDIS__URL: redis://redis:6379/0
-      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      # Optional. Mistral OCRs scanned documents during ingestion and Anthropic
+      # writes document summaries for discovery. Governed queries, redaction,
+      # approvals and audit need neither; unset, these features are skipped.
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     depends_on:
       migration:
         condition: service_completed_successfully
@@ -114,8 +117,11 @@ services:
       INTERLOCK_DATABASE__USER: onyx
       INTERLOCK_DATABASE__DATABASE: onyx
       INTERLOCK_REDIS__URL: redis://redis:6379/0
-      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      # Optional. Mistral OCRs scanned documents during ingestion and Anthropic
+      # writes document summaries for discovery. Governed queries, redaction,
+      # approvals and audit need neither; unset, these features are skipped.
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     depends_on:
       migration:
         condition: service_completed_successfully

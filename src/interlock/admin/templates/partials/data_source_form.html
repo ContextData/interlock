@@ -514,6 +514,10 @@
         <label>Base URL
           <input name="base_url" value="{{ form.base_url }}" placeholder="https://api.example.com">
         </label>
+        <label>Test Connection path
+          <input name="probe_path" value="{{ form.probe_path|default('') }}" placeholder="/health">
+          <span class="field-help">Optional. A route Test Connection requests instead of the base URL, for APIs whose root does not answer.</span>
+        </label>
       </div>
       <div class="form-row">
         <label>Auth header

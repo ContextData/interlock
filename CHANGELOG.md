@@ -41,6 +41,25 @@ record. Entries are grouped by the release that first shipped them.
   `allow_private_egress`. The new-source form, the wizard and the edit page now
   have an **Allow a private network address** option, with the same rules as
   the API.
+- The quick start stays in the console: the sample database is registered
+  through the wizard with the private-network option, the wizard's default
+  `read` role is the agent's role (the old step that asked for one hand-made
+  statement did not match the role editor), both protocols run the same
+  statement, `psql` runs inside the stack, the refused write is shown over MCP,
+  and a port override is given. Compose no longer warns about the optional
+  Anthropic and Mistral keys; the guide says no model key is needed.
+- HTTP sources can set `probe_path`, the route **Test Connection** requests,
+  for APIs whose root answers 404; a failed test now names the path it
+  requested. It must be a path on `base_url`.
+- Connector pages and the console call a connector's status its
+  *implementation*, separate from release status, and a semantic cache
+  strategy says semantic serving is disabled. The MCP tools reference names
+  the source-role action each tool needs.
+- The console's browser tab now follows sidebar navigation instead of staying
+  on the first page's title, and no longer prints that title in the page.
+- Docs: readable sidebar labels for guide groups; the testing page says
+  `make load` needs Docker and deletes its project's volumes; contributor
+  notes moved out of known limitations, and its release-gate line is current.
 
 ### Documentation
 

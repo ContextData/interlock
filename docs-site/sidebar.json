@@ -23,9 +23,50 @@
     "label": "Guides",
     "items": [
       {
-        "autogenerate": {
-          "directory": "guides"
-        }
+        "label": "Connect an agent",
+        "items": [
+          {
+            "autogenerate": {
+              "directory": "guides/connect-an-agent"
+            }
+          }
+        ]
+      },
+      {
+        "label": "Manage sources",
+        "items": [
+          {
+            "autogenerate": {
+              "directory": "guides/manage-sources"
+            }
+          }
+        ]
+      },
+      {
+        "label": "Control access",
+        "items": [
+          {
+            "autogenerate": {
+              "directory": "guides/control-access"
+            }
+          }
+        ]
+      },
+      {
+        "label": "Day to day",
+        "items": [
+          {
+            "autogenerate": {
+              "directory": "guides/day-to-day"
+            }
+          }
+        ]
+      },
+      {
+        "slug": "guides/evaluate-with-the-seeded-stack"
+      },
+      {
+        "slug": "guides/troubleshooting"
       }
     ]
   },

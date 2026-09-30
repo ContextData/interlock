@@ -1,5 +1,5 @@
 {% if not content_only %}{% extends "base.html" %}{% endif %}
-{% block title %}Identities - InterLock Dashboard{% endblock %}
+{% if content_only %}<title>{% endif %}{% block title %}Identities - InterLock Dashboard{% endblock %}{% if content_only %}</title>{% endif %}
 
 {% block content %}
 <div class="page-header">

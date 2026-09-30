@@ -425,6 +425,7 @@ def _connector_config_from_form(connector_key: str, form: Any) -> dict[str, Any]
         "auth_header",
         "token",
         "token_ref",
+        "probe_path",
         "host",
         "port",
         "database",
@@ -591,6 +592,7 @@ _EDITABLE_CONFIG_KEYS = _SAFE_CONFIG_KEYS | {
     "sslmode",
     "ssl_ca",
     "sslrootcert",
+    "probe_path",
 }
 
 # The TLS modes the edit page offers for a PostgreSQL upstream, strongest first.
@@ -625,6 +627,12 @@ def _private_egress_config(values: Any) -> dict[str, Any]:
     """
     value = str(values.get("allow_private_egress") or "").strip().lower()
     return {"allow_private_egress": True} if value in {"on", "true", "1", "yes"} else {}
+
+
+def _http_probe_config(values: Any, connector_key: str) -> dict[str, Any]:
+    """An HTTP source's `probe_path`: the route Test Connection requests."""
+    text = str(values.get("probe_path") or "").strip()
+    return {"probe_path": text} if text and connector_key == "generic_rest" else {}
 
 
 def _console_tls_refusal(request: Request, source_type: str, cfg: dict[str, Any]) -> str | None:
@@ -4042,6 +4050,7 @@ async def test_new_data_source(
     else:
         cfg = _connector_config_from_form(connector.key, form)
     cfg.update(_private_egress_config(form))
+    cfg.update(_http_probe_config(form, connector.key))
 
     status = await ConnectionManager.probe_unsaved(
         source_type,
@@ -4118,6 +4127,7 @@ async def create_data_source_form(
     else:
         cfg = _connector_config_from_form(connector.key, form)
     cfg.update(_private_egress_config(form))
+    cfg.update(_http_probe_config(form, connector.key))
 
     # An inactive connector, a TLS posture production would refuse, then the id:
     # generated from the display name unless a caller supplied one.
@@ -6464,6 +6474,7 @@ def _wizard_state(form: dict[str, Any]) -> dict[str, Any]:
         "cache_strategy": form.get("cache_strategy", "deterministic_first"),
         "create_default_roles": form.get("create_default_roles", "off"),
         "allow_private_egress": form.get("allow_private_egress", ""),
+        "probe_path": form.get("probe_path", ""),
     }
     cols = form.get("pii_columns")
     if isinstance(cols, list):
@@ -6724,6 +6735,7 @@ async def wizard_test(request: Request) -> HTMLResponse:
     else:
         cfg = _connector_config_from_form(state["connector_key"], state)
     cfg.update(_private_egress_config(state))
+    cfg.update(_http_probe_config(state, connector.key))
     status = await ConnectionManager.probe_unsaved(
         state["source_type"],
         cfg,
@@ -6830,6 +6842,7 @@ async def wizard_save(request: Request) -> HTMLResponse:
     else:
         cfg = _connector_config_from_form(state["connector_key"], state)
     cfg.update(_private_egress_config(state))
+    cfg.update(_http_probe_config(state, connector.key))
 
     refusal = _console_tls_refusal(request, connector.source_type, cfg)
     if refusal:

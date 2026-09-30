@@ -41,14 +41,6 @@ behavior is defined in [`README.md`](/reference/contracts/).
   column with a source role or a policy `columns` condition when it must never
   leave, rather than relying on redaction.
 
-## Local Environment Gaps
-
-- Helm render cannot be executed in local environments where the Helm CLI is missing.
-  The CI path installs Helm and runs `make helm-render`.
-- The in-app browser surface used on 2026-05-28 supported 390px viewport
-  certification, but screenshot capture timed out. Final sharing screenshots
-  still need a browser surface where capture is reliable.
-
 ## V1 Functional Boundaries
 
 - The canonical feature status list lives in
@@ -66,19 +58,10 @@ behavior is defined in [`README.md`](/reference/contracts/).
 - Some SaaS/search connectors are read/discovery beta surfaces. Unsupported writes must fail closed and should not be advertised as enabled Admin actions.
 - Incremental sync is advertised only for connectors with tested stateful delta
   behavior.
-- The Helm chart renders locally, but signed OCI publication and disposable
-  AWS/DigitalOcean deployment evidence remain release gates.
-
-## Certification Expectations
-
-A V1 workstream should not be marked completed unless it has:
-
-- PDD expectations captured in docs or tests.
-- TDD/unit coverage for the contract.
-- Compose, integration, E2E, browser, or live certification evidence as
-  appropriate.
-- Gate status recorded in the [release process](/project/release-process/) and a dated report
-  generated under `build/certification/`.
+- Releases are published to GHCR signed, and DigitalOcean (DOKS) deployment is
+  certified for the public beta. AWS (EKS) deployment certification remains a
+  gate before general availability; see the
+  [release process](/project/release-process/).
 
 ## Security Expectations
 

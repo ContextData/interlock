@@ -136,6 +136,10 @@
         <input name="base_url" required value="{{ state.base_url|default('') }}"
                placeholder="https://api.example.com">
       </label>
+      <label>Test Connection path
+        <input name="probe_path" value="{{ state.probe_path|default('') }}" placeholder="/health">
+        <span class="field-help">Optional. A route Test Connection requests instead of the base URL, for APIs whose root does not answer.</span>
+      </label>
     </div>
     <div class="form-row">
       <label>Auth header

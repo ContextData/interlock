@@ -12,10 +12,12 @@ Slack discovery connector using slack-sdk with read-only MVP scope.
 |---|---|
 | Key | `slack` |
 | Source type | `saas` |
-| Status | native |
+| Implementation | native |
 | Active by default | yes |
-| Default cache strategy | `semantic_first` |
+| Default cache strategy | `semantic_first`; semantic serving is disabled, so only exact repeats are served |
 | Capabilities | supports_discovery, supports_ingestion |
+
+*Implementation* is how complete the adapter is. It is not a release status: what the project supports and has certified is on [Feature status](/reference/feature-status/) and in the [connector support matrix](/reference/connector-support-matrix/), and nothing is past public beta yet.
 
 ## Connection configuration
 

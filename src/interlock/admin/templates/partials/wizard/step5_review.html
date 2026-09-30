@@ -24,6 +24,7 @@
     <input type="hidden" name="sslmode" value="{{ state.sslmode|default('') }}">
     <input type="hidden" name="ssl_ca" value="{{ state.ssl_ca|default('') }}">
     <input type="hidden" name="allow_private_egress" value="{{ state.allow_private_egress|default('') }}">
+    <input type="hidden" name="probe_path" value="{{ state.probe_path|default('') }}">
     <input type="hidden" name="base_url" value="{{ state.base_url|default('') }}">
     <input type="hidden" name="token_ref" value="{{ state.token_ref|default('') }}">
     <input type="hidden" name="bucket" value="{{ state.bucket|default('') }}">

@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
-from urllib.parse import quote, unquote, urlparse
+from urllib.parse import quote, unquote, urlparse, urlsplit
 
 import httpx
 
@@ -275,6 +275,34 @@ def _guard_connector_host(
     )
 
 
+def http_probe_url(connection_config: dict[str, Any]) -> str:
+    """The URL Test Connection requests for an HTTP source.
+
+    The base URL, unless `probe_path` names a route on it. An API's root often
+    answers 404 while its data routes work, which made the connection test
+    report a working source as failed. `probe_path` is a path on the base URL,
+    never another host.
+    """
+    base_url = str(connection_config.get("base_url") or "")
+    probe_path = str(connection_config.get("probe_path") or "").strip()
+    if not probe_path:
+        return base_url
+    if "://" in probe_path or probe_path.startswith("//"):
+        raise ValueError("connection_config.probe_path must be a path on base_url")
+    return base_url.rstrip("/") + "/" + probe_path.lstrip("/")
+
+
+def http_probe_error(status_code: int, probe_url: str, connection_config: dict[str, Any]) -> str:
+    """Say what was probed, so a 404 from an API root is not read as 'unreachable'."""
+    path = urlsplit(probe_url).path or "/"
+    hint = (
+        ""
+        if connection_config.get("probe_path")
+        else "; the test requests the base URL, so set probe_path to a route that answers"
+    )
+    return f"HTTP {status_code} from {path}{hint}"
+
+
 class HTTPProbeAdapter(BaseConnectorAdapter):
     async def probe(
         self,
@@ -289,10 +317,15 @@ class HTTPProbeAdapter(BaseConnectorAdapter):
         headers = _auth_headers(connection_config)
         try:
             self._validate_config(connection_config)
-            guarded_url = _guard_connector_url(self.definition, connection_config, str(base_url))
+            probe_url = http_probe_url(connection_config)
+            guarded_url = _guard_connector_url(self.definition, connection_config, probe_url)
             async with _connector_http_client(connection_config, timeout=timeout_seconds) as client:
                 resp = await client.get(guarded_url, headers=headers)
-            error = f"HTTP {resp.status_code}" if resp.status_code >= 400 else None
+            error = (
+                http_probe_error(resp.status_code, probe_url, connection_config)
+                if resp.status_code >= 400
+                else None
+            )
             return _health(
                 self.definition.key,
                 error is None,
@@ -6685,7 +6718,7 @@ CONNECTOR_DEFINITIONS: dict[str, ConnectorDefinition] = {
         status="production",
         description="Generic governed REST proxy.",
         oss_libraries=("httpx",),
-        credential_fields=("base_url", "auth_header", "token_ref"),
+        credential_fields=("base_url", "auth_header", "token_ref", "probe_path"),
         secret_fields=("token",),
         capabilities=ConnectorCapabilities(True, False, False, False, False, True, False, False),
         role_templates={

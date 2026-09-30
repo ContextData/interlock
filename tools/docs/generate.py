@@ -277,7 +277,19 @@ def admin_roles_page() -> str:
 
 
 def mcp_tools_page() -> str:
+    from interlock.core.source_roles import MCP_TOOL_ACTIONS
     from interlock.gateway.mcp_adapter import MCP_TOOLS
+
+    def action_for(name: str) -> str:
+        if name == "interlock_query":
+            return (
+                "the action its SQL implies, such as `db.table.select` for a read "
+                "and `db.table.insert` for an insert"
+            )
+        if name in {"interlock_list_sources", "interlock_describe_access"}:
+            return "none; it reports only what the caller's source roles grant"
+        action = MCP_TOOL_ACTIONS.get(name.replace("interlock_", "agentgate_", 1))
+        return _code(action) if action else "none"
 
     parts = [
         _md_frontmatter(
@@ -288,7 +300,12 @@ def mcp_tools_page() -> str:
         "Every tool call is authenticated, authorized by source roles, shaped by "
         "policy, redacted and audited, exactly like a query on any other "
         "protocol. Tools named `agentgate_*` are deprecated aliases of the "
-        "`interlock_*` tools, kept until `1.2.0`.\n\n",
+        "`interlock_*` tools, kept until `1.2.0`.\n\n"
+        "Each tool is checked against a source-role action on the source it "
+        "names. A starter role that lets an agent explore and query a SQL "
+        "source needs `db.schema.list`, `db.table.describe` and "
+        "`db.table.select`. The PostgreSQL and MySQL `read` templates grant "
+        "those three and the two discovery actions.\n\n",
     ]
     for tool in sorted(MCP_TOOLS, key=lambda t: str(t["name"])):
         name = str(tool["name"])
@@ -298,6 +315,7 @@ def mcp_tools_page() -> str:
         required = set(schema.get("required") or [])
         props = schema.get("properties") or {}
         parts.append(f"## `{name}`\n\n{tool.get('description', '')}\n\n")
+        parts.append(f"Source-role action required: {action_for(name)}.\n\n")
         if props:
             parts.append(
                 _table(
@@ -361,8 +379,29 @@ def connectors_index_page() -> str:
                 "; ".join(notes),
             ]
         )
-    parts.append(_table(["Connector", "Key", "Status", "Active by default", "Note"], rows))
+    parts.append(_table(["Connector", "Key", "Implementation", "Active by default", "Note"], rows))
     return "".join(parts)
+
+
+# Semantic serving is disabled for the public beta (feature status
+# `semantic_cache`), so these strategies serve exact repeats only.
+_SEMANTIC_STRATEGIES = {"semantic_first", "semantic_only"}
+
+# Per-connector notes on configuration keys whose meaning is not obvious.
+_CONNECTOR_KEY_NOTES = {
+    "generic_rest": (
+        "**Test Connection** requests `base_url`, or `probe_path` on it when set. "
+        "Many APIs answer 404 at their root while their routes work; point "
+        "`probe_path` at a route that answers, such as `/health`. It must be a "
+        "path on `base_url`, never another host.\n\n"
+    ),
+}
+
+
+def _cache_strategy_cell(strategy: str) -> str:
+    if strategy in _SEMANTIC_STRATEGIES:
+        return f"{_code(strategy)}; semantic serving is disabled, so only exact repeats are served"
+    return _code(strategy)
 
 
 def connector_page(d: Any) -> str:
@@ -382,12 +421,17 @@ def connector_page(d: Any) -> str:
             [
                 ["Key", _code(d.key)],
                 ["Source type", _code(d.source_type)],
-                ["Status", d.status],
+                ["Implementation", d.status],
                 ["Active by default", "yes" if d.key in DEFAULT_ACTIVE_CONNECTOR_KEYS else "no"],
-                ["Default cache strategy", _code(d.default_cache_strategy)],
+                ["Default cache strategy", _cache_strategy_cell(d.default_cache_strategy)],
                 ["Capabilities", ", ".join(sorted(caps)) or "none"],
             ],
         ),
+        "\n*Implementation* is how complete the adapter is. It is not a release "
+        "status: what the project supports and has certified is on "
+        "[Feature status](/reference/feature-status/) and in the "
+        "[connector support matrix](/reference/connector-support-matrix/), and "
+        "nothing is past public beta yet.\n",
     ]
     if d.key in GOVERNANCE_UNVERIFIED_CONNECTORS:
         parts.append(
@@ -404,6 +448,8 @@ def connector_page(d: Any) -> str:
         rows = [[_code(f), "no"] for f in d.credential_fields]
         rows += [[_code(f), f"yes; prefer {_code(f + '_ref')}"] for f in d.secret_fields]
         parts.append(_table(["Key", "Secret"], rows))
+        if d.key in _CONNECTOR_KEY_NOTES:
+            parts.append("\n" + _CONNECTOR_KEY_NOTES[d.key])
     if d.role_templates:
         parts.append("\n## Default role templates\n\n")
         parts.append("Offered when a source is created with default roles. Edit them to fit.\n\n")

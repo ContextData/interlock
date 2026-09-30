@@ -939,6 +939,15 @@ MUTATIONS: tuple[Mutation, ...] = (
         scope="unit",
         note="Found by the rc.13 independent evaluation (F3).",
     ),
+    Mutation(
+        name="probe-path-leaves-base-url",
+        control="Egress: an HTTP source's probe_path stays on its base URL",
+        path="src/interlock/connections/connectors.py",
+        old='    if "://" in probe_path or probe_path.startswith("//"):',
+        new="    if False:  # MUTATION: probe_path may name another host",
+        tests=("tests/unit/test_connection_probe.py",),
+        scope="unit",
+    ),
 )
 
 BY_NAME = {m.name: m for m in MUTATIONS}

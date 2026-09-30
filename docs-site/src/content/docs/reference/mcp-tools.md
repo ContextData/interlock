@@ -8,9 +8,13 @@ generated: true
 
 Every tool call is authenticated, authorized by source roles, shaped by policy, redacted and audited, exactly like a query on any other protocol. Tools named `agentgate_*` are deprecated aliases of the `interlock_*` tools, kept until `1.2.0`.
 
+Each tool is checked against a source-role action on the source it names. A starter role that lets an agent explore and query a SQL source needs `db.schema.list`, `db.table.describe` and `db.table.select`. The PostgreSQL and MySQL `read` templates grant those three and the two discovery actions.
+
 ## `interlock_describe_access`
 
 List the actions the caller's source roles allow and deny on each granted data source, and for SQL sources the tables and columns the caller may read, with any table a policy would refuse marked. Use this to plan before querying rather than discovering limits by being refused. Policy rules may still restrict an individual request, so an allowed action here is permission to attempt, not a guarantee of success.
+
+Source-role action required: none; it reports only what the caller's source roles grant.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
@@ -20,6 +24,8 @@ List the actions the caller's source roles allow and deny on each granted data s
 
 Get schema information for a data source
 
+Source-role action required: `db.table.describe`.
+
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `source_id` | string | yes | Data source identifier |
@@ -27,6 +33,8 @@ Get schema information for a data source
 ## `interlock_discover`
 
 Search the discovery index for relevant data assets
+
+Source-role action required: `discovery.search`.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
@@ -45,9 +53,13 @@ Search the discovery index for relevant data assets
 
 List registered data sources visible to the caller
 
+Source-role action required: none; it reports only what the caller's source roles grant.
+
 ## `interlock_query`
 
 Execute a SQL query against a registered data source
+
+Source-role action required: the action its SQL implies, such as `db.table.select` for a read and `db.table.insert` for an insert.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
@@ -57,6 +69,8 @@ Execute a SQL query against a registered data source
 ## `interlock_related_documents`
 
 Find documents related to a discovery asset within the same authorized source
+
+Source-role action required: `discovery.asset.read`.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|

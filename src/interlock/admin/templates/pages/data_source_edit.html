@@ -1,5 +1,5 @@
 {% if not content_only %}{% extends "base.html" %}{% endif %}
-{% block title %}Edit {{ ds.source_id }} - Data Source - InterLock{% endblock %}
+{% if content_only %}<title>{% endif %}{% block title %}Edit {{ ds.source_id }} - Data Source - InterLock{% endblock %}{% if content_only %}</title>{% endif %}
 
 {% block content %}
 <div class="page-header">
