@@ -19,6 +19,10 @@ record. Entries are grouped by the release that first shipped them.
 
 ### Fixed
 
+- MCP recorded the client's `X-Correlation-ID` only on failed calls; served,
+  cached and denied calls were audited under a new random ID, so the ID a
+  client sent could not find its request in the audit log. Every MCP audit row
+  now carries it. Found by `make smoke-eval`.
 - The same SQL from the same agent over MCP and then over the PostgreSQL wire
   protocol shared one cache entry, so the second read got the first's format:
   `psql` received MCP's JSON and failed with `lost synchronization with
