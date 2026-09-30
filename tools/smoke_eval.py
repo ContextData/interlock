@@ -389,13 +389,24 @@ def run(report: Report) -> None:
     report.check("orders unchanged", count.stdout.strip() == "5", "5", count.stdout.strip())
 
     print("\nThe audit log")
+
+    def psql_rows_complete(pg: list[dict[str, str]]) -> bool:
+        # Two reads and the count succeed, the delete is denied.
+        return sum(r["status"] == "success" for r in pg) >= 3 and any(
+            r["status"] == "denied" for r in pg
+        )
+
+    # Rows are written in batches, and each protocol's batch flushes on its own
+    # schedule: wait until every row the checks below need is there.
     deadline = time.monotonic() + 45
     rows: list[dict[str, str]] = []
     while time.monotonic() < deadline:
         _, _, text = admin.request("GET", "/dashboard/audit-costs/export.csv?limit=200")
         rows = list(csv.DictReader(io.StringIO(text)))
         by_id = {r.get("correlation_id"): r for r in rows}
-        if all(c in by_id for c in correlation.values()):
+        if all(c in by_id for c in correlation.values()) and psql_rows_complete(
+            [r for r in rows if r["protocol"] == "postgresql"]
+        ):
             break
         time.sleep(2)
     by_id = {r.get("correlation_id"): r for r in rows}
@@ -420,7 +431,7 @@ def run(report: Report) -> None:
     pg = [r for r in rows if r["protocol"] == "postgresql"]
     report.check(
         "audit: the psql requests are recorded",
-        sum(r["status"] == "success" for r in pg) >= 3 and any(r["status"] == "denied" for r in pg),
+        psql_rows_complete(pg),
         "at least 3 successful and 1 denied postgresql rows",
         [(r["status"], r["cache_hit"]) for r in pg],
     )
