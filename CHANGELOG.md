@@ -8,6 +8,13 @@ record. Entries are grouped by the release that first shipped them.
 
 ## Unreleased
 
+### Security
+
+- PyJWT moves from 2.13.0 to 2.15.1. Ten advisories published against 2.13.0
+  (fixed in 2.14.0) failed the dependency audit on every build. PyJWT reaches
+  the image through the GitHub, Redis, Salesforce and Snowflake client
+  libraries.
+
 ### Added
 
 - `make smoke-eval` runs the quick start as an acceptance test: from an empty
