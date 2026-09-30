@@ -68,7 +68,11 @@ from interlock.connections.role_vocabulary import (
     vocabulary_for,
 )
 from interlock.connections.role_vocabulary import default_template as default_role_template
-from interlock.connections.source_config import CONFIG_ALIASES, upstream_tls_refusal
+from interlock.connections.source_config import (
+    CONFIG_ALIASES,
+    config_bool,
+    upstream_tls_refusal,
+)
 from interlock.core import source_role_grants
 from interlock.core.normalizer import dialect_for
 from interlock.core.policy import PolicyEngine, rule_source_ids
@@ -609,6 +613,18 @@ def _postgres_tls_config(values: Any) -> dict[str, Any]:
         if text:
             tls[key] = text
     return tls
+
+
+def _private_egress_config(values: Any) -> dict[str, Any]:
+    """`allow_private_egress` from a console form or wizard draft's checkbox.
+
+    Sources on a private network (a Compose service, a VPC address) are refused
+    unless the source opts in, exactly as through the API. The console had no
+    way to opt in, so the quick start had to leave it for curl. The API accepts
+    the flag in every environment and logs each use; the console does the same.
+    """
+    value = str(values.get("allow_private_egress") or "").strip().lower()
+    return {"allow_private_egress": True} if value in {"on", "true", "1", "yes"} else {}
 
 
 def _console_tls_refusal(request: Request, source_type: str, cfg: dict[str, Any]) -> str | None:
@@ -4025,6 +4041,7 @@ async def test_new_data_source(
             cfg["token_ref"] = token_ref
     else:
         cfg = _connector_config_from_form(connector.key, form)
+    cfg.update(_private_egress_config(form))
 
     status = await ConnectionManager.probe_unsaved(
         source_type,
@@ -4100,6 +4117,7 @@ async def create_data_source_form(
             cfg["token_ref"] = token_ref
     else:
         cfg = _connector_config_from_form(connector.key, form)
+    cfg.update(_private_egress_config(form))
 
     # An inactive connector, a TLS posture production would refuse, then the id:
     # generated from the display name unless a caller supplied one.
@@ -4141,6 +4159,7 @@ async def create_data_source_form(
                     "token": "",
                     "token_ref": token_ref,
                     "sslmode": str(form.get("sslmode") or ""),
+                    "allow_private_egress": bool(_private_egress_config(form)),
                     "ssl_ca": str(form.get("ssl_ca") or ""),
                     "cache_strategy": cache_strategy,
                     "create_default_roles": create_default_roles,
@@ -5144,6 +5163,9 @@ def _data_source_edit_context(
         exclude = frozenset(
             alias for group in _POSTGRES_TLS_EDIT_GROUPS.values() for alias in group
         )
+    # Edited through its own checkbox, never as free text.
+    exclude = exclude | {"allow_private_egress"}
+    ds["allow_private_egress"] = config_bool(cfg.get("allow_private_egress"))
     ds["editable_connection_fields"] = _editable_connection_fields(cfg, exclude=exclude)
     ds["masked_connection_config"] = sanitize_config(
         cfg if stored_cfg is None else stored_cfg, connector
@@ -5183,6 +5205,11 @@ async def update_data_source_page(source_id: str, request: Request) -> Response:
             cfg[key] = text
         else:
             cfg.pop(key, None)
+    # The edit page renders the private-network checkbox with a marker, so an
+    # unticked box means "turn it off" rather than "not on this form".
+    if form.get("allow_private_egress_field"):
+        cfg.pop("allow_private_egress", None)
+        cfg.update(_private_egress_config(form))
     name = str(form.get("name") or before.get("name") or source_id).strip()
     cache_strategy = str(form.get("cache_strategy") or before.get("cache_strategy") or "bypass")
     enabled = str(form.get("enabled") or "") == "on"
@@ -6436,6 +6463,7 @@ def _wizard_state(form: dict[str, Any]) -> dict[str, Any]:
         "group": form.get("group", ""),
         "cache_strategy": form.get("cache_strategy", "deterministic_first"),
         "create_default_roles": form.get("create_default_roles", "off"),
+        "allow_private_egress": form.get("allow_private_egress", ""),
     }
     cols = form.get("pii_columns")
     if isinstance(cols, list):
@@ -6695,6 +6723,7 @@ async def wizard_test(request: Request) -> HTMLResponse:
             cfg["token_ref"] = state["token_ref"]
     else:
         cfg = _connector_config_from_form(state["connector_key"], state)
+    cfg.update(_private_egress_config(state))
     status = await ConnectionManager.probe_unsaved(
         state["source_type"],
         cfg,
@@ -6800,6 +6829,7 @@ async def wizard_save(request: Request) -> HTMLResponse:
             cfg["token_ref"] = state["token_ref"]
     else:
         cfg = _connector_config_from_form(state["connector_key"], state)
+    cfg.update(_private_egress_config(state))
 
     refusal = _console_tls_refusal(request, connector.source_type, cfg)
     if refusal:

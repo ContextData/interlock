@@ -287,6 +287,37 @@ async def _console_create(admin: Any, e2e_config: Any, catalog_db: Any, source_i
     assert response.status_code == 200, response.text[:300]
 
 
+def _private_pg_form(e2e_config: Any, source_id: str) -> dict[str, str]:
+    """The console form with the private-network option ticked and a password."""
+    return {
+        **_pg_form(e2e_config, source_id),
+        "password": e2e_config.source_pg_password,
+        "allow_private_egress": "on",
+    }
+
+
+async def _console_create_private(
+    admin: Any, e2e_config: Any, catalog_db: Any, source_id: str
+) -> None:
+    response = admin.client.post(
+        "/dashboard/data-sources/create",
+        data=_private_pg_form(e2e_config, source_id),
+        headers={"X-CSRF-Token": admin.csrf_token},
+    )
+    assert response.status_code == 200, response.text[:300]
+
+
+async def _wizard_save_private(
+    admin: Any, e2e_config: Any, catalog_db: Any, source_id: str
+) -> None:
+    response = admin.client.post(
+        "/dashboard/source-wizard/save",
+        data=_private_pg_form(e2e_config, source_id),
+        headers={"X-CSRF-Token": admin.csrf_token},
+    )
+    assert response.status_code == 303, response.text[:300]
+
+
 async def _console_edit(admin: Any, e2e_config: Any, catalog_db: Any, source_id: str) -> None:
     await _insert_source(catalog_db, e2e_config, source_id, enabled=True)
     response = admin.client.post(
@@ -322,15 +353,27 @@ async def _wizard_save(admin: Any, e2e_config: Any, catalog_db: Any, source_id: 
     [
         (_api_create, "succeeded"),
         (_api_update, "succeeded"),
-        # The console form and the wizard offer no private-egress option, so a
-        # source they create for a private host is refused when scanned - the
-        # egress guard working, recorded with a reason an admin can act on.
+        # Without the private-network option, a source the console or wizard
+        # creates for a private host is refused when scanned - the egress
+        # guard working, recorded with a reason an admin can act on. With it
+        # ticked, the same paths reach the host.
         (_console_create, "egress_blocked"),
+        (_console_create_private, "succeeded"),
         (_console_edit, "succeeded"),
         (_console_enable, "succeeded"),
         (_wizard_save, "egress_blocked"),
+        (_wizard_save_private, "succeeded"),
     ],
-    ids=["api-create", "api-update", "console-create", "console-edit", "enable", "wizard"],
+    ids=[
+        "api-create",
+        "api-update",
+        "console-create",
+        "console-create-private",
+        "console-edit",
+        "enable",
+        "wizard",
+        "wizard-private",
+    ],
 )
 async def test_every_save_path_queues_a_scan(
     save: Any, outcome: str, admin_session: Any, catalog_db: Any, e2e_config: Any
