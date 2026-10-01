@@ -13,6 +13,7 @@ Endpoints:
 from __future__ import annotations
 
 import base64
+import contextvars
 import hashlib
 import json
 import logging
@@ -54,6 +55,13 @@ from interlock.models import CacheResult, IdentityContext
 from interlock.observability.health import correlation_id_from_request
 
 logger = logging.getLogger(__name__)
+
+# The correlation ID of the tool call being handled. Set once per call so every
+# audit row it writes, success, cache hit, denial or failure, carries the ID the
+# client sent (or one chosen for it), and the agent's error text can quote it.
+_CALL_CORRELATION_ID: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "mcp_call_correlation_id", default=None
+)
 
 
 # ---------------------------------------------------------------------------
@@ -613,6 +621,13 @@ class MCPAdapter:
 
     async def call_tool(self, request: Request) -> JSONResponse:
         """Dispatch an MCP tool call to the appropriate handler."""
+        token = _CALL_CORRELATION_ID.set(correlation_id_from_request(request))
+        try:
+            return await self._call_tool(request)
+        finally:
+            _CALL_CORRELATION_ID.reset(token)
+
+    async def _call_tool(self, request: Request) -> JSONResponse:
         try:
             body = await _read_mcp_json_body(request, max_bytes=self._max_request_bytes)
             tool_name = _parse_tool_name(body)
@@ -774,7 +789,7 @@ class MCPAdapter:
             path=str(tool_name),
             sql=sql,
             parameters=arguments,
-            metadata={"tool_name": tool_name},
+            metadata={"tool_name": tool_name, "correlation_id": _call_correlation_id(request)},
             tables=tables,
             dialect=self._dialect_for_source(request, str(arguments["source_id"])),
         )
@@ -1040,9 +1055,9 @@ class MCPAdapter:
                 )
         except Exception as exc:
             logger.warning("MCP query error: %s", exc)
-            # Chosen here so the agent's answer and the audit row carry the same
-            # ID; an inbound X-Correlation-ID is honoured.
-            correlation_id = correlation_id_from_request(request)
+            # The agent's answer and the audit row carry the same ID; an inbound
+            # X-Correlation-ID is honoured.
+            correlation_id = _call_correlation_id(request)
             audit = getattr(state, "audit_logger", None) if state else None
             if audit is not None:
                 await self._safe_audit(
@@ -1290,8 +1305,11 @@ class MCPAdapter:
                     "tool_name": fields.get("path"),
                     "redaction_stats": fields.get("redaction_stats") or None,
                     **(
-                        {"correlation_id": fields["correlation_id"]}
-                        if fields.get("correlation_id")
+                        {"correlation_id": correlation_id}
+                        if (
+                            correlation_id := fields.get("correlation_id")
+                            or _CALL_CORRELATION_ID.get()
+                        )
                         else {}
                     ),
                 },
@@ -1966,6 +1984,11 @@ def _query_error(exc: BaseException) -> tuple[str, str] | None:
             return f"MySQL {args[0]}", str(args[1])[:_QUERY_ERROR_MESSAGE_LIMIT]
         current = current.__cause__ or current.__context__
     return None
+
+
+def _call_correlation_id(request: Request) -> str:
+    """Return the current tool call's correlation ID, choosing one outside a call."""
+    return _CALL_CORRELATION_ID.get() or correlation_id_from_request(request)
 
 
 def _tool_failure_response(exc: Exception, correlation_id: str | None = None) -> JSONResponse:

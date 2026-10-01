@@ -917,6 +917,16 @@ MUTATIONS: tuple[Mutation, ...] = (
         note="Found by the rc.13 independent evaluation (F5).",
     ),
     Mutation(
+        name="mcp-audit-drops-correlation-id",
+        control="Audit: every MCP audit row carries the client's correlation ID",
+        path="src/interlock/gateway/mcp_adapter.py",
+        old="        token = _CALL_CORRELATION_ID.set(correlation_id_from_request(request))\n",
+        new="        token = _CALL_CORRELATION_ID.set(None)  # MUTATION: IDs no longer carried\n",
+        tests=("tests/unit/test_mcp_adapter.py",),
+        scope="unit",
+        note="Found by make smoke-eval: served and denied rows had random IDs.",
+    ),
+    Mutation(
         name="mcp-query-error-leaks-connection-errors",
         control="Errors: connection failures stay opaque; they can carry addresses",
         path="src/interlock/gateway/mcp_adapter.py",

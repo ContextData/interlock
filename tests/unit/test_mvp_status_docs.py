@@ -337,7 +337,7 @@ def test_supply_chain_cve_remediation_is_documented_and_pinned() -> None:
         "joserfc==1.7.3",
         "msgpack==1.2.1",
         "pydantic-settings==2.14.2",
-        "pyjwt==2.13.0",
+        "pyjwt==2.15.1",
         "python-multipart==0.0.32",
         "setuptools==83.0.0",
         "starlette==1.3.1",
@@ -376,7 +376,8 @@ def test_supply_chain_cve_remediation_is_documented_and_pinned() -> None:
         '"joserfc>=1.6.8"',
         '"pip>=26.2"',
         '"pillow>=12.3.0"',
-        '"pyjwt>=2.13.0"',
+        # Ten PyJWT advisories published 2026-09-29 are fixed in 2.14.0.
+        '"pyjwt>=2.14.0"',
         '"setuptools>=83.0.0"',
         '"soupsieve>=2.8.4"',
         '"zeep>=4.3.3"',

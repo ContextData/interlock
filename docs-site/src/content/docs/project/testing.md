@@ -11,6 +11,7 @@ sidebar:
 | Dashboard | `uv run pytest tests/dashboard` | nothing |
 | Integration | `make test-integration` | PostgreSQL and Redis for some tests |
 | End-to-end | `make test-e2e` (stack running) or `make e2e` | Docker |
+| Quick start acceptance | `make smoke-eval` | Docker and Python 3. It runs the [quick start](/get-started/quick-start/) as a script against its own Compose project and deletes it afterwards |
 | Browser | `make test-browser` | Docker, Playwright's Chromium (`make browser-install`) |
 | MCP SDK compatibility | `make test-mcp-sdk` | the `mcp-certification` extra |
 | Load | `make load` | Docker. It starts the default Compose project and, when it finishes, runs `docker compose down -v`, deleting that project's volumes: do not run it against a stack whose data you want to keep |
@@ -18,7 +19,7 @@ sidebar:
 
 CI runs lint, types, the unit, dashboard and integration suites, security and
 supply-chain checks, Helm rendering, the docs site build, and, on labelled pull
-requests and on `main`, the end-to-end suite.
+requests and on `main`, the end-to-end suite and `make smoke-eval`.
 
 ## Proving a test detects its defect
 

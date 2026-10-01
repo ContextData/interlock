@@ -1,4 +1,4 @@
-.PHONY: docs-generate docs-check docs-licenses docs-build docs-screenshots docs-screenshots-stack live-check live-up live-down live-seed live-teardown live-sweep test-live-upstream test-live-governed live-certify audit-mutations help install lint type type-v1 test test-unit test-integration test-e2e test-mcp-sdk browser-install test-browser check check-quick e2e-up e2e-seed e2e-down e2e-logs e2e load secret-scan security audit-cover requirements-production requirements-production-check sbom cve-scan license-report release-evidence docker-build helm-render terraform-validate actionlint check-infra final-boss-local final-boss clean
+.PHONY: smoke-eval docs-generate docs-check docs-licenses docs-build docs-screenshots docs-screenshots-stack live-check live-up live-down live-seed live-teardown live-sweep test-live-upstream test-live-governed live-certify audit-mutations help install lint type type-v1 test test-unit test-integration test-e2e test-mcp-sdk browser-install test-browser check check-quick e2e-up e2e-seed e2e-down e2e-logs e2e load secret-scan security audit-cover requirements-production requirements-production-check sbom cve-scan license-report release-evidence docker-build helm-render terraform-validate actionlint check-infra final-boss-local final-boss clean
 
 E2E_COMPOSE=docker compose -p interlock-e2e -f docker-compose.yml -f docker-compose.e2e.yml
 IMAGE_NAME ?= interlock-runtime
@@ -26,6 +26,7 @@ help:
 	@echo "  e2e-logs           print E2E stack logs"
 	@echo "  e2e                clean start + seed + full E2E suite + teardown"
 	@echo "  load               load tests (compose-backed)"
+	@echo "  smoke-eval         quick start as an acceptance test on a fresh stack (Docker)"
 	@echo "  secret-scan        scan tracked files for known sensitive live artifacts"
 	@echo "  docs-generate      regenerate the docs site's reference pages from the code"
 	@echo "  docs-check         fail if a generated docs page is stale"
@@ -160,6 +161,9 @@ e2e:
 	$(MAKE) e2e-seed
 	$(MAKE) test-e2e || ($(MAKE) e2e-logs; $(MAKE) e2e-down; exit 1)
 	$(MAKE) e2e-down
+
+smoke-eval:
+	python3 tools/smoke_eval.py
 
 load:
 	docker compose up -d --wait postgres redis gateway admin

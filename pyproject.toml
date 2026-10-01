@@ -191,7 +191,7 @@ constraint-dependencies = [
     # appear in requirements-production.txt and is not in the image.
     "pip>=26.2",
     "pillow>=12.3.0",
-    "pyjwt>=2.13.0",
+    "pyjwt>=2.14.0",
     "pyasn1>=0.6.4",
     "setuptools>=83.0.0",
     "soupsieve>=2.8.4",

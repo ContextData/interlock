@@ -8,8 +8,28 @@ record. Entries are grouped by the release that first shipped them.
 
 ## Unreleased
 
+### Security
+
+- PyJWT moves from 2.13.0 to 2.15.1. Ten advisories published against 2.13.0
+  (fixed in 2.14.0) failed the dependency audit on every build. PyJWT reaches
+  the image through the GitHub, Redis, Salesforce and Snowflake client
+  libraries.
+
+### Added
+
+- `make smoke-eval` runs the quick start as an acceptance test: from an empty
+  Compose project it signs in with the default password and changes it,
+  registers the sample database through the wizard, grants an agent the `read`
+  role, and checks the redacted rows over both protocols, a refused `DELETE`
+  and the audit record. CI runs it beside the end-to-end suite. The evaluation
+  guide now has two tracks: start from empty, or explore the seeded demo.
+
 ### Fixed
 
+- MCP recorded the client's `X-Correlation-ID` only on failed calls; served,
+  cached and denied calls were audited under a new random ID, so the ID a
+  client sent could not find its request in the audit log. Every MCP audit row
+  now carries it. Found by `make smoke-eval`.
 - The same SQL from the same agent over MCP and then over the PostgreSQL wire
   protocol shared one cache entry, so the second read got the first's format:
   `psql` received MCP's JSON and failed with `lost synchronization with

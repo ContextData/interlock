@@ -1568,6 +1568,86 @@ def _source_args(tool: str) -> dict[str, Any]:
     return {"source_id": "src1"}
 
 
+class TestEveryAuditRowCarriesTheCorrelationId:
+    """The client's X-Correlation-ID reaches every MCP audit row, not only failures.
+
+    Found by `make smoke-eval`: served, cached and denied MCP calls were audited
+    under a fresh random ID, so an operator could not find a client's request
+    in the audit log by the ID the client sent.
+    """
+
+    @staticmethod
+    @contextmanager
+    def _client(decision_allowed: bool):
+        adapter = MCPAdapter(pg_pool=_mock_pool())
+        app = _make_app(adapter)
+        identity = _identity_with_source_roles([])
+        auth = MagicMock()
+        auth.authenticate = AsyncMock(return_value=identity)
+        app.state.auth_manager = auth
+        source_pool = MagicMock()
+        source_pool.fetch = AsyncMock(return_value=[{"id": 1}])
+        conn_manager = MagicMock()
+        conn_manager.get_pool = AsyncMock(return_value=source_pool)
+        app.state.conn_manager = conn_manager
+        app.state.audit_logger = AsyncMock()
+        pipeline = MagicMock()
+        pipeline.preflight = AsyncMock(
+            return_value=(
+                GatewayDecision(allowed=True, identity=identity)
+                if decision_allowed
+                else GatewayDecision(
+                    allowed=False, status_code=403, reason="Policy denied: test", identity=identity
+                )
+            )
+        )
+        pipeline.audit = AsyncMock()
+        pipeline_class = MagicMock(return_value=pipeline)
+        pipeline_class.from_state = MagicMock(return_value=pipeline)
+        with patch.object(mcp_adapter, "GatewayPipeline", pipeline_class):
+            yield TestClient(app), pipeline
+
+    @staticmethod
+    def _audited_correlation_ids(pipeline: MagicMock) -> list[object]:
+        return [
+            call.args[0].metadata.get("correlation_id") for call in pipeline.audit.await_args_list
+        ]
+
+    def test_a_served_query_is_audited_under_the_clients_id(self) -> None:
+        with self._client(decision_allowed=True) as (client, pipeline):
+            resp = client.post(
+                "/mcp/tools/call",
+                headers={"Authorization": "Bearer k", "X-Correlation-ID": "corr-served-1"},
+                json={"name": "interlock_query", "arguments": _source_args("interlock_query")},
+            )
+
+        assert resp.status_code == 200
+        ids = self._audited_correlation_ids(pipeline)
+        assert ids and all(i == "corr-served-1" for i in ids)
+
+    def test_a_denied_call_is_audited_under_the_clients_id(self) -> None:
+        with self._client(decision_allowed=False) as (client, pipeline):
+            resp = client.post(
+                "/mcp/tools/call",
+                headers={"Authorization": "Bearer k", "X-Correlation-ID": "corr-denied-1"},
+                json={"name": "interlock_query", "arguments": _source_args("interlock_query")},
+            )
+
+        assert resp.status_code == 403
+        assert self._audited_correlation_ids(pipeline) == ["corr-denied-1"]
+
+    def test_without_a_header_one_id_is_chosen_per_call(self) -> None:
+        with self._client(decision_allowed=True) as (client, pipeline):
+            client.post(
+                "/mcp/tools/call",
+                headers={"Authorization": "Bearer k"},
+                json={"name": "interlock_query", "arguments": _source_args("interlock_query")},
+            )
+
+        ids = self._audited_correlation_ids(pipeline)
+        assert ids and ids[0] and len(set(ids)) == 1
+
+
 class TestQueuedWriteAndDenialResults:
     """A governed refusal must reach the agent as something it can read.
 
