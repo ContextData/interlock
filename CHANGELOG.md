@@ -6,7 +6,7 @@ earlier history, pull requests and reviews remain private. The release
 candidates below were built and published from there, and this file is their
 record. Entries are grouped by the release that first shipped them.
 
-## Unreleased
+## 1.0.0-rc.14 - 2026-10-01
 
 ### Security
 
@@ -14,6 +14,13 @@ record. Entries are grouped by the release that first shipped them.
   (fixed in 2.14.0) failed the dependency audit on every build. PyJWT reaches
   the image through the GitHub, Redis, Salesforce and Snowflake client
   libraries.
+- urllib3 moves from 2.7.0 to 2.8.0, for three advisories fixed in 2.8.0.
+  InterLock depends on it directly, and through `requests`, `botocore` and
+  PyGithub.
+- oauthlib moves to 4.0.0 and sentence-transformers to 5.7.0, for one
+  advisory each. Neither is in the published image: oauthlib comes with the
+  Atlassian connectors' client library and sentence-transformers with the
+  `ml` extra, but the release preflight audits both.
 
 ### Added
 
