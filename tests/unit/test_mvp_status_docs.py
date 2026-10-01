@@ -341,6 +341,7 @@ def test_supply_chain_cve_remediation_is_documented_and_pinned() -> None:
         "python-multipart==0.0.32",
         "setuptools==83.0.0",
         "starlette==1.3.1",
+        "urllib3==2.8.0",
     ):
         assert pinned_package in requirements
 
@@ -374,12 +375,15 @@ def test_supply_chain_cve_remediation_is_documented_and_pinned() -> None:
         '"aiohttp>=3.14.3"',
         '"httplib2>=0.32.0"',
         '"joserfc>=1.6.8"',
+        '"oauthlib>=4.0.0"',
+        '"sentence-transformers>=5.6.0,<6.0"',
         '"pip>=26.2"',
         '"pillow>=12.3.0"',
         # Ten PyJWT advisories published 2026-09-29 are fixed in 2.14.0.
         '"pyjwt>=2.14.0"',
         '"setuptools>=83.0.0"',
         '"soupsieve>=2.8.4"',
+        '"urllib3>=2.8.0,<3.0"',
         '"zeep>=4.3.3"',
     ):
         assert constraint in pyproject
