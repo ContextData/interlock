@@ -332,10 +332,10 @@ def test_supply_chain_cve_remediation_is_documented_and_pinned() -> None:
 
     for pinned_package in (
         "aiohttp==3.14.3",
-        "cryptography==50.0.0",
+        "cryptography==50.0.2",
         "dlt==1.29.0",
-        "joserfc==1.7.3",
-        "msgpack==1.2.1",
+        "joserfc==1.7.5",
+        "msgpack==1.2.3",
         "pydantic-settings==2.14.2",
         "pyjwt==2.15.1",
         "python-multipart==0.0.32",

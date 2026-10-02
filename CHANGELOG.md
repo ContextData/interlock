@@ -6,6 +6,18 @@ earlier history, pull requests and reviews remain private. The release
 candidates below were built and published from there, and this file is their
 record. Entries are grouped by the release that first shipped them.
 
+## Unreleased
+
+### Changed
+
+- Dependency updates: 25 patch releases (among them pydantic 2.13.5,
+  cryptography 50.0.2, joserfc 1.7.5, msgpack 1.2.3, snowflake-connector
+  4.8.0), OpenTelemetry 1.45 / 0.66b0, authlib 1.8.0 (minimum now 1.7.1, the
+  fix for two open-redirect advisories in its OAuth server code, which
+  InterLock does not use), and the `ml` extra's torch 2.14.1, transformers
+  5.18.0, faiss-cpu 1.15.1 and spaCy 3.8.16. sentence-transformers stays on
+  5.x.
+
 ## 1.0.0-rc.14 - 2026-10-01
 
 ### Security
