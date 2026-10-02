@@ -42,7 +42,7 @@ export GATEWAY_HOST=gateway.$ZONE
 export ADMIN_HOST=admin.$ZONE
 export PG_HOST=pg.$ZONE
 export ADMIN_CIDR="$(curl -4 -fsS https://ifconfig.me)/32"   # your IPv4 address may open the console
-export VERSION=1.0.0-rc.13              # the InterLock release to install
+export VERSION=1.0.0-rc.14              # the InterLock release to install
 ```
 
 ## 1. Create the cluster

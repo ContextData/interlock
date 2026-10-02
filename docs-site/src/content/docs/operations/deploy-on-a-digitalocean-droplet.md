@@ -42,13 +42,13 @@ cat > interlock-cloud-init.yaml <<'EOF'
 package_update: true
 packages: [docker.io, docker-compose-v2, git, openssl]
 runcmd:
-  - git clone --depth 1 --branch v1.0.0-rc.13 https://github.com/ContextData/interlock /opt/interlock
+  - git clone --depth 1 --branch v1.0.0-rc.14 https://github.com/ContextData/interlock /opt/interlock
   - bash -c 'cd /opt/interlock && umask 077 && printf "INTERLOCK_ADMIN__SECRET_KEY=%s\n" "$(openssl rand -hex 32)" > .env'
   - bash -c 'cd /opt/interlock && docker compose --profile quickstart up -d --wait > /var/log/interlock-up.log 2>&1'
 EOF
 ```
 
-To install a different release, change `v1.0.0-rc.13` to its tag.
+To install a different release, change `v1.0.0-rc.14` to its tag.
 
 ## 2. Allow SSH and nothing else
 
