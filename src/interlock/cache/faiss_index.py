@@ -31,9 +31,12 @@ FAISS_GENERATION_KEY_PREFIX = "onyx:faiss:generation:"
 # Optional FAISS import
 # ---------------------------------------------------------------------------
 
-_faiss = None
+# The module when the `vector` extra is installed, None otherwise.
+_faiss: Any = None
 try:
-    import faiss as _faiss  # type: ignore[no-redefine]
+    import faiss
+
+    _faiss = faiss
 except ImportError:
     pass
 
