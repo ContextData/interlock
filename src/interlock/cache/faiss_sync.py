@@ -144,7 +144,8 @@ class FAISSIndexSync:
                 raise
             except Exception:
                 logger.warning("FAISS pub/sub listener error; reconnecting", exc_info=True)
-                await self._close_pubsub()
+                # The connection is gone: UNSUBSCRIBE over it can only fail.
+                await self._close_pubsub(unsubscribe=False)
                 await asyncio.sleep(self._reconnect_backoff)
 
     async def _ensure_pubsub(self) -> None:
@@ -154,14 +155,24 @@ class FAISSIndexSync:
         self._redis_pubsub = self._redis.pubsub()
         await self._redis_pubsub.subscribe(FAISS_REBUILD_CHANNEL)
 
-    async def _close_pubsub(self) -> None:
-        if self._redis_pubsub is None:
+    async def _close_pubsub(self, *, unsubscribe: bool = True) -> None:
+        """Drop the subscription. Never raises: Redis may be why we are here.
+
+        A cleanup error escaping the listener's error handler ends the listener
+        for good, which leaves the pod unready until it is restarted.
+        """
+        pubsub, self._redis_pubsub = self._redis_pubsub, None
+        if pubsub is None:
             return
+        if unsubscribe:
+            try:
+                await pubsub.unsubscribe(FAISS_REBUILD_CHANNEL)
+            except Exception:
+                logger.debug("FAISS unsubscribe failed; closing anyway", exc_info=True)
         try:
-            await self._redis_pubsub.unsubscribe(FAISS_REBUILD_CHANNEL)
-            await self._redis_pubsub.aclose()
-        finally:
-            self._redis_pubsub = None
+            await pubsub.aclose()
+        except Exception:
+            logger.debug("FAISS subscription close failed", exc_info=True)
 
     async def _apply_generation_signal(self, index: FAISSIndex, generation: int) -> None:
         gap = index.redis_generation_gap(generation)

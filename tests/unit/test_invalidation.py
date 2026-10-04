@@ -368,7 +368,9 @@ class TestPublishInvalidation:
             await invalidator.stop_listener()
 
         assert redis.created >= 2
-        first.unsubscribe.assert_awaited_once_with(INVALIDATION_CHANNEL)
+        # The dropped connection is closed, not sent UNSUBSCRIBE: that command
+        # fails while Redis is down and used to end the listener for good.
+        first.unsubscribe.assert_not_awaited()
         first.aclose.assert_awaited_once()
         mock_l1.invalidate.assert_awaited_once_with("cache-key-1")
 
