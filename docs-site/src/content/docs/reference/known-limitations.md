@@ -58,10 +58,9 @@ behavior is defined in [`README.md`](/reference/contracts/).
 - Some SaaS/search connectors are read/discovery beta surfaces. Unsupported writes must fail closed and should not be advertised as enabled Admin actions.
 - Incremental sync is advertised only for connectors with tested stateful delta
   behavior.
-- Releases are published to GHCR signed, and DigitalOcean (DOKS) deployment is
-  certified for the public beta. AWS (EKS) deployment certification remains a
-  gate before general availability; see the
-  [release process](/project/release-process/).
+- Releases are published to GHCR signed. DigitalOcean (DOKS) deployment is
+  certified for the public beta, and AWS (EKS) deployment was certified with
+  `1.0.0-rc.16`; see the [release process](/project/release-process/).
 
 ## Security Expectations
 

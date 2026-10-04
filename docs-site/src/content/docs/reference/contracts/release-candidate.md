@@ -45,8 +45,8 @@ same image digest.
 6. Desktop and 390px Admin browser certification.
 7. Concurrency, outage, memory, latency, and soak evidence.
 8. Disposable DigitalOcean (DOKS) deployment from the signed artifacts for the
-   public beta. Disposable AWS (EKS) deployment is a post-beta gate, required
-   before GA.
+   public beta. Disposable AWS (EKS) deployment is required before GA; it was
+   first certified with `1.0.0-rc.16`.
 9. Stable-core live certification last, using temporary least-privilege
    credentials and no secret-bearing reports.
 
