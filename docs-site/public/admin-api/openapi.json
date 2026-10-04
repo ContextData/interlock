@@ -1945,7 +1945,7 @@
   "info": {
     "description": "Management plane for InterLock",
     "title": "InterLock Admin",
-    "version": "1.0.0rc15"
+    "version": "1.0.0rc16"
   },
   "openapi": "3.1.0",
   "paths": {
