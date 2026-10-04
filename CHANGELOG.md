@@ -6,6 +6,43 @@ earlier history, pull requests and reviews remain private. The release
 candidates below were built and published from there, and this file is their
 record. Entries are grouped by the release that first shipped them.
 
+## Unreleased
+
+### Added
+
+- The AWS Terraform root can create a managed data tier
+  (`managed_data_tier = true`, off by default): a private RDS PostgreSQL
+  control database whose master credential stays in Secrets Manager, and a
+  TLS-only ElastiCache Valkey cache, both reachable only from the cluster's
+  nodes. `node_capacity_type` keeps Spot as the default and lets a kept
+  deployment choose on-demand nodes.
+
+### Fixed
+
+- EKS clusters from the Terraform could never run InterLock: with no EBS CSI
+  driver, the gateway's audit-spool volume never bound and the install timed
+  out. The cluster now installs the driver with an EKS Pod Identity role.
+  Node root volumes were silently 20 GiB; they are now 50 GiB gp3.
+- The certification workflow's AWS job read the DigitalOcean job's state
+  bucket variable, and its one-hour AWS session could expire before the
+  destroy step, leaving the cluster running. It now has its own
+  `TF_STATE_AWS_*` variables and a three-hour session.
+
+### Security
+
+- The secret scan now catches `rediss://` URLs with an empty username (the
+  ElastiCache AUTH form) and RDS and ElastiCache endpoint names.
+
+### Documentation
+
+- Two AWS deployment guides: an EC2 instance with Docker Compose, and Amazon
+  EKS with RDS, ElastiCache and a Network Load Balancer, without a domain
+  (the gateway uses a certificate from a private CA). Both were rehearsed
+  from zero and torn down. The EKS rehearsal also proved readiness recovering
+  by itself after an ElastiCache reboot, S3 access through EKS Pod Identity
+  with no stored keys, and Codex CLI and the `google-genai` SDK connecting
+  through the private CA.
+
 ## 1.0.0-rc.15 - 2026-10-03
 
 ### Fixed

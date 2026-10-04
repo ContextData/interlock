@@ -152,6 +152,13 @@ row per call.
 | `google-genai` SDK | 2.28.0, `gemini-3.8-flash`, `mcp` 1.30 and 2.0 | local | 2026-10-04 | All checks pass with `config` as a dict |
 | Anthropic API MCP connector | `anthropic` 1.11.0 | hosted | 2026-10-04 | Reads, query errors and audit pass; refusals reach the model without their reason (see above) |
 
+The same pass was repeated on 2026-10-04 against
+[an Amazon EKS deployment without a domain](/operations/deploy-on-amazon-eks/),
+whose gateway presents a certificate from a private CA. Codex CLI (trusting it
+through `CODEX_CA_CERTIFICATE`) and the `google-genai` SDK (through
+`SSL_CERT_FILE`) passed every check. The three hosted connectors were not run
+there: they connect only to a gateway with a publicly trusted certificate.
+
 In the Anthropic run, Claude Opus 5.5 declined the test prompt under its
 `cyber` safety classifier, and the request was answered by Claude Opus 4.8
 through the API's server-side fallback (`fallbacks: "default"`). The connector

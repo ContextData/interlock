@@ -29,5 +29,6 @@ Put local overrides in `docker-compose.override.yml` (see
 is ignored by git. For anything shared by a team, prefer
 [Kubernetes with Helm](/operations/deploy-with-helm/).
 
-To run this stack on a DigitalOcean Droplet for an evaluation, see
-[Deploy on a DigitalOcean Droplet](/operations/deploy-on-a-digitalocean-droplet/).
+To run this stack on one cloud machine for an evaluation, see
+[Deploy on a DigitalOcean Droplet](/operations/deploy-on-a-digitalocean-droplet/)
+or [Deploy on an AWS EC2 instance](/operations/deploy-on-an-aws-ec2-instance/).
