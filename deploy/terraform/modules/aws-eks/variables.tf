@@ -76,6 +76,17 @@ variable "desired_nodes" {
   default     = 2
 }
 
+variable "node_capacity_type" {
+  description = "Node purchasing option. SPOT suits disposable certification runs; a deployment you keep should use ON_DEMAND, since a Spot interruption can strand a pod whose volume lives in one zone."
+  type        = string
+  default     = "SPOT"
+
+  validation {
+    condition     = contains(["SPOT", "ON_DEMAND"], var.node_capacity_type)
+    error_message = "node_capacity_type must be SPOT or ON_DEMAND."
+  }
+}
+
 variable "tags" {
   description = "Additional resource tags."
   type        = map(string)

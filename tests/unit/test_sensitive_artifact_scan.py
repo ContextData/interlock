@@ -60,6 +60,9 @@ def test_sensitive_artifact_scan_flags_current_credential_shapes(tmp_path: Path)
         "db_password.txt": "AVNS_" + "aBcDeFgHiJkLmNoP",
         "managed_host.txt": "cluster-do-user-12345-0.k.db.ondigitalocean.com",  # secret-scan: allow - synthetic, asserts the pattern fires
         "dsn.txt": "postgresql://admin:" + "SuperSecret123" + "@prod.example.com/db",
+        "cache_url.txt": "rediss://:" + "a1b2c3d4e5f6" * 4 + "@cache.example.com:6379/0",
+        "rds_host.txt": "interlock-control-db." + "c1a2b3c4d5e6" + ".us-east-1.rds.amazonaws.com",
+        "cache_host.txt": "master.interlock-valkey." + "ab12cd" + ".use1.cache.amazonaws.com",
         "private_key.txt": "-----BEGIN PRIVATE KEY-----\n" + "MIIEvQIBADANBgkq" * 4,
     }
     for name, body in cases.items():
@@ -86,6 +89,7 @@ def test_sensitive_artifact_scan_allows_unsubstituted_uri_placeholders(tmp_path:
         "angle.md": "mysql://user:<your-password>@db.example.com/app",
         "template.md": "postgresql://user:{{ db_password }}@db.example.com/app",
         "percent.md": "redis://user:%REDIS_PASSWORD%@cache.example.com/0",
+        "elasticache.md": "rediss://:$CACHE_AUTH@cache.example.com:6379/0",
     }
     for name, body in placeholders.items():
         (tmp_path / name).write_text(body + "\n")

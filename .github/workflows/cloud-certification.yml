@@ -29,7 +29,7 @@ on:
       aws_region:
         description: AWS region used only for the AWS run
         required: true
-        default: us-east-2
+        default: us-east-1
         type: string
       digitalocean_region:
         description: DigitalOcean region used only for the DigitalOcean run
@@ -56,8 +56,8 @@ jobs:
     env:
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
-      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
-      TF_STATE_REGION: ${{ vars.TF_STATE_REGION }}
+      TF_STATE_AWS_BUCKET: ${{ vars.TF_STATE_AWS_BUCKET }}
+      TF_STATE_AWS_REGION: ${{ vars.TF_STATE_AWS_REGION }}
       INTERLOCK_HELM_VALUES_B64: ${{ secrets.INTERLOCK_HELM_VALUES_B64 }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -139,9 +139,9 @@ jobs:
           # killed between apply and destroy, the state survives and the
           # orphaned cluster can still be destroyed from a later run.
           terraform -chdir=deploy/terraform/environments/aws init \
-            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="bucket=${TF_STATE_AWS_BUCKET}" \
             -backend-config="key=cloud-cert/aws/${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tfstate" \
-            -backend-config="region=${TF_STATE_REGION}" \
+            -backend-config="region=${TF_STATE_AWS_REGION}" \
             -backend-config="encrypt=true" \
             -backend-config="use_lockfile=true"
           terraform -chdir=deploy/terraform/environments/aws validate
