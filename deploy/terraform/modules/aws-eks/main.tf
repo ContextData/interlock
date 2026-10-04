@@ -58,6 +58,16 @@ module "eks" {
     eks-pod-identity-agent = { before_compute = true }
     kube-proxy             = {}
     vpc-cni                = { before_compute = true }
+    # Without the EBS CSI driver nothing can provision a volume, so the
+    # gateway's audit-spool claim stays Pending and the install never
+    # completes. The addon's default StorageClass covers charts that name none.
+    aws-ebs-csi-driver = {
+      pod_identity_association = [{
+        role_arn        = aws_iam_role.ebs_csi.arn
+        service_account = "ebs-csi-controller-sa"
+      }]
+      configuration_values = jsonencode({ defaultStorageClass = { enabled = true } })
+    }
   }
 
   vpc_id     = module.vpc.vpc_id
@@ -66,11 +76,23 @@ module "eks" {
   eks_managed_node_groups = {
     interlock = {
       instance_types = var.instance_types
-      capacity_type  = "SPOT"
+      capacity_type  = var.node_capacity_type
       min_size       = var.min_nodes
       max_size       = var.max_nodes
       desired_size   = var.desired_nodes
-      disk_size      = 50
+      # `disk_size` is ignored with the module's custom launch template, which
+      # left nodes on the 20 GiB default; size the root volume here instead.
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 50
+            volume_type           = "gp3"
+            encrypted             = true
+            delete_on_termination = true
+          }
+        }
+      }
 
       labels = {
         "interlock.io/pool" = "runtime"
@@ -79,4 +101,29 @@ module "eks" {
   }
 
   tags = local.common_tags
+}
+
+data "aws_partition" "current" {}
+
+data "aws_iam_policy_document" "ebs_csi_trust" {
+  statement {
+    actions = ["sts:AssumeRole", "sts:TagSession"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+  }
+}
+
+# Assumed by the EBS CSI controller through EKS Pod Identity.
+resource "aws_iam_role" "ebs_csi" {
+  name               = "${var.name}-ebs-csi"
+  assume_role_policy = data.aws_iam_policy_document.ebs_csi_trust.json
+  tags               = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi" {
+  role       = aws_iam_role.ebs_csi.name
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }

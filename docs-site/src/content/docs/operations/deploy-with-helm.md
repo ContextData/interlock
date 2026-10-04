@@ -2,7 +2,7 @@
 title: Deploy with Helm
 description: Install InterLock on Kubernetes from the signed Helm chart and image.
 sidebar:
-  order: 5
+  order: 7
 ---
 
 The chart installs the gateway (a StatefulSet, for its audit-spool volume), the
@@ -10,9 +10,9 @@ admin, the workers, and a migration job that runs before each install and
 upgrade. It always runs in production mode. PostgreSQL and Redis are yours to
 provide.
 
-For a complete walkthrough on DigitalOcean, from an empty account to a
-running deployment with TLS, see
-[Deploy on DigitalOcean Kubernetes](/operations/deploy-on-digitalocean-kubernetes/).
+For complete walkthroughs from an empty account to a running deployment with
+TLS, see [Deploy on DigitalOcean Kubernetes](/operations/deploy-on-digitalocean-kubernetes/)
+and [Deploy on Amazon EKS](/operations/deploy-on-amazon-eks/).
 
 ## Before installing
 

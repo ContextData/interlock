@@ -42,3 +42,15 @@ variable "image_digest" {
   description = "Immutable InterLock runtime image digest."
   type        = string
 }
+
+variable "node_capacity_type" {
+  description = "SPOT for disposable runs, ON_DEMAND for a deployment you keep."
+  type        = string
+  default     = "SPOT"
+}
+
+variable "managed_data_tier" {
+  description = "Create a private RDS PostgreSQL control database and an ElastiCache Valkey cache."
+  type        = bool
+  default     = false
+}

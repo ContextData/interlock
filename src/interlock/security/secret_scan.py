@@ -31,6 +31,13 @@ DEFAULT_PATTERNS = (
     # Any managed-database hostname, not one specific internal cluster: a
     # hardcoded internal hostname would itself disclose infrastructure names.
     re.compile(r"\b[a-z0-9-]+-do-user-\d+-\d+\.[a-z]\.db\.ondigitalocean\.com\b"),
+    # AWS managed endpoints carry a per-account identifier: RDS
+    # (<name>.<12 chars>.<region>.rds.amazonaws.com) and ElastiCache
+    # (<name>.<6 chars>.[ng.0001.]<region code>.cache.amazonaws.com).
+    re.compile(r"\b[a-z0-9-]+\.[a-z0-9]{12}\.[a-z]{2}-[a-z]+-\d\.rds\.amazonaws\.com\b"),
+    re.compile(
+        r"\b[a-z0-9.-]+\.[a-z0-9]{6}\.(?:ng\.\d{4}\.)?[a-z]{2,4}\d\.cache\.amazonaws\.com\b"
+    ),
     # Private keys of any flavor. The trailing body requirement distinguishes
     # real key material from the header-only literals that redaction tests use
     # to assert a key never reaches a log line.
@@ -48,8 +55,9 @@ DEFAULT_PATTERNS = (
     # inventing literal-looking examples instead, which is the outcome it
     # exists to prevent.
     re.compile(
-        r"\b(?:postgresql|postgres|mysql|mongodb|redis|amqp)://"
-        r"[A-Za-z0-9._-]+:(?!onyx_dev@|pass@|password@)(?![$<{%])[^\s:@/]{8,}@"
+        r"\b(?:postgresql|postgres|mysql|mongodb|rediss?|amqp)://"
+        # The username may be empty: ElastiCache AUTH URLs are rediss://:secret@host.
+        r"[A-Za-z0-9._-]*:(?!onyx_dev@|pass@|password@)(?![$<{%])[^\s:@/]{8,}@"
     ),
     # Placeholder that must never survive into a release
     re.compile(r"\bchange_me_[a-z0-9_]{4,}\b"),

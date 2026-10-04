@@ -202,6 +202,8 @@ def test_cloud_workflow_is_manual_environment_gated_and_always_tears_down() -> N
     assert "if: always()" in body
     assert body.count(" destroy -auto-approve") == 2
     assert "secrets.AWS_DEPLOY_ROLE_ARN" in body
+    # One session must outlast create, certify and destroy.
+    assert "role-duration-seconds: 10800" in body
     assert "secrets.DIGITALOCEAN_TOKEN" in body
     assert "secrets.INTERLOCK_HELM_VALUES_B64" in body
     assert "password:" not in body.lower()
@@ -278,11 +280,57 @@ def test_cloud_modules_have_bounded_disposable_capacity() -> None:
 
     assert "single_nat_gateway = true" in aws
     assert "eks_managed_node_groups" in aws
-    assert 'capacity_type  = "SPOT"' in aws
+    # Spot stays the default for disposable runs; a kept deployment passes
+    # ON_DEMAND, since an interruption can strand a pod whose volume is zonal.
+    assert "capacity_type  = var.node_capacity_type" in aws
+    assert 'default     = "SPOT"' in aws
     assert "max_size       = var.max_nodes" in aws
     assert "auto_scale = true" in digitalocean
     assert "min_nodes  = var.min_nodes" in digitalocean
     assert "max_nodes  = var.max_nodes" in digitalocean
+
+
+def test_aws_cluster_can_provision_the_audit_spool() -> None:
+    """The gateway's audit spool is a PersistentVolumeClaim.
+
+    EKS has no in-tree volume provisioner: without the EBS CSI driver the
+    claim stays Pending, the install waits out its timeout, and the
+    certification run fails before testing anything.
+    """
+    aws = "\n".join(
+        path.read_text() for path in sorted((TERRAFORM_ROOT / "modules" / "aws-eks").glob("*.tf"))
+    )
+
+    assert "aws-ebs-csi-driver" in aws
+    assert "pod_identity_association" in aws
+    assert "AmazonEBSCSIDriverPolicy" in aws
+    assert "defaultStorageClass" in aws
+    # `disk_size` is ignored under the module's launch template.
+    assert not re.search(r"^\s*disk_size\s*=", aws, re.M)
+    assert "volume_size           = 50" in aws
+
+
+def test_aws_managed_data_tier_is_opt_in_private_and_encrypted() -> None:
+    root = "\n".join(
+        path.read_text() for path in sorted((TERRAFORM_ROOT / "environments" / "aws").glob("*.tf"))
+    )
+    module = "\n".join(
+        path.read_text()
+        for path in sorted((TERRAFORM_ROOT / "modules" / "aws-data-tier").glob("*.tf"))
+    )
+
+    assert "count  = var.managed_data_tier ? 1 : 0" in root
+    assert 'variable "managed_data_tier"' in root and "default     = false" in root
+    assert "publicly_accessible    = false" in module
+    assert "storage_encrypted = true" in module
+    assert "manage_master_user_password = true" in module
+    assert "transit_encryption_enabled = true" in module
+    assert 'transit_encryption_mode    = "required"' in module
+    assert "at_rest_encryption_enabled = true" in module
+    # Reachable from the cluster's nodes only, never from an address range.
+    assert module.count("referenced_security_group_id") == 2
+    assert "cidr_ipv4" not in module
+    assert "sensitive   = true" in module
 
 
 LOCKED_TERRAFORM_PLATFORMS = ("darwin_arm64", "darwin_amd64", "linux_amd64")
