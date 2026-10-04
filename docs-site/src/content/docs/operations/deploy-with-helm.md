@@ -2,7 +2,7 @@
 title: Deploy with Helm
 description: Install InterLock on Kubernetes from the signed Helm chart and image.
 sidebar:
-  order: 5
+  order: 7
 ---
 
 The chart installs the gateway (a StatefulSet, for its audit-spool volume), the

@@ -2,7 +2,7 @@
 title: Observability
 description: Health checks, logs, traces and metrics for running InterLock.
 sidebar:
-  order: 9
+  order: 11
 ---
 
 - **Readiness.** `GET /ready` on the gateway and admin checks every dependency

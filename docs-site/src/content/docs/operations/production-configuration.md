@@ -2,7 +2,7 @@
 title: Production configuration
 description: The settings that matter most in production, and how to supply them safely.
 sidebar:
-  order: 6
+  order: 8
 ---
 
 Every setting is listed in [Configuration](/reference/configuration/). Those
