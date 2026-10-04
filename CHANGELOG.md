@@ -8,6 +8,18 @@ record. Entries are grouped by the release that first shipped them.
 
 ## Unreleased
 
+### Fixed
+
+- After a Redis restart, the gateway and admin could stay unready until
+  their pods were restarted. The cache-invalidation and FAISS pub/sub
+  listeners caught the dropped connection, then failed in their own cleanup,
+  which sent `UNSUBSCRIBE` to a server that was still down; the listener ended
+  and `/ready` reported it unhealthy for good. On the DigitalOcean rehearsal a
+  managed Valkey restart left both services serving 503 for about 41 hours.
+  The listeners now close a dropped subscription without that command, never
+  let a cleanup error escape, and resubscribe when Redis is back. An
+  end-to-end test restarts Redis and requires both services to become ready.
+
 ### Changed
 
 - Dependency updates: 25 patch releases (among them pydantic 2.13.5,

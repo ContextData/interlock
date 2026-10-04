@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from interlock.cache.faiss_sync import FAISS_REBUILD_CHANNEL, FAISSIndexSync
+from interlock.cache.faiss_sync import FAISSIndexSync
 
 
 def _make_mock_index():
@@ -204,6 +204,8 @@ class TestOnPubsubRebuild:
             await sync.stop()
 
         assert redis.created >= 2
-        first.unsubscribe.assert_awaited_once_with(FAISS_REBUILD_CHANNEL)
+        # The dropped connection is closed, not sent UNSUBSCRIBE: that command
+        # fails while Redis is down and used to end the listener for good.
+        first.unsubscribe.assert_not_awaited()
         first.aclose.assert_awaited_once()
         cache.reload_if_redis_generation_changed.assert_awaited_once_with()
