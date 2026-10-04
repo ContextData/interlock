@@ -6,6 +6,17 @@ earlier history, pull requests and reviews remain private. The release
 candidates below were built and published from there, and this file is their
 record. Entries are grouped by the release that first shipped them.
 
+## Unreleased
+
+### Documentation
+
+- The AWS (EKS) release gate is closed: `1.0.0-rc.16` was certified on EKS by
+  the cloud-certification workflow (35/35 governed-core tests, readiness held
+  after an upgrade re-install, full teardown), with two rehearsals of the EKS
+  guide from zero as supporting evidence. The cloud certification page now
+  lists the AWS prerequisites, including the OIDC subject format a
+  repository with immutable subjects issues.
+
 ## 1.0.0-rc.16 - 2026-10-04
 
 ### Added

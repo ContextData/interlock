@@ -399,7 +399,7 @@ def test_release_candidate_path_requires_one_commit_and_one_digest() -> None:
     assert "One source commit produces" in release
     assert "same image digest" in release
     assert "Disposable DigitalOcean (DOKS) deployment" in release
-    assert "AWS (EKS) deployment is a post-beta gate" in release
+    assert "AWS (EKS) deployment is required before GA" in release
     assert "No open P0 finding" in release
     assert "Do not mutate or silently replace a published candidate artifact" in release
 

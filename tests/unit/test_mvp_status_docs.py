@@ -186,11 +186,19 @@ def test_release_readiness_tracks_cloud_deployment_gate() -> None:
 
     assert "Automated DigitalOcean (DOKS) deployment and live certification" in body
     assert "EKS and DOKS" in body
-    assert re.search(
-        r"^\| Deferred \| AWS \(EKS\) deployment certification \| Deferred - not required for the public beta",
+    aws = re.search(
+        r"^\| (Deferred|\*\*Open\*\*|Done) \| AWS \(EKS\) deployment certification \|(.*)$",
         body,
         flags=re.MULTILINE,
     )
+    assert aws, "the AWS (EKS) gate row is missing"
+    # Closed only with the same evidence the DOKS gate requires.
+    if aws.group(1) == "Done":
+        evidence = aws.group(2)
+        assert re.search(r"\b20\d\d-\d\d-\d\d\b", evidence), "no certification date"
+        assert re.search(r"`v1\.0\.0-rc\.\d+`", evidence), "no certified version"
+        assert len(re.findall(r"sha256:[0-9a-f]{64}", evidence)) >= 2, "image and chart digests"
+        assert re.search(r"actions/runs/\d+", evidence), "no workflow run cited"
     assert "disposable infrastructure" in body
     assert "tear down" in body
 
