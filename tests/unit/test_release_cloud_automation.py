@@ -202,6 +202,8 @@ def test_cloud_workflow_is_manual_environment_gated_and_always_tears_down() -> N
     assert "if: always()" in body
     assert body.count(" destroy -auto-approve") == 2
     assert "secrets.AWS_DEPLOY_ROLE_ARN" in body
+    # One session must outlast create, certify and destroy.
+    assert "role-duration-seconds: 10800" in body
     assert "secrets.DIGITALOCEAN_TOKEN" in body
     assert "secrets.INTERLOCK_HELM_VALUES_B64" in body
     assert "password:" not in body.lower()

@@ -67,6 +67,11 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ inputs.aws_region }}
+          # The job's 180-minute budget: create, certify and destroy must all
+          # run on one session. With the one-hour default an expired session
+          # fails the destroy step and leaves the cluster billing. The role's
+          # maximum session duration must allow it.
+          role-duration-seconds: 10800
 
       - name: Install Terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
