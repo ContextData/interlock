@@ -18,6 +18,13 @@ record. Entries are grouped by the release that first shipped them.
   5.18.0, faiss-cpu 1.15.1 and spaCy 3.8.16. sentence-transformers stays on
   5.x.
 
+### Documentation
+
+- The MCP clients guide covers Codex CLI, the OpenAI Responses API, the
+  Gemini Interactions API and `google-genai` SDK, and the Anthropic API's MCP
+  connector, each with a working configuration, and records what was tested
+  against a live deployment on 2026-10-04 and how each client shows a refusal.
+
 ## 1.0.0-rc.14 - 2026-10-01
 
 ### Security
