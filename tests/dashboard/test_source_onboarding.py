@@ -238,6 +238,24 @@ def test_identity_created_partial_displays_one_time_key() -> None:
     assert "demo-agent" in html
 
 
+def test_identity_created_pg_hint_sends_the_key_as_the_password() -> None:
+    """The gateway authenticates PG-wire clients by password, never by user name.
+
+    The hint used to put the key in the user name position with no password, so
+    psql prompted instead of connecting, and it named localhost:5432, which is
+    not where the Compose quick start publishes the gateway.
+    """
+    html = _render(
+        "partials/identity_created.html",
+        name="demo-agent",
+        api_key="sample-key-not-real",
+        roles=[],
+    )
+    assert "PGPASSWORD='sample-key-not-real' psql" in html
+    assert "postgres://sample-key-not-real@" not in html
+    assert "localhost:5432" not in html
+
+
 def test_identity_created_copy_button_does_not_inline_api_key_js() -> None:
     source = (_TEMPLATES / "partials/identity_created.html").read_text()
     assert "onclick=" not in source

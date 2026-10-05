@@ -26,8 +26,8 @@
   </dl>
 
   <p>
-    Connect via PG wire:<br>
-    <code>psql 'postgres://{{ api_key }}@localhost:5432/&lt;source_id&gt;'</code>
+    Connect via PG wire (the key is the password; any user name works):<br>
+    <code>PGPASSWORD='{{ api_key }}' psql "host=&lt;gateway host&gt; port=&lt;gateway PostgreSQL port&gt; user=agent dbname=&lt;source_id&gt;"</code>
   </p>
   <p>
     Connect via HTTP / MCP:<br>

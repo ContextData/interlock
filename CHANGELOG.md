@@ -6,6 +6,16 @@ earlier history, pull requests and reviews remain private. The release
 candidates below were built and published from there, and this file is their
 record. Entries are grouped by the release that first shipped them.
 
+## Unreleased
+
+### Fixed
+
+- The console's "Identity created" page showed a PostgreSQL connection command
+  that put the API key in the user name with no password, so `psql` prompted
+  instead of connecting, and named `localhost:5432`, which is not where the
+  Compose quick start publishes the gateway. It now passes the key as the
+  password, with the gateway host and port left for you to fill in.
+
 ## 1.0.0-rc.17 - 2026-10-05
 
 ### Documentation
