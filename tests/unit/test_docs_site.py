@@ -116,9 +116,9 @@ def test_pages_cite_no_private_identifiers(path) -> None:  # type: ignore[no-unt
         assert not re.search(pattern, text), f"{pattern} in {path.relative_to(ROOT)}"
     for word in set(re.findall(r"[a-z0-9]+(?:-[a-z0-9]+)+", text.lower())):
         digest = hashlib.sha256(word.encode()).hexdigest()
-        assert digest not in _PRIVATE_RESOURCE_DIGESTS, (
-            f"a private resource name in {path.relative_to(ROOT)}"
-        )
+        assert (
+            digest not in _PRIVATE_RESOURCE_DIGESTS
+        ), f"a private resource name in {path.relative_to(ROOT)}"
 
 
 def test_docs_site_dependencies_are_exact_pins() -> None:
