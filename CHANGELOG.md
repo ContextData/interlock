@@ -6,7 +6,12 @@ earlier history, pull requests and reviews remain private. The release
 candidates below were built and published from there, and this file is their
 record. Entries are grouped by the release that first shipped them.
 
-## Unreleased
+## 1.0.0-rc.18 - 2026-10-06
+
+The first release built in the public repository. Its image and chart carry
+GitHub build provenance attestations as well as cosign signatures; earlier
+release candidates were built while the repository was private and are
+cosign-signed only.
 
 ### Security
 
@@ -25,6 +30,12 @@ record. Entries are grouped by the release that first shipped them.
   instead of connecting, and named `localhost:5432`, which is not where the
   Compose quick start publishes the gateway. It now passes the key as the
   password, with the gateway host and port left for you to fill in.
+
+### Documentation
+
+- The README describes who InterLock is for, the problem it solves, how a
+  request is decided, the tested agents, what InterLock stores, and its
+  current operating boundaries.
 
 ## 1.0.0-rc.17 - 2026-10-05
 
