@@ -10,6 +10,9 @@ record. Entries are grouped by the release that first shipped them.
 
 ### Security
 
+- `pymongo` 4.18.2 (CVE-2026-88029, CVE-2026-96747, CVE-2026-96748,
+  CVE-2026-96749) in the optional `connectors-tier2` extra; the published
+  image does not include it.
 - `fsspec` 2026.9.0 (GHSA-27vj-qcqg-25rc: un-sandboxed Jinja rendering of
   Kerchunk reference documents) and `multidict` 6.9.1 (GHSA-54p9-h82j-f925:
   unbounded memory growth through the items-view operators), both transitive
