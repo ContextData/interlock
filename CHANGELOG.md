@@ -8,6 +8,13 @@ record. Entries are grouped by the release that first shipped them.
 
 ## Unreleased
 
+### Security
+
+- `fsspec` 2026.9.0 (GHSA-27vj-qcqg-25rc: un-sandboxed Jinja rendering of
+  Kerchunk reference documents) and `multidict` 6.9.1 (GHSA-54p9-h82j-f925:
+  unbounded memory growth through the items-view operators), both transitive
+  dependencies of the published image.
+
 ### Fixed
 
 - The console's "Identity created" page showed a PostgreSQL connection command
