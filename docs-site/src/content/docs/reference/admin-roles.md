@@ -17,42 +17,44 @@ An admin account holds one or more roles. `owner` and `admin` may do everything;
 | `policy_admin` | Policy rules. |
 | `approval_reviewer` | Reviewing queued writes: approve and reject. |
 | `auditor` | Read-only access to the console, audit and usage. |
+| `viewer` | Read-only: every console page and read API except console users; cannot change anything, including dry-runs and connection tests. |
 
 ## Reading
 
 | Path prefix | Roles besides owner and admin |
 |---|---|
-| `/` | approval_reviewer, auditor, policy_admin, security_admin, source_admin |
-| `/openapi.json` | security_admin |
-| `/docs` | security_admin |
-| `/redoc` | security_admin |
-| `/dashboard/overview` | approval_reviewer, auditor, policy_admin, security_admin, source_admin |
-| `/dashboard/source-wizard` | security_admin, source_admin |
-| `/dashboard/data-sources` | security_admin, source_admin |
-| `/dashboard/connectors` | security_admin, source_admin |
-| `/dashboard/access-control` | security_admin |
-| `/dashboard/policies` | policy_admin, security_admin |
-| `/dashboard/policy-analytics` | policy_admin, security_admin |
-| `/dashboard/audit-costs` | auditor, security_admin |
-| `/dashboard/audit-costs/export.csv` | auditor, security_admin |
-| `/dashboard/write-safety` | approval_reviewer, security_admin |
-| `/dashboard/proxy` | auditor, security_admin |
-| `/dashboard/proxy-monitor` | auditor, security_admin |
-| `/dashboard/ingestion` | security_admin, source_admin |
-| `/dashboard/workers` | security_admin, source_admin |
-| `/dashboard/discovery` | auditor, security_admin, source_admin |
-| `/dashboard/catalog` | auditor, policy_admin, security_admin, source_admin |
-| `/dashboard/categories` | auditor, security_admin, source_admin |
-| `/dashboard/entities` | auditor, security_admin, source_admin |
-| `/dashboard/alerts` | security_admin |
-| `/api/data-sources` | security_admin, source_admin |
-| `/api/connectors` | security_admin, source_admin |
-| `/api/identities` | security_admin |
-| `/api/source-roles` | security_admin |
-| `/api/policies` | policy_admin, security_admin |
-| `/api/approvals` | approval_reviewer, security_admin |
-| `/api/ingestion` | security_admin, source_admin |
-| `/api/catalog` | auditor, policy_admin, security_admin, source_admin |
+| `/api/admin-auth/oidc/admins` | owner, admin only |
+| `/` | approval_reviewer, auditor, policy_admin, security_admin, source_admin, viewer |
+| `/openapi.json` | security_admin, viewer |
+| `/docs` | security_admin, viewer |
+| `/redoc` | security_admin, viewer |
+| `/dashboard/overview` | approval_reviewer, auditor, policy_admin, security_admin, source_admin, viewer |
+| `/dashboard/source-wizard` | security_admin, source_admin, viewer |
+| `/dashboard/data-sources` | security_admin, source_admin, viewer |
+| `/dashboard/connectors` | security_admin, source_admin, viewer |
+| `/dashboard/access-control` | security_admin, viewer |
+| `/dashboard/policies` | policy_admin, security_admin, viewer |
+| `/dashboard/policy-analytics` | policy_admin, security_admin, viewer |
+| `/dashboard/audit-costs` | auditor, security_admin, viewer |
+| `/dashboard/audit-costs/export.csv` | auditor, security_admin, viewer |
+| `/dashboard/write-safety` | approval_reviewer, security_admin, viewer |
+| `/dashboard/proxy` | auditor, security_admin, viewer |
+| `/dashboard/proxy-monitor` | auditor, security_admin, viewer |
+| `/dashboard/ingestion` | security_admin, source_admin, viewer |
+| `/dashboard/workers` | security_admin, source_admin, viewer |
+| `/dashboard/discovery` | auditor, security_admin, source_admin, viewer |
+| `/dashboard/catalog` | auditor, policy_admin, security_admin, source_admin, viewer |
+| `/dashboard/categories` | auditor, security_admin, source_admin, viewer |
+| `/dashboard/entities` | auditor, security_admin, source_admin, viewer |
+| `/dashboard/alerts` | security_admin, viewer |
+| `/api/data-sources` | security_admin, source_admin, viewer |
+| `/api/connectors` | security_admin, source_admin, viewer |
+| `/api/identities` | security_admin, viewer |
+| `/api/source-roles` | security_admin, viewer |
+| `/api/policies` | policy_admin, security_admin, viewer |
+| `/api/approvals` | approval_reviewer, security_admin, viewer |
+| `/api/ingestion` | security_admin, source_admin, viewer |
+| `/api/catalog` | auditor, policy_admin, security_admin, source_admin, viewer |
 
 ## Changing
 
@@ -60,6 +62,7 @@ Rules for `POST`, `PUT`, `PATCH` and `DELETE`. A change under `/dashboard` or `/
 
 | Path prefix | Roles besides owner and admin |
 |---|---|
+| `/api/admin-auth/oidc/admins` | owner, admin only |
 | `/dashboard/source-wizard` | security_admin, source_admin |
 | `/dashboard/data-sources` | security_admin, source_admin |
 | `/api/data-sources` | security_admin, source_admin |

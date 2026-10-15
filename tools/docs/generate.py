@@ -156,15 +156,9 @@ def configuration_page() -> str:
 
 # --- admin API and roles -----------------------------------------------------
 
-ROLE_MEANINGS = {
-    "owner": "Everything, including admin accounts. The first admin is an owner.",
-    "admin": "Everything, like owner.",
-    "security_admin": "Identities, keys and grants; any mutation without a narrower rule.",
-    "source_admin": "Data sources, connectors, source roles, catalog and ingestion.",
-    "policy_admin": "Policy rules.",
-    "approval_reviewer": "Reviewing queued writes: approve and reject.",
-    "auditor": "Read-only access to the console, audit and usage.",
-}
+
+def _rule_roles(roles: frozenset[str]) -> str:
+    return ", ".join(sorted(roles)) if roles else "owner, admin only"
 
 
 def _admin_app() -> Any:
@@ -246,6 +240,7 @@ def admin_openapi() -> str:
 
 def admin_roles_page() -> str:
     from interlock.admin.auth_middleware import _ADMIN_MUTATION_RULES, _ADMIN_READ_RULES
+    from interlock.admin.roles import ROLE_MEANINGS
 
     parts = [
         _md_frontmatter(
@@ -260,14 +255,14 @@ def admin_roles_page() -> str:
         "\n## Reading\n\n",
         _table(
             ["Path prefix", "Roles besides owner and admin"],
-            [[_code(p), ", ".join(sorted(r))] for p, r in _ADMIN_READ_RULES],
+            [[_code(p), _rule_roles(r)] for p, r in _ADMIN_READ_RULES],
         ),
         "\n## Changing\n\n",
         "Rules for `POST`, `PUT`, `PATCH` and `DELETE`. A change under `/dashboard` "
         "or `/api` with no rule below needs `security_admin`.\n\n",
         _table(
             ["Path prefix", "Roles besides owner and admin"],
-            [[_code(p), ", ".join(sorted(r))] for p, r in _ADMIN_MUTATION_RULES],
+            [[_code(p), _rule_roles(r)] for p, r in _ADMIN_MUTATION_RULES],
         ),
     ]
     return "".join(parts)

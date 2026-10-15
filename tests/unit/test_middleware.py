@@ -248,6 +248,22 @@ def _make_admin_rbac_app(roles: list[str]) -> tuple[FastAPI, str, str]:
     async def catalog_annotate():
         return {"ok": True}
 
+    @app.post("/api/admin-auth/oidc/admins/1")
+    async def map_console_sso_subject():
+        return {"ok": True}
+
+    @app.post("/api/admin-auth/oidc/agents/1")
+    async def map_agent_sso_subject():
+        return {"ok": True}
+
+    @app.post("/dashboard/policies/dry-run")
+    async def policy_dry_run():
+        return {"ok": True}
+
+    @app.get("/dashboard/overview")
+    async def overview_page():
+        return {"ok": True}
+
     cookie = sign_cookie({"sid": session_id}, secret)
     return app, cookie, csrf
 
@@ -392,3 +408,87 @@ class TestAdminAuthRbac:
         assert audit_args[2] == "POST /api/policies"
         assert audit_args[8] is False
         assert "does not allow" in audit_args[9]
+
+
+class TestViewerRole:
+    """A read-only console user can open every page an operator can, and change nothing."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/dashboard/overview",
+            "/dashboard/access-control/identities",
+            "/dashboard/policies",
+            "/dashboard/data-sources",
+            "/dashboard/write-safety",
+            "/dashboard/catalog",
+            "/dashboard/audit-costs/export.csv",
+            "/openapi.json",
+        ],
+    )
+    async def test_viewer_can_read_operator_pages(self, path: str) -> None:
+        resp = await _get_as_roles(path, ["viewer"])
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/api/data-sources",
+            "/dashboard/source-wizard/save",
+            "/dashboard/discovery/rescan",
+            "/dashboard/connectors/probe",
+            "/api/policies",
+            "/api/identities/1/rotate",
+            "/api/source-roles",
+            "/api/approvals/1/reject",
+            "/dashboard/policies/dry-run",
+            "/dashboard/data-sources/sales_pg/catalog/rescan",
+            "/api/admin-auth/oidc/admins/1",
+            "/api/admin-auth/oidc/agents/1",
+        ],
+    )
+    async def test_viewer_cannot_change_anything(self, path: str) -> None:
+        resp = await _post_as_roles(path, ["viewer"])
+        assert resp.status_code == 403
+        assert "role" in resp.json()["error"].lower()
+
+    def test_no_route_that_changes_state_admits_viewer(self) -> None:
+        from interlock.admin.app import create_app
+        from interlock.admin.auth_middleware import required_roles
+        from interlock.config import InterLockConfig
+
+        config = InterLockConfig()
+        config.admin.secret_key = "viewer-invariant-test-key-not-used-anywhere"
+        app = create_app(config=config)
+        checked = 0
+        for route in app.routes:
+            path = getattr(route, "path", "")
+            for method in getattr(route, "methods", None) or ():
+                roles = required_roles(path, method)
+                if path.startswith(("/dashboard", "/api")):
+                    assert roles is not None, f"{method} {path} has no role rule"
+                if method in {"POST", "PUT", "PATCH", "DELETE"} and roles is not None:
+                    assert "viewer" not in roles, f"viewer may {method} {path}"
+                    checked += 1
+        assert checked > 50, "the route walk found too few state-changing routes"
+
+
+class TestConsoleSsoMapping:
+    """Which SSO subject maps to which console account decides who an SSO login becomes."""
+
+    @pytest.mark.asyncio
+    async def test_security_admin_cannot_map_sso_subjects_to_console_accounts(self) -> None:
+        resp = await _post_as_roles("/api/admin-auth/oidc/admins/1", ["security_admin"])
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_security_admin_can_still_map_sso_subjects_to_agents(self) -> None:
+        resp = await _post_as_roles("/api/admin-auth/oidc/agents/1", ["security_admin"])
+        assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_owner_can_map_sso_subjects_to_console_accounts(self) -> None:
+        resp = await _post_as_roles("/api/admin-auth/oidc/admins/1", ["owner"])
+        assert resp.status_code == 200

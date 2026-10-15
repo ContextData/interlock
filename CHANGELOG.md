@@ -6,6 +6,22 @@ earlier history, pull requests and reviews remain private. The release
 candidates below were built and published from there, and this file is their
 record. Entries are grouped by the release that first shipped them.
 
+## Unreleased
+
+### Added
+
+- A read-only console role, `viewer`: it opens every console page and read
+  API and can change nothing, including dry-runs and connection tests.
+- When the console refuses an action, for example a read-only account clicking
+  Save, a notice now says why instead of the click doing nothing.
+
+### Security
+
+- Setting which SSO subject belongs to a console account now needs an `owner`
+  or `admin` account. Before, `security_admin` could map its own SSO identity
+  to an owner's account and sign in as that owner. Mapping SSO subjects to
+  agent identities still needs `security_admin`.
+
 ## 1.0.0-rc.18 - 2026-10-06
 
 The first release built in the public repository. Its image and chart carry
