@@ -16,7 +16,7 @@ from interlock.admin.roles import (
 
 
 def test_every_role_has_a_meaning_and_custom_roles_are_real_roles() -> None:
-    assert ADMIN_ROLES == set(ROLE_MEANINGS)
+    assert set(ROLE_MEANINGS) == ADMIN_ROLES
     assert set(CUSTOM_ROLES) <= ADMIN_ROLES
     assert not {"owner", "admin"} & set(CUSTOM_ROLES)
     for _label, roles in USER_TYPES.values():
