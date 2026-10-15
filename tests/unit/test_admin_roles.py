@@ -103,7 +103,10 @@ def test_render_derives_flags_from_the_session() -> None:
     ):
         captured.clear()
         dashboard._render(request_with(SimpleNamespace(roles=roles, username="u")), "x.html", {})
-        assert (captured["is_console_admin"], captured["is_read_only"]) == (console_admin, read_only)
+        assert (captured["is_console_admin"], captured["is_read_only"]) == (
+            console_admin,
+            read_only,
+        )
 
     captured.clear()
     dashboard._render(request_with(None), "x.html", {})
