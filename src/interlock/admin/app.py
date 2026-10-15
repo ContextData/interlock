@@ -448,11 +448,13 @@ def create_app(config: InterLockConfig | None = None) -> FastAPI:
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
     # --- routes ---
+    from interlock.admin.routes.admin_users import router as admin_users_router
     from interlock.admin.routes.approvals import router as approvals_router
     from interlock.admin.routes.auth import router as auth_router
     from interlock.admin.routes.catalog import router as catalog_router
     from interlock.admin.routes.connectors import router as connectors_router
     from interlock.admin.routes.dashboard import router as dashboard_router
+    from interlock.admin.routes.dashboard_admin_users import router as admin_users_pages_router
     from interlock.admin.routes.data_sources import router as ds_router
     from interlock.admin.routes.identities import router as id_router
     from interlock.admin.routes.ingestion import router as ingestion_router
@@ -468,10 +470,12 @@ def create_app(config: InterLockConfig | None = None) -> FastAPI:
     app.include_router(approvals_router)
     app.include_router(ingestion_router)
     app.include_router(oidc_mappings_router)
+    app.include_router(admin_users_router)
     # Before the dashboard router, whose /dashboard/data-sources/{source_id}/...
     # routes would otherwise be tried first.
     app.include_router(catalog_router)
     app.include_router(connectors_router)
+    app.include_router(admin_users_pages_router)
     app.include_router(dashboard_router)
 
     # --- middleware ---

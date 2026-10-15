@@ -15,6 +15,7 @@ PRIMARY_ADMIN_ROUTES = (
     ("source-roles", "/dashboard/data-sources/e2e_pg/roles", "Source Roles"),
     ("identities", "/dashboard/access-control/identities", "Identities"),
     ("policies", "/dashboard/policies", "Policies"),
+    ("admin-users", "/dashboard/admin-users", "Console Users"),
     ("ingestion", "/dashboard/ingestion", "Ingestion Jobs"),
     ("workers", "/dashboard/workers", "Worker Status"),
     ("discovery", "/dashboard/discovery", "Discovery"),
@@ -37,6 +38,7 @@ FORM_ADMIN_ROUTES = (
     ("data-source-new", "/dashboard/data-sources/new", "New"),
     ("identity-new", "/dashboard/access-control/identities/new", "New Identity"),
     ("policy-new", "/dashboard/policies/new", "New Policy"),
+    ("admin-user-new", "/dashboard/admin-users/new", "New Console User"),
     ("alert-new", "/dashboard/alerts/new", "New Alert"),
     ("source-role-new", "/dashboard/data-sources/e2e_pg/roles/new", "Role"),
 )

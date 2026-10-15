@@ -1,0 +1,16 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% if content_only %}<title>{% endif %}{% block title %}{% if mode == 'edit' %}Edit {{ form.username }}{% else %}New Console User{% endif %} - InterLock Dashboard{% endblock %}{% if content_only %}</title>{% endif %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <a href="/dashboard/admin-users" class="back-link"
+       hx-get="/dashboard/admin-users" hx-target="#main-content">← Console Users</a>
+    <h1>{% if mode == 'edit' %}Edit {{ form.username }}{% else %}New Console User{% endif %}</h1>
+  </div>
+</div>
+
+<div id="admin-user-form-slot">
+  {% include "partials/admin_user_form.html" %}
+</div>
+{% endblock %}

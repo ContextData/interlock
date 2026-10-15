@@ -10,6 +10,14 @@ record. Entries are grouped by the release that first shipped them.
 
 ### Added
 
+- Console users can be managed from the console and the API. Administrators
+  open **Console Users** to add a user as Administrator, Read-write, Read-only
+  or Custom (chosen roles), edit their type, reset their password, disable,
+  enable and delete them. A new user, and a reset, gets a generated temporary
+  password shown once that must be changed at first sign-in. An administrator
+  cannot lock themselves out, the last enabled administrator cannot be removed,
+  and only a disabled user can be deleted. Every change is audited. Before,
+  adding a console user after deployment needed SQL.
 - A read-only console role, `viewer`: it opens every console page and read
   API and can change nothing, including dry-runs and connection tests.
 - When the console refuses an action, for example a read-only account clicking

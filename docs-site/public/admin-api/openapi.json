@@ -1,6 +1,101 @@
 {
   "components": {
     "schemas": {
+      "AdminUserCreate": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "roles": {
+            "description": "Roles for a custom user",
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "sso_subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sso Subject"
+          },
+          "user_type": {
+            "description": "administrator, read_write, read_only or custom",
+            "title": "User Type",
+            "type": "string"
+          },
+          "username": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "user_type"
+        ],
+        "title": "AdminUserCreate",
+        "type": "object"
+      },
+      "AdminUserUpdate": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "roles": {
+            "description": "Roles for a custom user",
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "sso_subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sso Subject"
+          },
+          "user_type": {
+            "description": "administrator, read_write, read_only or custom",
+            "title": "User Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_type"
+        ],
+        "title": "AdminUserUpdate",
+        "type": "object"
+      },
       "ApprovalActionResponse": {
         "properties": {
           "executed": {
@@ -2163,6 +2258,318 @@
         ]
       }
     },
+    "/api/admin-users": {
+      "get": {
+        "description": "List console users.",
+        "operationId": "list_console_users_api_admin_users_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Console Users Api Admin Users Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Console Users",
+        "tags": [
+          "admin-users"
+        ]
+      },
+      "post": {
+        "description": "Create a console user; returns its temporary password once.",
+        "operationId": "create_console_user_api_admin_users_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUserCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Console User",
+        "tags": [
+          "admin-users"
+        ]
+      }
+    },
+    "/api/admin-users/{user_id}": {
+      "delete": {
+        "description": "Delete a disabled console user.",
+        "operationId": "delete_console_user_api_admin_users__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Console User",
+        "tags": [
+          "admin-users"
+        ]
+      },
+      "get": {
+        "description": "Show one console user.",
+        "operationId": "get_console_user_api_admin_users__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Console User",
+        "tags": [
+          "admin-users"
+        ]
+      },
+      "put": {
+        "description": "Change a console user's type or roles, email and SSO subject.",
+        "operationId": "update_console_user_api_admin_users__user_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUserUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Console User",
+        "tags": [
+          "admin-users"
+        ]
+      }
+    },
+    "/api/admin-users/{user_id}/disable": {
+      "post": {
+        "description": "Disable a console user and end their sessions.",
+        "operationId": "disable_console_user_api_admin_users__user_id__disable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Disable Console User",
+        "tags": [
+          "admin-users"
+        ]
+      }
+    },
+    "/api/admin-users/{user_id}/enable": {
+      "post": {
+        "description": "Enable a disabled console user.",
+        "operationId": "enable_console_user_api_admin_users__user_id__enable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Enable Console User",
+        "tags": [
+          "admin-users"
+        ]
+      }
+    },
+    "/api/admin-users/{user_id}/reset-password": {
+      "post": {
+        "description": "Give a console user a new temporary password, shown once.",
+        "operationId": "reset_console_user_password_api_admin_users__user_id__reset_password_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Console User Password",
+        "tags": [
+          "admin-users"
+        ]
+      }
+    },
     "/api/approvals": {
       "get": {
         "operationId": "list_approvals_api_approvals_get",
@@ -4222,6 +4629,373 @@
           }
         },
         "summary": "Rotate Identity Key",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/admin-users": {
+      "get": {
+        "description": "Console users list.",
+        "operationId": "admin_users_page_dashboard_admin_users_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Users Page",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/admin-users/create": {
+      "post": {
+        "description": "Create a console user and show its temporary password once.",
+        "operationId": "create_admin_user_form_dashboard_admin_users_create_post",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Admin User Form",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/admin-users/new": {
+      "get": {
+        "description": "New console user form.",
+        "operationId": "new_admin_user_form_dashboard_admin_users_new_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "New Admin User Form",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/admin-users/{user_id}": {
+      "get": {
+        "description": "Console user detail.",
+        "operationId": "admin_user_detail_dashboard_admin_users__user_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin User Detail",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/admin-users/{user_id}/delete": {
+      "post": {
+        "description": "Delete a disabled console user.",
+        "operationId": "delete_admin_user_dashboard_admin_users__user_id__delete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Admin User",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/admin-users/{user_id}/disable": {
+      "post": {
+        "description": "Disable a console user.",
+        "operationId": "disable_admin_user_dashboard_admin_users__user_id__disable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Disable Admin User",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/admin-users/{user_id}/edit": {
+      "get": {
+        "description": "Edit console user form.",
+        "operationId": "edit_admin_user_form_dashboard_admin_users__user_id__edit_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Admin User Form",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/admin-users/{user_id}/enable": {
+      "post": {
+        "description": "Enable a console user.",
+        "operationId": "enable_admin_user_dashboard_admin_users__user_id__enable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Enable Admin User",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/admin-users/{user_id}/reset-password": {
+      "post": {
+        "description": "Give a console user a new temporary password.",
+        "operationId": "reset_admin_user_password_dashboard_admin_users__user_id__reset_password_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Admin User Password",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/admin-users/{user_id}/update": {
+      "post": {
+        "description": "Save a console user's type, roles, email and SSO subject.",
+        "operationId": "update_admin_user_form_dashboard_admin_users__user_id__update_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Admin User Form",
         "tags": [
           "dashboard"
         ]

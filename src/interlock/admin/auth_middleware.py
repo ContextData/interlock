@@ -77,8 +77,10 @@ _ADMIN_MUTATION_FALLBACK_ROLES = frozenset({"security_admin"})
 _ADMIN_ONLY: frozenset[str] = frozenset()
 
 _ADMIN_MUTATION_RULES: tuple[tuple[str, frozenset[str]], ...] = (
-    # SSO subjects decide which console account an SSO login becomes, so
-    # mapping them for console accounts is for administrators only.
+    # Console users, and the SSO subjects that decide which console account an
+    # SSO login becomes, are for administrators only.
+    ("/dashboard/admin-users", _ADMIN_ONLY),
+    ("/api/admin-users", _ADMIN_ONLY),
     ("/api/admin-auth/oidc/admins", _ADMIN_ONLY),
     ("/dashboard/source-wizard", frozenset({"source_admin", "security_admin"})),
     ("/dashboard/data-sources", frozenset({"source_admin", "security_admin"})),
@@ -112,6 +114,8 @@ def _readable_by_viewer(
 
 _ADMIN_READ_RULES: tuple[tuple[str, frozenset[str]], ...] = _readable_by_viewer(
     (
+        ("/dashboard/admin-users", _ADMIN_ONLY),
+        ("/api/admin-users", _ADMIN_ONLY),
         ("/api/admin-auth/oidc/admins", _ADMIN_ONLY),
         ("/", _ADMIN_OPERATOR_READ_ROLES),
         ("/openapi.json", frozenset({"security_admin"})),

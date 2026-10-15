@@ -16,6 +16,14 @@ The console and its JSON API share one server. Every route except the public one
 | PUT | `/api/admin-auth/oidc/admins/{admin_id}` | owner, admin |   |
 | DELETE | `/api/admin-auth/oidc/agents/{identity_id}` | owner, admin, security_admin |   |
 | PUT | `/api/admin-auth/oidc/agents/{identity_id}` | owner, admin, security_admin |   |
+| GET | `/api/admin-users` | owner, admin | List console users. |
+| POST | `/api/admin-users` | owner, admin | Create a console user; returns its temporary password once. |
+| DELETE | `/api/admin-users/{user_id}` | owner, admin | Delete a disabled console user. |
+| GET | `/api/admin-users/{user_id}` | owner, admin | Show one console user. |
+| PUT | `/api/admin-users/{user_id}` | owner, admin | Change a console user's type or roles, email and SSO subject. |
+| POST | `/api/admin-users/{user_id}/disable` | owner, admin | Disable a console user and end their sessions. |
+| POST | `/api/admin-users/{user_id}/enable` | owner, admin | Enable a disabled console user. |
+| POST | `/api/admin-users/{user_id}/reset-password` | owner, admin | Give a console user a new temporary password, shown once. |
 | GET | `/api/approvals` | owner, admin, approval_reviewer, security_admin, viewer |   |
 | GET | `/api/approvals/{approval_id}` | owner, admin, approval_reviewer, security_admin, viewer |   |
 | POST | `/api/approvals/{approval_id}/approve` | owner, admin, approval_reviewer, security_admin |   |
@@ -80,6 +88,16 @@ The console and its JSON API share one server. Every route except the public one
 | POST | `/dashboard/access-control/identities/{ident_id}/grants` | owner, admin, security_admin | Give an existing identity a role on a source, without re-keying it. |
 | POST | `/dashboard/access-control/identities/{ident_id}/grants/{grant_id}/revoke` | owner, admin, security_admin | Withdraw one grant. The key is untouched; the next request sees it. |
 | POST | `/dashboard/access-control/identities/{ident_id}/rotate-key` | owner, admin, security_admin |   |
+| GET | `/dashboard/admin-users` | owner, admin | Console users list. |
+| POST | `/dashboard/admin-users/create` | owner, admin | Create a console user and show its temporary password once. |
+| GET | `/dashboard/admin-users/new` | owner, admin | New console user form. |
+| GET | `/dashboard/admin-users/{user_id}` | owner, admin | Console user detail. |
+| POST | `/dashboard/admin-users/{user_id}/delete` | owner, admin | Delete a disabled console user. |
+| POST | `/dashboard/admin-users/{user_id}/disable` | owner, admin | Disable a console user. |
+| GET | `/dashboard/admin-users/{user_id}/edit` | owner, admin | Edit console user form. |
+| POST | `/dashboard/admin-users/{user_id}/enable` | owner, admin | Enable a console user. |
+| POST | `/dashboard/admin-users/{user_id}/reset-password` | owner, admin | Give a console user a new temporary password. |
+| POST | `/dashboard/admin-users/{user_id}/update` | owner, admin | Save a console user's type, roles, email and SSO subject. |
 | GET | `/dashboard/alerts` | owner, admin, security_admin, viewer |   |
 | POST | `/dashboard/alerts/create` | owner, admin, security_admin |   |
 | POST | `/dashboard/alerts/dry-run` | owner, admin, security_admin |   |
