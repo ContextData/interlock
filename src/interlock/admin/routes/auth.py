@@ -31,6 +31,7 @@ from interlock.admin.auth import (
     verify_cookie,
     verify_password,
 )
+from interlock.admin.roles import ADMIN_ROLES
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -42,17 +43,7 @@ _LOGIN_THROTTLE_WINDOW_SECONDS = 300
 _LOGIN_THROTTLE_PREFIX = "admin:login_fail"
 _OIDC_FLOW_PREFIX = "admin:oidc:flow:"
 _OIDC_FLOW_COOKIE = "interlock_oidc_flow"
-_ADMIN_ROLE_ALLOWLIST = frozenset(
-    {
-        "owner",
-        "admin",
-        "security_admin",
-        "source_admin",
-        "policy_admin",
-        "approval_reviewer",
-        "auditor",
-    }
-)
+_ADMIN_ROLE_ALLOWLIST = ADMIN_ROLES
 
 _OIDC_GETDEL_LUA = """
 local value = redis.call('GET', KEYS[1])

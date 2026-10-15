@@ -99,6 +99,7 @@
                 <div class="sidebar-account" title="{{ admin_username }}">
                     <span class="sidebar-account-avatar" aria-hidden="true">{{ admin_username[0]|upper }}</span>
                     <span class="sidebar-account-name">{{ admin_username }}</span>
+                    {% if is_read_only %}<span class="badge badge-disabled sidebar-account-badge">Read-only</span>{% endif %}
                 </div>
                 <a href="/auth/change-password"
                    class="sidebar-account-link{% if active_page == 'change-password' %} active{% endif %}"
@@ -117,6 +118,7 @@
         </main>
     </div>
     <div id="admin-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    <div id="admin-notice" class="admin-notice" role="status" aria-live="polite" hidden></div>
     <script src="/static/js/dashboard.js"></script>
 </body>
 </html>

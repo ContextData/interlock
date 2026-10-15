@@ -49,6 +49,7 @@ from interlock.admin.auth import (
     resolve_session,
     verify_cookie,
 )
+from interlock.admin.roles import CONSOLE_ADMIN_ROLES
 
 logger = logging.getLogger(__name__)
 
@@ -63,13 +64,22 @@ _BYPASS_PREFIXES = (
     "/static/",
 )
 
-_ADMIN_OWNER_ROLES = frozenset({"owner", "admin"})
-_ADMIN_OPERATOR_READ_ROLES = frozenset(
-    {"auditor", "source_admin", "policy_admin", "approval_reviewer", "security_admin"}
+_ADMIN_OWNER_ROLES = CONSOLE_ADMIN_ROLES
+# Read-only console users. Added to every read rule below that names a role,
+# and never to a mutation rule or the mutation fallback.
+_ADMIN_VIEWER_ROLES = frozenset({"viewer"})
+_ADMIN_OPERATOR_READ_ROLES = (
+    frozenset({"auditor", "source_admin", "policy_admin", "approval_reviewer", "security_admin"})
+    | _ADMIN_VIEWER_ROLES
 )
 _ADMIN_MUTATION_FALLBACK_ROLES = frozenset({"security_admin"})
+# An empty rule admits only owner and admin.
+_ADMIN_ONLY: frozenset[str] = frozenset()
 
 _ADMIN_MUTATION_RULES: tuple[tuple[str, frozenset[str]], ...] = (
+    # SSO subjects decide which console account an SSO login becomes, so
+    # mapping them for console accounts is for administrators only.
+    ("/api/admin-auth/oidc/admins", _ADMIN_ONLY),
     ("/dashboard/source-wizard", frozenset({"source_admin", "security_admin"})),
     ("/dashboard/data-sources", frozenset({"source_admin", "security_admin"})),
     ("/api/data-sources", frozenset({"source_admin", "security_admin"})),
@@ -89,44 +99,58 @@ _ADMIN_MUTATION_RULES: tuple[tuple[str, frozenset[str]], ...] = (
     ("/dashboard/ingestion", frozenset({"source_admin", "security_admin"})),
     ("/api/ingestion", frozenset({"source_admin", "security_admin"})),
 )
-_ADMIN_READ_RULES: tuple[tuple[str, frozenset[str]], ...] = (
-    ("/", _ADMIN_OPERATOR_READ_ROLES),
-    ("/openapi.json", frozenset({"security_admin"})),
-    ("/docs", frozenset({"security_admin"})),
-    ("/redoc", frozenset({"security_admin"})),
-    ("/dashboard/overview", _ADMIN_OPERATOR_READ_ROLES),
-    ("/dashboard/source-wizard", frozenset({"source_admin", "security_admin"})),
-    ("/dashboard/data-sources", frozenset({"source_admin", "security_admin"})),
-    ("/dashboard/connectors", frozenset({"source_admin", "security_admin"})),
-    ("/dashboard/access-control", frozenset({"security_admin"})),
-    ("/dashboard/policies", frozenset({"policy_admin", "security_admin"})),
-    ("/dashboard/policy-analytics", frozenset({"policy_admin", "security_admin"})),
-    ("/dashboard/audit-costs", frozenset({"auditor", "security_admin"})),
-    ("/dashboard/audit-costs/export.csv", frozenset({"auditor", "security_admin"})),
-    ("/dashboard/write-safety", frozenset({"approval_reviewer", "security_admin"})),
-    ("/dashboard/proxy", frozenset({"auditor", "security_admin"})),
-    ("/dashboard/proxy-monitor", frozenset({"auditor", "security_admin"})),
-    ("/dashboard/ingestion", frozenset({"source_admin", "security_admin"})),
-    ("/dashboard/workers", frozenset({"source_admin", "security_admin"})),
-    ("/dashboard/discovery", frozenset({"source_admin", "security_admin", "auditor"})),
+
+
+def _readable_by_viewer(
+    rules: tuple[tuple[str, frozenset[str]], ...],
+) -> tuple[tuple[str, frozenset[str]], ...]:
+    """Let read-only console users read everything an operator role may read."""
+    return tuple(
+        (prefix, roles | _ADMIN_VIEWER_ROLES if roles else roles) for prefix, roles in rules
+    )
+
+
+_ADMIN_READ_RULES: tuple[tuple[str, frozenset[str]], ...] = _readable_by_viewer(
     (
-        "/dashboard/catalog",
-        frozenset({"source_admin", "security_admin", "auditor", "policy_admin"}),
-    ),
-    ("/dashboard/categories", frozenset({"source_admin", "security_admin", "auditor"})),
-    ("/dashboard/entities", frozenset({"source_admin", "security_admin", "auditor"})),
-    ("/dashboard/alerts", frozenset({"security_admin"})),
-    ("/api/data-sources", frozenset({"source_admin", "security_admin"})),
-    ("/api/connectors", frozenset({"source_admin", "security_admin"})),
-    ("/api/identities", frozenset({"security_admin"})),
-    ("/api/source-roles", frozenset({"security_admin"})),
-    ("/api/policies", frozenset({"policy_admin", "security_admin"})),
-    ("/api/approvals", frozenset({"approval_reviewer", "security_admin"})),
-    ("/api/ingestion", frozenset({"source_admin", "security_admin"})),
-    (
-        "/api/catalog",
-        frozenset({"source_admin", "security_admin", "auditor", "policy_admin"}),
-    ),
+        ("/api/admin-auth/oidc/admins", _ADMIN_ONLY),
+        ("/", _ADMIN_OPERATOR_READ_ROLES),
+        ("/openapi.json", frozenset({"security_admin"})),
+        ("/docs", frozenset({"security_admin"})),
+        ("/redoc", frozenset({"security_admin"})),
+        ("/dashboard/overview", _ADMIN_OPERATOR_READ_ROLES),
+        ("/dashboard/source-wizard", frozenset({"source_admin", "security_admin"})),
+        ("/dashboard/data-sources", frozenset({"source_admin", "security_admin"})),
+        ("/dashboard/connectors", frozenset({"source_admin", "security_admin"})),
+        ("/dashboard/access-control", frozenset({"security_admin"})),
+        ("/dashboard/policies", frozenset({"policy_admin", "security_admin"})),
+        ("/dashboard/policy-analytics", frozenset({"policy_admin", "security_admin"})),
+        ("/dashboard/audit-costs", frozenset({"auditor", "security_admin"})),
+        ("/dashboard/audit-costs/export.csv", frozenset({"auditor", "security_admin"})),
+        ("/dashboard/write-safety", frozenset({"approval_reviewer", "security_admin"})),
+        ("/dashboard/proxy", frozenset({"auditor", "security_admin"})),
+        ("/dashboard/proxy-monitor", frozenset({"auditor", "security_admin"})),
+        ("/dashboard/ingestion", frozenset({"source_admin", "security_admin"})),
+        ("/dashboard/workers", frozenset({"source_admin", "security_admin"})),
+        ("/dashboard/discovery", frozenset({"source_admin", "security_admin", "auditor"})),
+        (
+            "/dashboard/catalog",
+            frozenset({"source_admin", "security_admin", "auditor", "policy_admin"}),
+        ),
+        ("/dashboard/categories", frozenset({"source_admin", "security_admin", "auditor"})),
+        ("/dashboard/entities", frozenset({"source_admin", "security_admin", "auditor"})),
+        ("/dashboard/alerts", frozenset({"security_admin"})),
+        ("/api/data-sources", frozenset({"source_admin", "security_admin"})),
+        ("/api/connectors", frozenset({"source_admin", "security_admin"})),
+        ("/api/identities", frozenset({"security_admin"})),
+        ("/api/source-roles", frozenset({"security_admin"})),
+        ("/api/policies", frozenset({"policy_admin", "security_admin"})),
+        ("/api/approvals", frozenset({"approval_reviewer", "security_admin"})),
+        ("/api/ingestion", frozenset({"source_admin", "security_admin"})),
+        (
+            "/api/catalog",
+            frozenset({"source_admin", "security_admin", "auditor", "policy_admin"}),
+        ),
+    )
 )
 _ADMIN_ROUTE_PREFIXES = (
     "/dashboard",

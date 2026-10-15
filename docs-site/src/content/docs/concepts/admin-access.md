@@ -18,9 +18,16 @@ from agent identities. Every admin action is recorded in the admin audit log.
 | `policy_admin` | policy rules |
 | `approval_reviewer` | approve and reject queued writes |
 | `auditor` | read the console, audit and usage |
+| `viewer` | read every console page and read API, and change nothing |
 
 An account can hold several roles. Which routes each role opens is listed in
 [Admin roles](/reference/admin-roles/).
+
+A `viewer` cannot run anything that uses stored credentials or belongs to an
+editing flow, even when it changes nothing: Test Connection, policy and
+source-role dry-runs, and import previews need a role that may make the change.
+When the console refuses an action, it says so in a notice at the bottom of the
+page.
 
 ## The first admin
 
@@ -46,5 +53,7 @@ sessions on their next request.
 ## Single sign-on
 
 With OIDC enabled, admins sign in through your identity provider and receive
-roles from a map of group names to roles. Local password sign-in can stay
+roles from a map of group names to roles. Only `owner` and `admin` accounts may
+set which SSO subject belongs to a console account, because that subject
+decides which account an SSO sign-in becomes. Local password sign-in can stay
 available to `owner` and `admin` accounts as a break-glass path.

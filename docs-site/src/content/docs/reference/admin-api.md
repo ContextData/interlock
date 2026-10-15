@@ -12,47 +12,47 @@ The console and its JSON API share one server. Every route except the public one
 
 | Method | Path | Roles | Summary |
 |---|---|---|---|
-| DELETE | `/api/admin-auth/oidc/admins/{admin_id}` | owner, admin, security_admin |   |
-| PUT | `/api/admin-auth/oidc/admins/{admin_id}` | owner, admin, security_admin |   |
+| DELETE | `/api/admin-auth/oidc/admins/{admin_id}` | owner, admin |   |
+| PUT | `/api/admin-auth/oidc/admins/{admin_id}` | owner, admin |   |
 | DELETE | `/api/admin-auth/oidc/agents/{identity_id}` | owner, admin, security_admin |   |
 | PUT | `/api/admin-auth/oidc/agents/{identity_id}` | owner, admin, security_admin |   |
-| GET | `/api/approvals` | owner, admin, approval_reviewer, security_admin |   |
-| GET | `/api/approvals/{approval_id}` | owner, admin, approval_reviewer, security_admin |   |
+| GET | `/api/approvals` | owner, admin, approval_reviewer, security_admin, viewer |   |
+| GET | `/api/approvals/{approval_id}` | owner, admin, approval_reviewer, security_admin, viewer |   |
 | POST | `/api/approvals/{approval_id}/approve` | owner, admin, approval_reviewer, security_admin |   |
 | POST | `/api/approvals/{approval_id}/reject` | owner, admin, approval_reviewer, security_admin |   |
-| GET | `/api/catalog/naming-report` | owner, admin, auditor, policy_admin, security_admin, source_admin | Role statements and deny policies whose meaning catalog naming changes. |
-| GET | `/api/connectors` | owner, admin, security_admin, source_admin | Every connector a source can be registered on, with `active` and usage. |
-| GET | `/api/data-sources` | owner, admin, security_admin, source_admin |   |
+| GET | `/api/catalog/naming-report` | owner, admin, auditor, policy_admin, security_admin, source_admin, viewer | Role statements and deny policies whose meaning catalog naming changes. |
+| GET | `/api/connectors` | owner, admin, security_admin, source_admin, viewer | Every connector a source can be registered on, with `active` and usage. |
+| GET | `/api/data-sources` | owner, admin, security_admin, source_admin, viewer |   |
 | POST | `/api/data-sources` | owner, admin, security_admin, source_admin |   |
 | POST | `/api/data-sources/test` | owner, admin, security_admin, source_admin | Probe an upstream's connectivity without persisting it. |
 | DELETE | `/api/data-sources/{source_id}` | owner, admin, security_admin, source_admin |   |
-| GET | `/api/data-sources/{source_id}` | owner, admin, security_admin, source_admin |   |
+| GET | `/api/data-sources/{source_id}` | owner, admin, security_admin, source_admin, viewer |   |
 | PUT | `/api/data-sources/{source_id}` | owner, admin, security_admin, source_admin |   |
-| GET | `/api/data-sources/{source_id}/catalog/scans` | owner, admin, security_admin, source_admin | The source's recent scans, newest first. |
+| GET | `/api/data-sources/{source_id}/catalog/scans` | owner, admin, security_admin, source_admin, viewer | The source's recent scans, newest first. |
 | POST | `/api/data-sources/{source_id}/catalog/scans` | owner, admin, security_admin, source_admin | Queue a scan of the source's structure now, rather than waiting for the |
 | POST | `/api/data-sources/{source_id}/test` | owner, admin, security_admin, source_admin | Probe a previously registered source. |
-| GET | `/api/identities` | owner, admin, security_admin |   |
+| GET | `/api/identities` | owner, admin, security_admin, viewer |   |
 | POST | `/api/identities` | owner, admin, security_admin |   |
 | DELETE | `/api/identities/{identity_id}` | owner, admin, security_admin |   |
-| GET | `/api/identities/{identity_id}` | owner, admin, security_admin |   |
+| GET | `/api/identities/{identity_id}` | owner, admin, security_admin, viewer |   |
 | PUT | `/api/identities/{identity_id}` | owner, admin, security_admin |   |
-| GET | `/api/identities/{identity_id}/source-role-grants` | owner, admin, security_admin | What this agent can reach. Revoked grants are history, not access, so |
+| GET | `/api/identities/{identity_id}/source-role-grants` | owner, admin, security_admin, viewer | What this agent can reach. Revoked grants are history, not access, so |
 | POST | `/api/identities/{identity_id}/source-role-grants` | owner, admin, security_admin | Grant a role on a source, without touching the identity's API key. |
 | DELETE | `/api/identities/{identity_id}/source-role-grants/{grant_id}` | owner, admin, security_admin | Withdraw a grant. The row is kept, disabled. |
-| GET | `/api/ingestion/jobs` | owner, admin, security_admin, source_admin | List ingestion jobs with optional status filter. |
+| GET | `/api/ingestion/jobs` | owner, admin, security_admin, source_admin, viewer | List ingestion jobs with optional status filter. |
 | POST | `/api/ingestion/jobs` | owner, admin, security_admin, source_admin | Create a new ingestion job. |
-| GET | `/api/ingestion/jobs/{job_id}` | owner, admin, security_admin, source_admin | Get details for a single ingestion job. |
+| GET | `/api/ingestion/jobs/{job_id}` | owner, admin, security_admin, source_admin, viewer | Get details for a single ingestion job. |
 | POST | `/api/ingestion/jobs/{job_id}/cancel` | owner, admin, security_admin, source_admin | Cancel a queued ingestion job. |
 | PUT | `/api/ingestion/jobs/{job_id}/priority` | owner, admin, security_admin, source_admin | Update priority score for an ingestion job. |
 | POST | `/api/ingestion/jobs/{job_id}/retry` | owner, admin, security_admin, source_admin | Retry a failed ingestion job by resetting it to the queued state. |
 | POST | `/api/ingestion/sources/{source_id}/sync` | owner, admin, security_admin, source_admin | List connector assets and enqueue ingestion jobs. |
-| GET | `/api/ingestion/workers` | owner, admin, security_admin, source_admin | List worker status from Redis heartbeat keys. |
+| GET | `/api/ingestion/workers` | owner, admin, security_admin, source_admin, viewer | List worker status from Redis heartbeat keys. |
 | POST | `/api/ingestion/workers/{worker_id}/health` | owner, admin, security_admin, source_admin | Probe worker health. If heartbeat is stale, fail its claimed jobs. |
-| GET | `/api/policies` | owner, admin, policy_admin, security_admin |   |
+| GET | `/api/policies` | owner, admin, policy_admin, security_admin, viewer |   |
 | POST | `/api/policies` | owner, admin, policy_admin, security_admin |   |
 | POST | `/api/policies/validate` | owner, admin, policy_admin, security_admin | Catalog warnings for a policy rule, without saving it. |
 | DELETE | `/api/policies/{policy_id}` | owner, admin, policy_admin, security_admin |   |
-| GET | `/api/policies/{policy_id}` | owner, admin, policy_admin, security_admin |   |
+| GET | `/api/policies/{policy_id}` | owner, admin, policy_admin, security_admin, viewer |   |
 | PUT | `/api/policies/{policy_id}` | owner, admin, policy_admin, security_admin |   |
 
 ## `/auth`
@@ -72,87 +72,87 @@ The console and its JSON API share one server. Every route except the public one
 
 | Method | Path | Roles | Summary |
 |---|---|---|---|
-| GET | `/dashboard/access-control` | owner, admin, security_admin | Backward-compatible URL for the split Access Control section. |
-| GET | `/dashboard/access-control/identities` | owner, admin, security_admin | Identity directory. |
+| GET | `/dashboard/access-control` | owner, admin, security_admin, viewer | Backward-compatible URL for the split Access Control section. |
+| GET | `/dashboard/access-control/identities` | owner, admin, security_admin, viewer | Identity directory. |
 | POST | `/dashboard/access-control/identities/create` | owner, admin, security_admin |   |
-| GET | `/dashboard/access-control/identities/new` | owner, admin, security_admin |   |
-| GET | `/dashboard/access-control/identities/{ident_id}` | owner, admin, security_admin |   |
+| GET | `/dashboard/access-control/identities/new` | owner, admin, security_admin, viewer |   |
+| GET | `/dashboard/access-control/identities/{ident_id}` | owner, admin, security_admin, viewer |   |
 | POST | `/dashboard/access-control/identities/{ident_id}/grants` | owner, admin, security_admin | Give an existing identity a role on a source, without re-keying it. |
 | POST | `/dashboard/access-control/identities/{ident_id}/grants/{grant_id}/revoke` | owner, admin, security_admin | Withdraw one grant. The key is untouched; the next request sees it. |
 | POST | `/dashboard/access-control/identities/{ident_id}/rotate-key` | owner, admin, security_admin |   |
-| GET | `/dashboard/alerts` | owner, admin, security_admin |   |
+| GET | `/dashboard/alerts` | owner, admin, security_admin, viewer |   |
 | POST | `/dashboard/alerts/create` | owner, admin, security_admin |   |
 | POST | `/dashboard/alerts/dry-run` | owner, admin, security_admin |   |
 | POST | `/dashboard/alerts/history/{event_id}/ack` | owner, admin, security_admin |   |
-| GET | `/dashboard/alerts/new` | owner, admin, security_admin |   |
+| GET | `/dashboard/alerts/new` | owner, admin, security_admin, viewer |   |
 | POST | `/dashboard/alerts/{rule_id}/evaluate` | owner, admin, security_admin | Manually evaluate a rule and record the result if it fires. |
 | POST | `/dashboard/alerts/{rule_id}/toggle` | owner, admin, security_admin |   |
-| GET | `/dashboard/audit-costs` | owner, admin, auditor, security_admin | Audit log and usage breakdown page. |
-| GET | `/dashboard/audit-costs/events/{audit_id:int}` | owner, admin, auditor, security_admin |   |
-| GET | `/dashboard/audit-costs/export.csv` | owner, admin, auditor, security_admin | Stream the filtered audit log as CSV. |
-| GET | `/dashboard/audit-costs/log` | owner, admin, auditor, security_admin | HTMX partial for filtered audit log. |
-| GET | `/dashboard/audit-costs/usage` | owner, admin, auditor, security_admin | The usage section alone, for the range selector. |
-| GET | `/dashboard/catalog` | owner, admin, auditor, policy_admin, security_admin, source_admin |   |
-| GET | `/dashboard/catalog/analytics` | owner, admin, auditor, policy_admin, security_admin, source_admin | Most-read tables, PII columns read, refusals and unused tables for one source. |
-| GET | `/dashboard/catalog/children` | owner, admin, auditor, policy_admin, security_admin, source_admin |   |
-| GET | `/dashboard/catalog/picker` | owner, admin, auditor, policy_admin, security_admin, source_admin | The picker for a policy's source, once one is chosen and catalogued. |
-| GET | `/dashboard/categories` | owner, admin, auditor, security_admin, source_admin | Category browser - taxonomy roots, including orphaned seeded paths. |
-| GET | `/dashboard/categories/{path:path}/children` | owner, admin, auditor, security_admin, source_admin | HTMX partial: children of a category node (ltree direct children). |
-| GET | `/dashboard/connectors` | owner, admin, security_admin, source_admin | Which connectors new sources can be registered on, and how many use each. |
+| GET | `/dashboard/audit-costs` | owner, admin, auditor, security_admin, viewer | Audit log and usage breakdown page. |
+| GET | `/dashboard/audit-costs/events/{audit_id:int}` | owner, admin, auditor, security_admin, viewer |   |
+| GET | `/dashboard/audit-costs/export.csv` | owner, admin, auditor, security_admin, viewer | Stream the filtered audit log as CSV. |
+| GET | `/dashboard/audit-costs/log` | owner, admin, auditor, security_admin, viewer | HTMX partial for filtered audit log. |
+| GET | `/dashboard/audit-costs/usage` | owner, admin, auditor, security_admin, viewer | The usage section alone, for the range selector. |
+| GET | `/dashboard/catalog` | owner, admin, auditor, policy_admin, security_admin, source_admin, viewer |   |
+| GET | `/dashboard/catalog/analytics` | owner, admin, auditor, policy_admin, security_admin, source_admin, viewer | Most-read tables, PII columns read, refusals and unused tables for one source. |
+| GET | `/dashboard/catalog/children` | owner, admin, auditor, policy_admin, security_admin, source_admin, viewer |   |
+| GET | `/dashboard/catalog/picker` | owner, admin, auditor, policy_admin, security_admin, source_admin, viewer | The picker for a policy's source, once one is chosen and catalogued. |
+| GET | `/dashboard/categories` | owner, admin, auditor, security_admin, source_admin, viewer | Category browser - taxonomy roots, including orphaned seeded paths. |
+| GET | `/dashboard/categories/{path:path}/children` | owner, admin, auditor, security_admin, source_admin, viewer | HTMX partial: children of a category node (ltree direct children). |
+| GET | `/dashboard/connectors` | owner, admin, security_admin, source_admin, viewer | Which connectors new sources can be registered on, and how many use each. |
 | POST | `/dashboard/connectors/{connector_key}/activation` | owner, admin, security_admin, source_admin | Activate or deactivate a connector for new sources. Existing sources keep working. |
-| GET | `/dashboard/data-sources` | owner, admin, security_admin, source_admin | Data sources listing with request counts. |
+| GET | `/dashboard/data-sources` | owner, admin, security_admin, source_admin, viewer | Data sources listing with request counts. |
 | POST | `/dashboard/data-sources/create` | owner, admin, security_admin, source_admin | Persist a new data source from a browser form submission. |
-| GET | `/dashboard/data-sources/new` | owner, admin, security_admin, source_admin | Return the new-source form as a fragment or full Admin page. |
+| GET | `/dashboard/data-sources/new` | owner, admin, security_admin, source_admin, viewer | Return the new-source form as a fragment or full Admin page. |
 | POST | `/dashboard/data-sources/test` | owner, admin, security_admin, source_admin | Probe the upstream and return the result strip partial. |
-| GET | `/dashboard/data-sources/{source_id}` | owner, admin, security_admin, source_admin |   |
-| GET | `/dashboard/data-sources/{source_id}/catalog` | owner, admin, security_admin, source_admin |   |
+| GET | `/dashboard/data-sources/{source_id}` | owner, admin, security_admin, source_admin, viewer |   |
+| GET | `/dashboard/data-sources/{source_id}/catalog` | owner, admin, security_admin, source_admin, viewer |   |
 | POST | `/dashboard/data-sources/{source_id}/catalog/annotations` | owner, admin, security_admin, source_admin | Set, or clear with an empty value, the admin's classification of a node. |
 | POST | `/dashboard/data-sources/{source_id}/catalog/changes/acknowledge` | owner, admin, security_admin, source_admin | Acknowledge one drift entry, or every open one when no id is given. |
 | POST | `/dashboard/data-sources/{source_id}/catalog/rescan` | owner, admin, security_admin, source_admin |   |
 | POST | `/dashboard/data-sources/{source_id}/delete` | owner, admin, security_admin, source_admin |   |
-| GET | `/dashboard/data-sources/{source_id}/edit` | owner, admin, security_admin, source_admin |   |
+| GET | `/dashboard/data-sources/{source_id}/edit` | owner, admin, security_admin, source_admin, viewer |   |
 | POST | `/dashboard/data-sources/{source_id}/edit` | owner, admin, security_admin, source_admin |   |
 | POST | `/dashboard/data-sources/{source_id}/invalidate-cache` | owner, admin, security_admin, source_admin |   |
-| GET | `/dashboard/data-sources/{source_id}/roles` | owner, admin, security_admin, source_admin |   |
+| GET | `/dashboard/data-sources/{source_id}/roles` | owner, admin, security_admin, source_admin, viewer |   |
 | POST | `/dashboard/data-sources/{source_id}/roles` | owner, admin, security_admin, source_admin |   |
 | POST | `/dashboard/data-sources/{source_id}/roles/dry-run` | owner, admin, security_admin, source_admin |   |
 | POST | `/dashboard/data-sources/{source_id}/roles/lint` | owner, admin, security_admin, source_admin |   |
-| GET | `/dashboard/data-sources/{source_id}/roles/new` | owner, admin, security_admin, source_admin |   |
-| GET | `/dashboard/data-sources/{source_id}/roles/statement-row` | owner, admin, security_admin, source_admin | One statement row, re-rendered when its action or resource type changes. |
+| GET | `/dashboard/data-sources/{source_id}/roles/new` | owner, admin, security_admin, source_admin, viewer |   |
+| GET | `/dashboard/data-sources/{source_id}/roles/statement-row` | owner, admin, security_admin, source_admin, viewer | One statement row, re-rendered when its action or resource type changes. |
 | POST | `/dashboard/data-sources/{source_id}/roles/{role_id:int}` | owner, admin, security_admin, source_admin |   |
 | POST | `/dashboard/data-sources/{source_id}/roles/{role_id:int}/delete` | owner, admin, security_admin, source_admin | Delete a role nobody holds. |
-| GET | `/dashboard/data-sources/{source_id}/roles/{role_id}/edit` | owner, admin, security_admin, source_admin |   |
+| GET | `/dashboard/data-sources/{source_id}/roles/{role_id}/edit` | owner, admin, security_admin, source_admin, viewer |   |
 | POST | `/dashboard/data-sources/{source_id}/test` | owner, admin, security_admin, source_admin | Probe a registered source. Returns the same strip the New Source form uses. |
 | POST | `/dashboard/data-sources/{source_id}/toggle-enabled` | owner, admin, security_admin, source_admin |   |
-| GET | `/dashboard/discovery` | owner, admin, auditor, security_admin, source_admin | Discovery landing page: search + Assets / Entities / Categories tabs. |
-| GET | `/dashboard/discovery/assets/{asset_id:int}` | owner, admin, auditor, security_admin, source_admin | Asset detail: summary, columns, category, entities, related assets. |
-| GET | `/dashboard/discovery/categories/{path:path}` | owner, admin, auditor, security_admin, source_admin | Category detail: breadcrumb, children, assets under this path. |
-| GET | `/dashboard/discovery/entities/{entity_type}/{entity_text}` | owner, admin, auditor, security_admin, source_admin | Entity detail: assets that reference it, co-occurring entities. |
+| GET | `/dashboard/discovery` | owner, admin, auditor, security_admin, source_admin, viewer | Discovery landing page: search + Assets / Entities / Categories tabs. |
+| GET | `/dashboard/discovery/assets/{asset_id:int}` | owner, admin, auditor, security_admin, source_admin, viewer | Asset detail: summary, columns, category, entities, related assets. |
+| GET | `/dashboard/discovery/categories/{path:path}` | owner, admin, auditor, security_admin, source_admin, viewer | Category detail: breadcrumb, children, assets under this path. |
+| GET | `/dashboard/discovery/entities/{entity_type}/{entity_text}` | owner, admin, auditor, security_admin, source_admin, viewer | Entity detail: assets that reference it, co-occurring entities. |
 | POST | `/dashboard/discovery/rescan` | owner, admin, security_admin, source_admin | Queue a catalog scan of every enabled source and report what was queued. |
-| GET | `/dashboard/discovery/search` | owner, admin, auditor, security_admin, source_admin | HTMX partial: unified search across the whole catalog. |
-| GET | `/dashboard/entities` | owner, admin, auditor, security_admin, source_admin | Entity explorer page. Shows all entities by default, filtered on search. |
-| GET | `/dashboard/entities/search` | owner, admin, auditor, security_admin, source_admin | HTMX partial: entity search results. |
-| GET | `/dashboard/ingestion` | owner, admin, security_admin, source_admin | Full page or HTMX partial for ingestion jobs. |
-| GET | `/dashboard/ingestion/jobs/{job_id}` | owner, admin, security_admin, source_admin |   |
+| GET | `/dashboard/discovery/search` | owner, admin, auditor, security_admin, source_admin, viewer | HTMX partial: unified search across the whole catalog. |
+| GET | `/dashboard/entities` | owner, admin, auditor, security_admin, source_admin, viewer | Entity explorer page. Shows all entities by default, filtered on search. |
+| GET | `/dashboard/entities/search` | owner, admin, auditor, security_admin, source_admin, viewer | HTMX partial: entity search results. |
+| GET | `/dashboard/ingestion` | owner, admin, security_admin, source_admin, viewer | Full page or HTMX partial for ingestion jobs. |
+| GET | `/dashboard/ingestion/jobs/{job_id}` | owner, admin, security_admin, source_admin, viewer |   |
 | POST | `/dashboard/ingestion/jobs/{job_id}/cancel` | owner, admin, security_admin, source_admin | Cancel an active queued/processing job and return the refreshed table. |
 | POST | `/dashboard/ingestion/jobs/{job_id}/retry` | owner, admin, security_admin, source_admin | Retry a failed/cancelled job and return the refreshed HTMX table. |
-| GET | `/dashboard/overview` | owner, admin, approval_reviewer, auditor, policy_admin, security_admin, source_admin | System overview with stats and recent activity. |
-| GET | `/dashboard/overview/components` | owner, admin, approval_reviewer, auditor, policy_admin, security_admin, source_admin | HTMX partial: refresh just the component-grid contents. |
-| GET | `/dashboard/policies` | owner, admin, policy_admin, security_admin | Policy rule management. |
+| GET | `/dashboard/overview` | owner, admin, approval_reviewer, auditor, policy_admin, security_admin, source_admin, viewer | System overview with stats and recent activity. |
+| GET | `/dashboard/overview/components` | owner, admin, approval_reviewer, auditor, policy_admin, security_admin, source_admin, viewer | HTMX partial: refresh just the component-grid contents. |
+| GET | `/dashboard/policies` | owner, admin, policy_admin, security_admin, viewer | Policy rule management. |
 | POST | `/dashboard/policies/create` | owner, admin, policy_admin, security_admin |   |
 | POST | `/dashboard/policies/dry-run` | owner, admin, policy_admin, security_admin |   |
-| GET | `/dashboard/policies/export.yaml` | owner, admin, policy_admin, security_admin |   |
+| GET | `/dashboard/policies/export.yaml` | owner, admin, policy_admin, security_admin, viewer |   |
 | POST | `/dashboard/policies/import` | owner, admin, policy_admin, security_admin |   |
 | POST | `/dashboard/policies/import/apply` | owner, admin, policy_admin, security_admin |   |
 | POST | `/dashboard/policies/import/preview` | owner, admin, policy_admin, security_admin |   |
 | POST | `/dashboard/policies/lint` | owner, admin, policy_admin, security_admin |   |
-| GET | `/dashboard/policies/new` | owner, admin, policy_admin, security_admin |   |
-| GET | `/dashboard/policies/{policy_id}/edit` | owner, admin, policy_admin, security_admin |   |
+| GET | `/dashboard/policies/new` | owner, admin, policy_admin, security_admin, viewer |   |
+| GET | `/dashboard/policies/{policy_id}/edit` | owner, admin, policy_admin, security_admin, viewer |   |
 | POST | `/dashboard/policies/{policy_id}/update` | owner, admin, policy_admin, security_admin |   |
-| GET | `/dashboard/policy-analytics` | owner, admin, policy_admin, security_admin | Policy decision analytics: allows, denies, per-source breakdown. |
-| GET | `/dashboard/proxy` | owner, admin, auditor, security_admin | Proxy performance: latency, cache tiers, fingerprints, PII. |
-| GET | `/dashboard/proxy-monitor` | owner, admin, auditor, security_admin | Backward-compatible shareable URL for Proxy Monitor. |
-| GET | `/dashboard/source-wizard` | owner, admin, security_admin, source_admin |   |
+| GET | `/dashboard/policy-analytics` | owner, admin, policy_admin, security_admin, viewer | Policy decision analytics: allows, denies, per-source breakdown. |
+| GET | `/dashboard/proxy` | owner, admin, auditor, security_admin, viewer | Proxy performance: latency, cache tiers, fingerprints, PII. |
+| GET | `/dashboard/proxy-monitor` | owner, admin, auditor, security_admin, viewer | Backward-compatible shareable URL for Proxy Monitor. |
+| GET | `/dashboard/source-wizard` | owner, admin, security_admin, source_admin, viewer |   |
 | POST | `/dashboard/source-wizard/cancel` | owner, admin, security_admin, source_admin |   |
 | POST | `/dashboard/source-wizard/save` | owner, admin, security_admin, source_admin |   |
 | POST | `/dashboard/source-wizard/step1` | owner, admin, security_admin, source_admin |   |
@@ -162,9 +162,9 @@ The console and its JSON API share one server. Every route except the public one
 | POST | `/dashboard/source-wizard/step5` | owner, admin, security_admin, source_admin |   |
 | POST | `/dashboard/source-wizard/test` | owner, admin, security_admin, source_admin |   |
 | POST | `/dashboard/theme` | owner, admin, security_admin | Persist the operator's colour-theme choice in a cookie. |
-| GET | `/dashboard/workers` | owner, admin, security_admin, source_admin | Worker status page - combines Redis heartbeats with PG job data. |
-| GET | `/dashboard/write-safety` | owner, admin, approval_reviewer, security_admin | Write approval queue with pending cards and history. |
-| GET | `/dashboard/write-safety/{approval_id:int}` | owner, admin, approval_reviewer, security_admin |   |
+| GET | `/dashboard/workers` | owner, admin, security_admin, source_admin, viewer | Worker status page - combines Redis heartbeats with PG job data. |
+| GET | `/dashboard/write-safety` | owner, admin, approval_reviewer, security_admin, viewer | Write approval queue with pending cards and history. |
+| GET | `/dashboard/write-safety/{approval_id:int}` | owner, admin, approval_reviewer, security_admin, viewer |   |
 
 ## `/health`
 
@@ -182,4 +182,4 @@ The console and its JSON API share one server. Every route except the public one
 
 | Method | Path | Roles | Summary |
 |---|---|---|---|
-| GET | `/` | owner, admin, approval_reviewer, auditor, policy_admin, security_admin, source_admin | Redirect root to overview. |
+| GET | `/` | owner, admin, approval_reviewer, auditor, policy_admin, security_admin, source_admin, viewer | Redirect root to overview. |

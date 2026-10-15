@@ -544,3 +544,55 @@ function interlockCatalogPick(button) {
     target.dispatchEvent(new Event('change', { bubbles: true }));
     target.focus();
 }
+
+
+// Explain refused requests. htmx does not swap 4xx responses, so without this a
+// read-only account clicking Save or Delete would see nothing happen.
+var _interlockNoticeTimer = null;
+
+function _interlockShowNotice(title, message) {
+    var notice = document.getElementById('admin-notice');
+    if (!notice) {
+        return;
+    }
+    notice.textContent = '';
+    var strong = document.createElement('strong');
+    strong.textContent = title;
+    notice.appendChild(strong);
+    notice.appendChild(document.createTextNode(' ' + message));
+    notice.hidden = false;
+    if (_interlockNoticeTimer) {
+        clearTimeout(_interlockNoticeTimer);
+    }
+    _interlockNoticeTimer = setTimeout(function() { notice.hidden = true; }, 8000);
+}
+
+function _interlockErrorText(xhr) {
+    try {
+        var body = JSON.parse(xhr.responseText || '{}');
+        return String(body.error || body.detail || '');
+    } catch (err) {
+        return '';
+    }
+}
+
+document.addEventListener('htmx:responseError', function(event) {
+    var xhr = event.detail.xhr;
+    if (!xhr) {
+        return;
+    }
+    var error = _interlockErrorText(xhr);
+    if (xhr.status === 403 && /csrf/i.test(error)) {
+        _interlockShowNotice('Your session needs a refresh.', 'Reload the page and try again.');
+    } else if (xhr.status === 403) {
+        _interlockShowNotice("Your account can't make this change.", 'Ask an administrator if you need it.');
+    } else if (xhr.status === 401) {
+        _interlockShowNotice('You have been signed out.', 'Sign in again to continue.');
+    } else {
+        _interlockShowNotice('That did not work.', error || ('The server answered ' + xhr.status + '.'));
+    }
+});
+
+document.addEventListener('htmx:sendError', function() {
+    _interlockShowNotice('The console could not reach the server.', 'Check your connection and try again.');
+});

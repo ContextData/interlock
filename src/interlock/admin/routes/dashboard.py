@@ -30,6 +30,7 @@ from interlock.admin.policy_summary import (
     effect_of,
 )
 from interlock.admin.policy_summary import as_dict as as_policy_dict
+from interlock.admin.roles import is_console_admin, is_read_only
 from interlock.admin.source_cache import invalidate_source_cache
 from interlock.admin.source_ids import (
     InvalidSourceIdError,
@@ -1445,11 +1446,24 @@ def build_sparkline(
     return {"line": line, "area": area, "width": width, "height": height, "max": peak}
 
 
+def _session_roles(request: Request) -> tuple[str, ...] | None:
+    """The signed-in admin's roles, or None when there is no session."""
+    admin = getattr(request.state, "admin", None)
+    if admin is None:
+        return None
+    return tuple(getattr(admin, "roles", None) or ())
+
+
 def _render(request: Request, template: str, context: dict[str, Any]) -> HTMLResponse:
     """Render a template. Uses request.app.state.templates (Jinja2Templates)."""
     templates = request.app.state.templates
     context.setdefault("theme", _resolved_theme(request))
     context.setdefault("admin_username", _admin_username(request))
+    roles = _session_roles(request)
+    # With authentication disabled (unit tests) there is no session: show the
+    # console as an administrator would see it.
+    context.setdefault("is_console_admin", roles is None or is_console_admin(roles))
+    context.setdefault("is_read_only", roles is not None and is_read_only(roles))
     return templates.TemplateResponse(request, template, context)
 
 
