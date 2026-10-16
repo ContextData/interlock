@@ -1,0 +1,67 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% if content_only %}<title>{% endif %}{% block title %}{{ user.username }} - Console User - InterLock{% endblock %}{% if content_only %}</title>{% endif %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <a href="/dashboard/admin-users" class="back-link"
+       hx-get="/dashboard/admin-users" hx-target="#main-content">← Console Users</a>
+    <h1>{{ user.username }}{% if is_self %} <span class="muted">(you)</span>{% endif %}</h1>
+  </div>
+  <div class="row-actions">
+    <a class="btn btn-secondary" href="/dashboard/admin-users/{{ user.id }}/edit"
+       hx-get="/dashboard/admin-users/{{ user.id }}/edit" hx-target="#main-content" hx-push-url="true">Edit</a>
+    {% if not is_self %}
+    <button class="btn btn-secondary"
+            hx-post="/dashboard/admin-users/{{ user.id }}/reset-password"
+            hx-confirm="Give {{ user.username }} a new temporary password? Their current password stops working and they are signed out."
+            hx-target="#admin-user-action-slot" hx-swap="innerHTML">Reset password</button>
+    {% if user.enabled %}
+    <button class="btn btn-danger"
+            hx-post="/dashboard/admin-users/{{ user.id }}/disable"
+            hx-confirm="Disable {{ user.username }}? They are signed out at once and cannot sign in until enabled again."
+            hx-target="#admin-user-action-slot" hx-swap="innerHTML">Disable</button>
+    {% else %}
+    <button class="btn btn-secondary"
+            hx-post="/dashboard/admin-users/{{ user.id }}/enable"
+            hx-target="#admin-user-action-slot" hx-swap="innerHTML">Enable</button>
+    <button class="btn btn-danger"
+            hx-post="/dashboard/admin-users/{{ user.id }}/delete"
+            hx-confirm="Delete {{ user.username }}? This cannot be undone. Audit records keep their username."
+            hx-target="#admin-user-action-slot" hx-swap="innerHTML">Delete</button>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+{% if is_self %}
+<p class="muted">This is your account. Another administrator can change its type, reset its password or disable it; change your own password from the sidebar.</p>
+{% endif %}
+
+<div id="admin-user-action-slot"></div>
+
+<div class="detail-stack">
+  <section class="card">
+    <h2>Console user</h2>
+    <dl class="form-summary fact-table">
+      <dt>Username</dt><dd><code>{{ user.username }}</code></dd>
+      <dt>Type</dt><dd>{{ user.type_label }}</dd>
+      <dt>Roles</dt><dd>{% for role in user.roles %}<span class="badge">{{ role }}</span>{% else %}<span class="muted">None</span>{% endfor %}</dd>
+      <dt>Status</dt><dd>
+        {% if user.enabled %}<span class="health-dot health-green"></span> enabled{% else %}<span class="health-dot health-red"></span> disabled{% endif %}
+      </dd>
+      <dt>Signs in with</dt><dd>{% if user.sso_subject %}SSO{% if user.password_set %} and a password{% endif %}{% elif user.password_set %}a password{% else %}<span class="muted">nothing yet</span>{% endif %}</dd>
+      <dt>Password</dt><dd>
+        {% if not user.password_set %}<span class="muted">None</span>
+        {% elif user.must_change_password %}Temporary: must be changed at next sign-in
+        {% elif user.password_changed_at %}Changed {{ user.password_changed_at|fmt_dt }}
+        {% else %}Set{% endif %}
+      </dd>
+      <dt>Email</dt><dd>{{ user.email or '-' }}</dd>
+      <dt>SSO subject</dt><dd>{% if user.sso_subject %}<code>{{ user.sso_subject }}</code>{% else %}-{% endif %}</dd>
+      <dt>Last sign-in</dt><dd>{% if user.last_login_at %}{{ user.last_login_at|fmt_dt }}{% if user.last_login_ip %} from {{ user.last_login_ip }}{% endif %}{% else %}Never{% endif %}</dd>
+      <dt>Created</dt><dd>{{ user.created_at|fmt_dt if user.created_at else '-' }}</dd>
+    </dl>
+  </section>
+</div>
+{% endblock %}

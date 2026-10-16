@@ -21,7 +21,10 @@ from agent identities. Every admin action is recorded in the admin audit log.
 | `viewer` | read every console page and read API, and change nothing |
 
 An account can hold several roles. Which routes each role opens is listed in
-[Admin roles](/reference/admin-roles/).
+[Admin roles](/reference/admin-roles/). Administrators add console users from
+**Console Users** in the sidebar, choosing a user type (Administrator,
+Read-write, Read-only or Custom) rather than raw roles; see
+[Manage admin users](/guides/day-to-day/manage-admin-users/).
 
 A `viewer` cannot run anything that uses stored credentials or belongs to an
 editing flow, even when it changes nothing: Test Connection, policy and

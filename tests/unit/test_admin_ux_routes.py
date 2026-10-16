@@ -76,6 +76,7 @@ async def client(app):
         ("/dashboard/access-control/identities/new", "New Identity"),
         ("/dashboard/policies/new", "New Policy"),
         ("/dashboard/alerts/new", "New Alert Rule"),
+        ("/dashboard/admin-users/new", "New Console User"),
     ],
 )
 async def test_direct_form_routes_render_full_shell(client, path, heading):
@@ -94,6 +95,7 @@ async def test_direct_form_routes_render_full_shell(client, path, heading):
         ("/dashboard/access-control/identities/new", 'id="new-identity-form"'),
         ("/dashboard/policies/new", 'id="new-policy-form"'),
         ("/dashboard/alerts/new", 'id="alert-form"'),
+        ("/dashboard/admin-users/new", 'id="admin-user-form-card"'),
     ],
 )
 async def test_inner_htmx_form_routes_render_fragments(client, path, marker):

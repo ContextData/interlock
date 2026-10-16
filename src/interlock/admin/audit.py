@@ -24,6 +24,7 @@ _SENSITIVE_KEY_RE = re.compile(
 )
 
 _STRICT_MUTATION_PREFIXES = (
+    "admin_user.",
     "approval.",
     "data_source.",
     "identity.",

@@ -1,0 +1,77 @@
+{# New or edit console user. The Custom roles list is revealed with CSS :has(),
+   because the console's CSP allows no inline script. #}
+<div class="form-card" id="admin-user-form-card">
+  <h3>{% if mode == 'edit' %}Edit console user{% else %}New console user{% endif %}</h3>
+  {% if error %}
+  <div class="form-error" role="alert">{{ error }}</div>
+  {% endif %}
+
+  <form id="admin-user-form" class="admin-user-form">
+    {% if mode == 'edit' %}
+    <dl class="form-summary"><dt>Username</dt><dd><code>{{ form.username }}</code></dd></dl>
+    {% else %}
+    <div class="form-row">
+      <label>Username
+        <input name="username" required value="{{ form.username }}" placeholder="jane.doe"
+               autocomplete="off" autocapitalize="off" spellcheck="false">
+      </label>
+    </div>
+    <p class="field-help">Lowercase letters, digits, and . _ @ -. This is what they type to sign in.</p>
+    {% endif %}
+
+    <fieldset class="user-types">
+      <legend>User type</legend>
+      {% for key, label, help in user_types %}
+      <label class="user-type">
+        <input type="radio" name="user_type" value="{{ key }}" {% if form.user_type == key %}checked{% endif %}>
+        <span><strong>{{ label }}</strong><span class="muted">{{ help }}</span></span>
+      </label>
+      {% endfor %}
+    </fieldset>
+
+    <fieldset class="custom-roles">
+      <legend>Roles for a custom user</legend>
+      {% for role, meaning in custom_roles %}
+      <label class="checkbox">
+        <input type="checkbox" name="roles" value="{{ role }}" {% if role in form.roles %}checked{% endif %}>
+        <span><code>{{ role }}</code> <span class="muted">{{ meaning }}</span></span>
+      </label>
+      {% endfor %}
+    </fieldset>
+
+    <h4 class="form-subheader">Single sign-on (optional)</h4>
+    {% if sso_enabled %}
+    <p class="muted">Single sign-on is on. Everyone except administrators signs in with SSO, so enter their SSO subject. Administrators also get a temporary password for break-glass sign-in.</p>
+    {% else %}
+    <p class="muted">Single sign-on is off; these are kept for when it is turned on.</p>
+    {% endif %}
+    <div class="form-row">
+      <label>Email
+        <input name="email" type="email" value="{{ form.email or '' }}" placeholder="jane@example.com" autocomplete="off">
+      </label>
+      <label>SSO subject
+        <input name="sso_subject" value="{{ form.sso_subject or '' }}" placeholder="the 'sub' claim from your identity provider" autocomplete="off">
+      </label>
+    </div>
+
+    <div class="form-actions">
+      {% if mode == 'edit' %}
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/admin-users/{{ form.id }}/update"
+              hx-include="#admin-user-form"
+              hx-target="#admin-user-form-slot"
+              hx-swap="innerHTML">Save changes</button>
+      <a class="btn btn-secondary" href="/dashboard/admin-users/{{ form.id }}"
+         hx-get="/dashboard/admin-users/{{ form.id }}" hx-target="#main-content" hx-push-url="true">Cancel</a>
+      {% else %}
+      <button type="button" class="btn btn-primary"
+              hx-post="/dashboard/admin-users/create"
+              hx-include="#admin-user-form"
+              hx-target="#admin-user-form-slot"
+              hx-swap="innerHTML">Create user</button>
+      <a class="btn btn-secondary" href="/dashboard/admin-users"
+         hx-get="/dashboard/admin-users" hx-target="#main-content" hx-push-url="true">Cancel</a>
+      {% endif %}
+    </div>
+  </form>
+</div>

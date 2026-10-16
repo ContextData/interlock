@@ -1,0 +1,64 @@
+{% if not content_only %}{% extends "base.html" %}{% endif %}
+{% if content_only %}<title>{% endif %}{% block title %}Console Users - InterLock Dashboard{% endblock %}{% if content_only %}</title>{% endif %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <p class="eyebrow">Access Control</p>
+        <h1>Console Users</h1>
+    </div>
+    <a class="btn btn-primary"
+       href="/dashboard/admin-users/new"
+       hx-get="/dashboard/admin-users/new"
+       hx-target="#main-content"
+       hx-push-url="true">+ New Console User</a>
+</div>
+
+<div class="split-section">
+    <div class="section-header-row">
+        <div>
+            <h2>Who can sign in to this console</h2>
+            <p class="muted">People, not agents. Agents connect with an identity's API key; see Identities.</p>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Sign-in</th>
+                    <th>Last sign-in</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr data-admin-user="{{ user.username }}">
+                    <td>
+                        <a href="/dashboard/admin-users/{{ user.id }}"
+                           hx-get="/dashboard/admin-users/{{ user.id }}"
+                           hx-target="#main-content" hx-push-url="true">{{ user.username }}</a>
+                        {% if user.id == current_admin_id %}<span class="muted">(you)</span>{% endif %}
+                    </td>
+                    <td>{{ user.type_label }}</td>
+                    <td>
+                        {% if not user.enabled %}
+                        <span class="badge badge-disabled">Disabled</span>
+                        {% elif user.must_change_password %}
+                        <span class="badge badge-pending">Must change password</span>
+                        {% else %}
+                        <span class="badge badge-enabled">Active</span>
+                        {% endif %}
+                    </td>
+                    <td>{% if user.sso_subject %}SSO{% if user.password_set %} and password{% endif %}{% elif user.password_set %}Password{% else %}<span class="muted">None</span>{% endif %}</td>
+                    <td>{{ user.last_login_at|fmt_dt if user.last_login_at else 'Never' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5"><div class="empty-state">No console users.</div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

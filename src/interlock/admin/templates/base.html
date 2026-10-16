@@ -77,6 +77,7 @@
                 <li class="nav-section">Access Control</li>
                 <li><a href="/dashboard/access-control/identities" class="{% if active_page == 'identities' or active_page == 'access-control' %}active{% endif %}" {% if active_page == 'identities' or active_page == 'access-control' %}aria-current="page"{% endif %} hx-get="/dashboard/access-control/identities" hx-target="#main-content" hx-push-url="true">Identities</a></li>
                 <li><a href="/dashboard/policies" class="{% if active_page == 'policies' %}active{% endif %}" {% if active_page == 'policies' %}aria-current="page"{% endif %} hx-get="/dashboard/policies" hx-target="#main-content" hx-push-url="true">Policies</a></li>
+                {% if is_console_admin %}<li><a href="/dashboard/admin-users" class="{% if active_page == 'admin-users' %}active{% endif %}" {% if active_page == 'admin-users' %}aria-current="page"{% endif %} hx-get="/dashboard/admin-users" hx-target="#main-content" hx-push-url="true">Console Users</a></li>{% endif %}
 
                 <li class="nav-section">Processing</li>
                 <li><a href="/dashboard/ingestion" class="{% if active_page == 'ingestion' %}active{% endif %}" {% if active_page == 'ingestion' %}aria-current="page"{% endif %} hx-get="/dashboard/ingestion" hx-target="#main-content" hx-push-url="true">Ingestion</a></li>

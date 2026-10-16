@@ -2308,3 +2308,36 @@ body.login-body {
 .admin-notice strong { color: var(--status-error); }
 
 .sidebar-account-badge { margin-left: auto; flex: none; }
+
+/* Console user form: user types as cards, custom roles shown only for Custom. */
+.user-types,
+.custom-roles {
+    border: 0;
+    margin: 0 0 var(--space-4);
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+}
+.user-types legend,
+.custom-roles legend {
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+}
+.user-type {
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-start;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+.user-type:has(input:checked) {
+    border-color: var(--accent-bar);
+    background: var(--accent-quiet);
+}
+.user-type > span { display: grid; gap: var(--space-1); min-width: 0; }
+.user-type input { margin-top: 0.2rem; }
+.custom-roles { display: none; }
+.admin-user-form:has(input[name="user_type"][value="custom"]:checked) .custom-roles { display: grid; }
+.custom-roles .checkbox span { min-width: 0; }

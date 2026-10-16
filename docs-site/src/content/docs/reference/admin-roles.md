@@ -23,6 +23,8 @@ An admin account holds one or more roles. `owner` and `admin` may do everything;
 
 | Path prefix | Roles besides owner and admin |
 |---|---|
+| `/dashboard/admin-users` | owner, admin only |
+| `/api/admin-users` | owner, admin only |
 | `/api/admin-auth/oidc/admins` | owner, admin only |
 | `/` | approval_reviewer, auditor, policy_admin, security_admin, source_admin, viewer |
 | `/openapi.json` | security_admin, viewer |
@@ -62,6 +64,8 @@ Rules for `POST`, `PUT`, `PATCH` and `DELETE`. A change under `/dashboard` or `/
 
 | Path prefix | Roles besides owner and admin |
 |---|---|
+| `/dashboard/admin-users` | owner, admin only |
+| `/api/admin-users` | owner, admin only |
 | `/api/admin-auth/oidc/admins` | owner, admin only |
 | `/dashboard/source-wizard` | security_admin, source_admin |
 | `/dashboard/data-sources` | security_admin, source_admin |
