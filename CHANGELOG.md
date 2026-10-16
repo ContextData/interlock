@@ -25,6 +25,9 @@ record. Entries are grouped by the release that first shipped them.
 
 ### Security
 
+- `mcp` 2.2.0 (CVE-2026-59951, GHSA-84m7-p3x7-pcfv: Streamable HTTP servers never
+  reclaimed session state) in the optional `mcp-certification` extra used by
+  the SDK compatibility tests; the published image does not include it.
 - Setting which SSO subject belongs to a console account now needs an `owner`
   or `admin` account. Before, `security_admin` could map its own SSO identity
   to an owner's account and sign in as that owner. Mapping SSO subjects to
