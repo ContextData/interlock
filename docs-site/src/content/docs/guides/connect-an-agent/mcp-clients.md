@@ -145,7 +145,7 @@ row per call.
 | Client | Version | Route | Date | Result |
 |---|---|---|---|---|
 | Claude Code | | local | 2026-09 | Used throughout the DigitalOcean rehearsals |
-| Official MCP Python SDK | `mcp` 2.0 | local | every CI run | `make test-mcp-sdk` |
+| Official MCP Python SDK | `mcp` 2.2 | local | every CI run | `make test-mcp-sdk` |
 | Codex CLI | 0.160.0 | local | 2026-10-04 | All checks pass with `default_tools_approval_mode = "approve"` |
 | OpenAI Responses API | `gpt-5.5`, `openai` 3.24.0 | hosted | 2026-10-04 | All checks pass |
 | Gemini Interactions API | `antigravity-preview-09-2026` | hosted | 2026-10-04 | All checks pass |

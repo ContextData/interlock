@@ -147,8 +147,8 @@ dev = [
 mcp-certification = [
     # Isolated compatibility gate for the current MCP 2026 transport. The SDK
     # is not installed in production images.
-    "mcp==2.0.0",
-    "mcp-types==2.0.0",
+    "mcp==2.2.0",
+    "mcp-types==2.2.0",
 ]
 # The Salesforce and Google Workspace clients are permissively licensed
 # (Apache-2.0, as are their dependencies) and are in the published image so
