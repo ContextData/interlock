@@ -361,9 +361,9 @@ fastapi==0.136.1 \
     --hash=sha256:7af665ad7acfa0a3baf8983d393b6b471b9da10ede59c60045f49fbc89a0fa7f \
     --hash=sha256:a6e9d7eeada96c93a4d69cb03836b44fa34e2854accb7244a1ece36cd4781c3f
     # via interlock-runtime
-filelock==3.29.0 \
-    --hash=sha256:69974355e960702e789734cb4871f884ea6fe50bd8404051a3530bc07809cf90 \
-    --hash=sha256:96f5f6344709aa1572bbf631c640e4ebeeb519e08da902c39a001882f30ac258
+filelock==4.2.1 \
+    --hash=sha256:7be2662e9e826b9bba28afc0f843a123280d799a2ea44bb5d35ccec67905ae44 \
+    --hash=sha256:c4c937ccac2a813cee448e662a56366cfb374c0f8702e75f295c412cc1c5d5a3
     # via
     #   snowflake-connector-python
     #   tldextract
