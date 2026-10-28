@@ -25,6 +25,21 @@ record. Entries are grouped by the release that first shipped them.
 
 ### Security
 
+- Dependency updates for advisories published since rc.18. In the published
+  image: `aiohttp` 3.14.5 (eight advisories, including CVE-2026-111063 to
+  CVE-2026-111066 and CVE-2026-111748 to CVE-2026-111750), `authlib` 1.9.1 (six,
+  including CVE-2026-96760 and CVE-2026-114615 to CVE-2026-114618, used for
+  console SSO), `certifi` 2026.10.23 (PYSEC-2026-4320), `filelock` 4.2.4
+  (CVE-2026-112907, CVE-2026-112913, CVE-2026-112940), `gitpython` 3.2.1
+  (CVE-2026-110855 to CVE-2026-110859, CVE-2026-114145), `opentelemetry-api`
+  1.45.1 (CVE-2026-114603) and `setuptools` 84.2.1 (GHSA-xmj3-9gf7-h52w).
+  Outside it: `pillow` 13.0.0 (the worker and ML extras), `pymongo` 4.19.0
+  (CVE-2026-106435) and `dnspython` 2.9.0 (CVE-2026-114605) in the
+  `connectors-tier2` extra, and `black` 26.10.1 (CVE-2026-114134) in dev
+  tooling. The docs site build moves to `vite` 8.3.5, `undici` 8.12.3, `zod` 4.6.7,
+  `source-map-js` 1.2.2, `http-cache-semantics` 4.3.0 (GHSA-ch52-4w7c-c8xp)
+  and `postcss-selector-parser` 6.1.5 (GHSA-rj75-hqrm-r3gf). `pip-audit` and
+  `npm audit` both report no known vulnerabilities.
 - `mcp` 2.2.0 (CVE-2026-59951, GHSA-84m7-p3x7-pcfv: Streamable HTTP servers never
   reclaimed session state) in the optional `mcp-certification` extra used by
   the SDK compatibility tests; the published image does not include it.
