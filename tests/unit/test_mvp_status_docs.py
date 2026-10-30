@@ -339,7 +339,8 @@ def test_supply_chain_cve_remediation_is_documented_and_pinned() -> None:
     changelog = (ROOT / "CHANGELOG.md").read_text()
 
     for pinned_package in (
-        "aiohttp==3.14.3",
+        "aiohttp==3.14.5",
+        "authlib==1.9.1",
         "cryptography==50.0.2",
         "dlt==1.29.0",
         "joserfc==1.7.5",
@@ -347,7 +348,7 @@ def test_supply_chain_cve_remediation_is_documented_and_pinned() -> None:
         "pydantic-settings==2.14.2",
         "pyjwt==2.15.1",
         "python-multipart==0.0.32",
-        "setuptools==83.0.0",
+        "setuptools==84.2.1",
         "starlette==1.3.1",
         "urllib3==2.8.0",
     ):
@@ -380,16 +381,16 @@ def test_supply_chain_cve_remediation_is_documented_and_pinned() -> None:
         '"transformers>=5.10.0,<6.0"',
         '"snowflake-connector-python>=4.7.1,<5.0"',
         '"dlt>=1.27.2,<2.0"',
-        '"aiohttp>=3.14.3"',
+        '"aiohttp>=3.14.4"',
         '"httplib2>=0.32.0"',
         '"joserfc>=1.6.8"',
         '"oauthlib>=4.0.0"',
         '"sentence-transformers>=5.6.0,<6.0"',
         '"pip>=26.2"',
-        '"pillow>=12.3.0"',
+        '"pillow>=13.0.0"',
         # Ten PyJWT advisories published 2026-09-29 are fixed in 2.14.0.
         '"pyjwt>=2.14.0"',
-        '"setuptools>=83.0.0"',
+        '"setuptools>=84.1.0"',
         '"soupsieve>=2.8.4"',
         '"urllib3>=2.8.0,<3.0"',
         '"zeep>=4.3.3"',
