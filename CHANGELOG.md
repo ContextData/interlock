@@ -46,6 +46,8 @@ Custom types, plus dependency security updates.
   `npm audit` both report no known vulnerabilities.
 - `joserfc` 1.7.7 (CVE-2026-119284), in the published image, used by
   `authlib` to verify OIDC tokens for agents and console SSO.
+- `pyasn1` 0.6.5 (CVE-2026-119194, CVE-2026-119195, CVE-2026-119196,
+  CVE-2026-119197), in the published image through `google-auth`.
 - `mcp` 2.2.0 (CVE-2026-59951, GHSA-84m7-p3x7-pcfv: Streamable HTTP servers never
   reclaimed session state) in the optional `mcp-certification` extra used by
   the SDK compatibility tests; the published image does not include it.
