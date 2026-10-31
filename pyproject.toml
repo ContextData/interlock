@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "interlock-runtime"
-version = "1.0.0rc18"
+version = "1.0.0rc19"
 description = "InterLock secure agent-to-data runtime proxy for enterprises"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
@@ -186,7 +186,7 @@ constraint-dependencies = [
     # requirements-production.txt and is not in the published image. The
     # runtime's own HTTP client is `httpx`, which is unaffected.
     "httpx2>=2.12.0",
-    "joserfc>=1.6.8",
+    "joserfc>=1.7.6",
     # CVE-2026-49265 is fixed in 4.0.0. Reached through atlassian-python-api
     # and requests-oauthlib in connectors-tier2, which the published image does
     # not install; the release preflight audits it.

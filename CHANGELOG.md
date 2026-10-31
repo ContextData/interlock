@@ -6,7 +6,11 @@ earlier history, pull requests and reviews remain private. The release
 candidates below were built and published from there, and this file is their
 record. Entries are grouped by the release that first shipped them.
 
-## Unreleased
+## 1.0.0-rc.19 - 2026-10-30
+
+Console user management: administrators add, edit, reset, disable and delete
+console users from the console, with Administrator, Read-write, Read-only and
+Custom types, plus dependency security updates.
 
 ### Added
 
@@ -28,8 +32,8 @@ record. Entries are grouped by the release that first shipped them.
 - Dependency updates for advisories published since rc.18. In the published
   image: `aiohttp` 3.14.5 (eight advisories, including CVE-2026-111063 to
   CVE-2026-111066 and CVE-2026-111748 to CVE-2026-111750), `authlib` 1.9.1 (six,
-  including CVE-2026-96760 and CVE-2026-114615 to CVE-2026-114618, used for
-  console SSO), `certifi` 2026.10.23 (PYSEC-2026-4320), `filelock` 4.2.4
+  including CVE-2026-96760 and CVE-2026-114615 to CVE-2026-114618, used to
+  verify OIDC tokens), `certifi` 2026.10.23 (PYSEC-2026-4320), `filelock` 4.2.4
   (CVE-2026-112907, CVE-2026-112913, CVE-2026-112940), `gitpython` 3.2.1
   (CVE-2026-110855 to CVE-2026-110859, CVE-2026-114145), `opentelemetry-api`
   1.45.1 (CVE-2026-114603) and `setuptools` 84.2.1 (GHSA-xmj3-9gf7-h52w).
@@ -40,6 +44,8 @@ record. Entries are grouped by the release that first shipped them.
   `source-map-js` 1.2.2, `http-cache-semantics` 4.3.0 (GHSA-ch52-4w7c-c8xp)
   and `postcss-selector-parser` 6.1.5 (GHSA-rj75-hqrm-r3gf). `pip-audit` and
   `npm audit` both report no known vulnerabilities.
+- `joserfc` 1.7.7 (CVE-2026-119284), in the published image, used by
+  `authlib` to verify OIDC tokens for agents and console SSO.
 - `mcp` 2.2.0 (CVE-2026-59951, GHSA-84m7-p3x7-pcfv: Streamable HTTP servers never
   reclaimed session state) in the optional `mcp-certification` extra used by
   the SDK compatibility tests; the published image does not include it.
