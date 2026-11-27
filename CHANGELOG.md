@@ -48,6 +48,8 @@ Custom types, plus dependency security updates.
   `authlib` to verify OIDC tokens for agents and console SSO.
 - `pyasn1` 0.6.5 (CVE-2026-119194, CVE-2026-119195, CVE-2026-119196,
   CVE-2026-119197), in the published image through `google-auth`.
+- OpenTelemetry 1.45.2 / 0.66b2 (CVE-2026-126360 in `opentelemetry-api`), in
+  the published image.
 - `mcp` 2.2.0 (CVE-2026-59951, GHSA-84m7-p3x7-pcfv: Streamable HTTP servers never
   reclaimed session state) in the optional `mcp-certification` extra used by
   the SDK compatibility tests; the published image does not include it.
@@ -55,6 +57,15 @@ Custom types, plus dependency security updates.
   or `admin` account. Before, `security_admin` could map its own SSO identity
   to an owner's account and sign in as that owner. Mapping SSO subjects to
   agent identities still needs `security_admin`.
+
+### Changed
+
+- Dependency updates: `requests` 2.34.2, `websockets` 17.4, `dnspython` 2.9.2,
+  `soupsieve` 4.1.3, `humanize` 4.17.0, `oauthlib` 4.0.1, and in the `ml`
+  extra `transformers` 5.24.1 and spaCy 3.8.18; `playwright` 1.65.2 for the
+  browser tests. torch stays on 2.14.1 and faiss-cpu on 1.15.1: torch 2.15.0
+  aborts the embedding tests on Apple silicon, and faiss-cpu 1.16.0 has no
+  wheel for macOS 14. sentence-transformers stays on 5.x.
 
 ## 1.0.0-rc.18 - 2026-10-06
 
