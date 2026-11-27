@@ -24,6 +24,18 @@ updates:
           - "faiss-cpu"
           - "spacy"
           - "presidio-*"
+    ignore:
+      # sentence-transformers stays on 5.x (CHANGELOG, 1.0.0-rc.18).
+      - dependency-name: "sentence-transformers"
+        update-types: ["version-update:semver-major"]
+      # These exact releases were tried and held back (CHANGELOG, 1.0.0-rc.19):
+      # torch 2.15.0 aborts the embedding unit tests on macOS arm64, and
+      # faiss-cpu 1.16.0 ships no macOS 14 arm64 wheel. Later releases are
+      # still proposed, so each can be tried again.
+      - dependency-name: "torch"
+        versions: ["2.15.0"]
+      - dependency-name: "faiss-cpu"
+        versions: ["1.16.0"]
 
   # Actions are SHA-pinned; Dependabot updates the SHA and the version comment.
   - package-ecosystem: "github-actions"

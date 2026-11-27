@@ -6,7 +6,7 @@ earlier history, pull requests and reviews remain private. The release
 candidates below were built and published from there, and this file is their
 record. Entries are grouped by the release that first shipped them.
 
-## 1.0.0-rc.19 - 2026-10-30
+## 1.0.0-rc.19 - 2026-11-27
 
 Console user management: administrators add, edit, reset, disable and delete
 console users from the console, with Administrator, Read-write, Read-only and
@@ -66,6 +66,10 @@ Custom types, plus dependency security updates.
   browser tests. torch stays on 2.14.1 and faiss-cpu on 1.15.1: torch 2.15.0
   aborts the embedding tests on Apple silicon, and faiss-cpu 1.16.0 has no
   wheel for macOS 14. sentence-transformers stays on 5.x.
+- The docs site builds with astro 7.4.12 and Starlight 0.42.8, and the CI and
+  release workflows use the Node 24 releases of `actions/checkout`,
+  `setup-terraform`, `setup-helm`, `docker/login-action` and
+  `docker/build-push-action`.
 
 ## 1.0.0-rc.18 - 2026-10-06
 
